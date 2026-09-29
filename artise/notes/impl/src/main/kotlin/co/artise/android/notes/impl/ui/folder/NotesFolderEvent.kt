@@ -11,4 +11,11 @@ sealed interface NotesFolderEvent {
     data object Refresh : NotesFolderEvent
 
     data object DismissPrivacyNotice : NotesFolderEvent
+
+    data object StartNewNote : NotesFolderEvent
+
+    /** Create a note called [name] in this folder and open it in the editor. */
+    data class CreateNote(val name: String) : NotesFolderEvent
+
+    data object CancelNewNote : NotesFolderEvent
 }

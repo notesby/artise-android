@@ -18,14 +18,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import co.artise.android.notes.impl.R
+import co.artise.android.notes.impl.ui.common.NoteNameProblem
 import co.artise.android.notes.impl.ui.common.NotesScaffold
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.libraries.designsystem.components.Announcement
 import io.element.android.libraries.designsystem.components.AnnouncementType
+import io.element.android.libraries.designsystem.components.dialogs.TextFieldDialog
 import io.element.android.libraries.designsystem.components.list.ListItemContent
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
+import io.element.android.libraries.designsystem.theme.components.FloatingActionButton
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.IconSource
@@ -39,6 +42,7 @@ fun NotesFolderView(
     onFolderClick: (String) -> Unit,
     onNoteClick: (String) -> Unit,
     onSearchClick: () -> Unit,
+    onReviewChoicesClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     NotesScaffold(
@@ -53,8 +57,27 @@ fun NotesFolderView(
                 Icon(imageVector = CompoundIcons.Search(), contentDescription = stringResource(R.string.a11y_notes_search))
             }
         },
+        floatingActionButton = {
+            FloatingActionButton(onClick = { state.eventSink(NotesFolderEvent.StartNewNote) }) {
+                Icon(imageVector = CompoundIcons.Plus(), contentDescription = stringResource(R.string.screen_notes_new_note))
+            }
+        },
     ) {
         LazyColumn(Modifier.fillMaxSize()) {
+            if (state.needChoiceCount > 0) {
+                item {
+                    Announcement(
+                        title = pluralStringResource(R.plurals.screen_notes_choices_banner, state.needChoiceCount, state.needChoiceCount),
+                        description = null,
+                        type = AnnouncementType.Actionable(
+                            actionText = stringResource(R.string.screen_notes_choices_review),
+                            onActionClick = onReviewChoicesClick,
+                            onDismissClick = null,
+                        ),
+                        modifier = Modifier.padding(16.dp),
+                    )
+                }
+            }
             if (state.showPrivacyNotice) {
                 item {
                     Announcement(
@@ -103,6 +126,25 @@ fun NotesFolderView(
             }
         }
     }
+    state.newNote?.let { dialog ->
+        TextFieldDialog(
+            title = stringResource(R.string.screen_notes_new_note),
+            value = null,
+            placeholder = stringResource(R.string.screen_notes_new_note_placeholder),
+            onSubmit = { state.eventSink(NotesFolderEvent.CreateNote(it)) },
+            onDismissRequest = { state.eventSink(NotesFolderEvent.CancelNewNote) },
+            // Blank names can't be submitted; other problems come back from the attempt and show under the field.
+            validation = { !it.isNullOrBlank() },
+            supportingText = dialog.problem?.let { problem -> nameProblemText(problem) },
+            submitText = stringResource(R.string.screen_notes_create),
+        )
+    }
+}
+
+@Composable
+internal fun nameProblemText(problem: NoteNameProblem): String = when (problem) {
+    NoteNameProblem.INVALID -> stringResource(R.string.screen_notes_name_invalid)
+    NoteNameProblem.EXISTS -> stringResource(R.string.screen_notes_name_exists)
 }
 
 private fun NotesFolderEntry.key() = when (this) {
@@ -113,5 +155,5 @@ private fun NotesFolderEntry.key() = when (this) {
 @PreviewsDayNight
 @Composable
 internal fun NotesFolderViewPreview(@PreviewParameter(NotesFolderStatePreviewParam::class) state: NotesFolderState) = ElementPreview {
-    NotesFolderView(state = state, onBackClick = {}, onFolderClick = {}, onNoteClick = {}, onSearchClick = {})
+    NotesFolderView(state = state, onBackClick = {}, onFolderClick = {}, onNoteClick = {}, onSearchClick = {}, onReviewChoicesClick = {})
 }

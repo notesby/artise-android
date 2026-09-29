@@ -9,6 +9,7 @@ package co.artise.android.notes.impl.ui.folder
 
 import androidx.compose.runtime.Immutable
 import co.artise.android.notes.impl.ui.chats.NotesSyncStatus
+import co.artise.android.notes.impl.ui.common.NoteNameProblem
 import kotlinx.collections.immutable.ImmutableList
 
 data class NotesFolderState(
@@ -19,8 +20,15 @@ data class NotesFolderState(
     val sync: NotesSyncStatus,
     /** The one-time "Ari can read notes" notice. */
     val showPrivacyNotice: Boolean,
+    /** Edits in this chat waiting for the person to choose a version. */
+    val needChoiceCount: Int,
+    /** The "new note" name dialog, when open. */
+    val newNote: NewNoteDialog?,
     val eventSink: (NotesFolderEvent) -> Unit,
 )
+
+/** The name dialog for a new note, with the problem found in the last name tried. */
+data class NewNoteDialog(val problem: NoteNameProblem?)
 
 @Immutable
 sealed interface NotesFolderEntry {

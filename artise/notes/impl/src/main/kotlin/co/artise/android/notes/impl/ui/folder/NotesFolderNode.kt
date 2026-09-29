@@ -34,11 +34,13 @@ class NotesFolderNode(
         fun openFolder(roomId: RoomId, folder: String)
         fun openNote(roomId: RoomId, path: String)
         fun openSearch(roomId: RoomId)
+        fun openEditor(roomId: RoomId, path: String)
+        fun openChoices(roomId: RoomId)
     }
 
     private val inputs: Inputs = inputs()
     private val callback: Callback = callback()
-    private val presenter = presenterFactory.create(inputs.roomId, inputs.folder)
+    private val presenter = presenterFactory.create(inputs.roomId, inputs.folder) { path -> callback.openEditor(inputs.roomId, path) }
 
     @Composable
     override fun View(modifier: Modifier) {
@@ -48,6 +50,7 @@ class NotesFolderNode(
             onFolderClick = { callback.openFolder(inputs.roomId, it) },
             onNoteClick = { callback.openNote(inputs.roomId, it) },
             onSearchClick = { callback.openSearch(inputs.roomId) },
+            onReviewChoicesClick = { callback.openChoices(inputs.roomId) },
             modifier = modifier,
         )
     }

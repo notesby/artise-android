@@ -8,8 +8,19 @@
 package co.artise.android.notes.impl.ui.note
 
 sealed interface NoteEvent {
-    /** A `[[link]]` was tapped: open that note, or explain it doesn't exist yet. */
+    /** A `[[link]]` was tapped: open that note, or offer to create it. */
     data class OpenNoteLink(val target: String) : NoteEvent
 
-    data object DismissMissingNote : NoteEvent
+    /** Create the note a missing link points to, and open it to write. */
+    data object CreateMissingNote : NoteEvent
+
+    data object StartRename : NoteEvent
+
+    data class Rename(val newName: String) : NoteEvent
+
+    data object StartDelete : NoteEvent
+
+    data object ConfirmDelete : NoteEvent
+
+    data object DismissDialog : NoteEvent
 }

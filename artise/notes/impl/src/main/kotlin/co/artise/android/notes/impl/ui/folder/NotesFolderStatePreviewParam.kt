@@ -9,6 +9,7 @@ package co.artise.android.notes.impl.ui.folder
 
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import co.artise.android.notes.impl.ui.chats.NotesSyncStatus
+import co.artise.android.notes.impl.ui.common.NoteNameProblem
 import kotlinx.collections.immutable.persistentListOf
 
 open class NotesFolderStatePreviewParam : PreviewParameterProvider<NotesFolderState> {
@@ -18,6 +19,8 @@ open class NotesFolderStatePreviewParam : PreviewParameterProvider<NotesFolderSt
             aNotesFolderState(showPrivacyNotice = true),
             aNotesFolderState(sync = NotesSyncStatus.OFFLINE),
             aNotesFolderState(entries = emptyList()),
+            aNotesFolderState(needChoiceCount = 2),
+            aNotesFolderState(newNote = NewNoteDialog(problem = NoteNameProblem.EXISTS)),
         )
 }
 
@@ -30,11 +33,15 @@ fun aNotesFolderState(
     ),
     sync: NotesSyncStatus = NotesSyncStatus.OK,
     showPrivacyNotice: Boolean = false,
+    needChoiceCount: Int = 0,
+    newNote: NewNoteDialog? = null,
 ) = NotesFolderState(
     title = title,
     entries = persistentListOf(*entries.toTypedArray()),
     isRefreshing = false,
     sync = sync,
     showPrivacyNotice = showPrivacyNotice,
+    needChoiceCount = needChoiceCount,
+    newNote = newNote,
     eventSink = {},
 )

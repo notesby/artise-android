@@ -32,10 +32,12 @@ internal fun NotesScaffold(
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
     actions: @Composable RowScope.() -> Unit = {},
+    floatingActionButton: @Composable () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     Scaffold(
         modifier = modifier,
+        floatingActionButton = floatingActionButton,
         topBar = {
             TopAppBar(
                 titleStr = title,

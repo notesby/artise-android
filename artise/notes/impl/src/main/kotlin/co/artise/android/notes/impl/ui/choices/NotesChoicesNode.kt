@@ -5,7 +5,7 @@
  * Please see LICENSE files in the repository root for full details.
  */
 
-package co.artise.android.notes.impl.ui.note
+package co.artise.android.notes.impl.ui.choices
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -23,43 +23,28 @@ import io.element.android.libraries.matrix.api.core.RoomId
 
 @ContributesNode(SessionScope::class)
 @AssistedInject
-class NoteNode(
+class NotesChoicesNode(
     @Assisted buildContext: BuildContext,
     @Assisted plugins: List<Plugin>,
-    presenterFactory: NotePresenter.Factory,
+    presenterFactory: NotesChoicesPresenter.Factory,
 ) : Node(buildContext, plugins = plugins) {
-    data class Inputs(val roomId: RoomId, val path: String) : NodeInputs
+    data class Inputs(val roomId: RoomId) : NodeInputs
 
     interface Callback : Plugin {
-        fun openNote(roomId: RoomId, path: String)
-        fun openEditor(roomId: RoomId, path: String)
-
-        /** Replace this note's screen with the renamed note. */
-        fun showRenamedNote(roomId: RoomId, newPath: String)
+        /** Open the editor to combine both versions of a conflicted note. */
+        fun combine(roomId: RoomId, path: String, editId: Long)
     }
 
     private val inputs: Inputs = inputs()
     private val callback: Callback = callback()
-    private val navigator = object : NoteNavigator {
-        override fun openNote(path: String) = callback.openNote(inputs.roomId, path)
-
-        override fun openEditor(path: String) = callback.openEditor(inputs.roomId, path)
-
-        override fun onRenamed(newPath: String) = callback.showRenamedNote(inputs.roomId, newPath)
-
-        override fun onDeleted() {
-            navigateUp()
-        }
-    }
-    private val presenter = presenterFactory.create(inputs.roomId, inputs.path, navigator)
+    private val presenter = presenterFactory.create(inputs.roomId)
 
     @Composable
     override fun View(modifier: Modifier) {
-        NoteView(
+        NotesChoicesView(
             state = presenter.present(),
             onBackClick = ::navigateUp,
-            onBacklinkClick = { callback.openNote(inputs.roomId, it) },
-            onEditClick = { callback.openEditor(inputs.roomId, inputs.path) },
+            onCombineClick = { callback.combine(inputs.roomId, it.path, it.editId) },
             modifier = modifier,
         )
     }

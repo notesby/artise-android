@@ -9,6 +9,7 @@ package co.artise.android.notes.impl.ui.note
 
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import co.artise.android.notes.api.Backlink
+import co.artise.android.notes.impl.ui.common.NoteNameProblem
 import kotlinx.collections.immutable.persistentListOf
 
 open class NoteStatePreviewParam : PreviewParameterProvider<NoteState> {
@@ -18,7 +19,10 @@ open class NoteStatePreviewParam : PreviewParameterProvider<NoteState> {
             aNoteState(hasLocalEdits = true, backlinks = BacklinksState.Offline),
             aNoteState(content = null, isLoading = true, backlinks = BacklinksState.Loading),
             aNoteState(content = null),
-            aNoteState(missingNote = "Leche"),
+            aNoteState(dialog = NoteDialog.MissingNote("Leche")),
+            aNoteState(dialog = NoteDialog.Rename("Súper", NoteNameProblem.EXISTS)),
+            aNoteState(dialog = NoteDialog.ConfirmDelete),
+            aNoteState(dialog = NoteDialog.RenameFailed(RenameFailure.OFFLINE)),
         )
 }
 
@@ -27,13 +31,13 @@ fun aNoteState(
     isLoading: Boolean = false,
     hasLocalEdits: Boolean = false,
     backlinks: BacklinksState = BacklinksState.Loaded(persistentListOf(Backlink("Recetas/Mole.md", "Comprar todo en [[Súper]]."))),
-    missingNote: String? = null,
+    dialog: NoteDialog? = null,
 ) = NoteState(
     title = "Súper",
     content = content,
     isLoading = isLoading,
     hasLocalEdits = hasLocalEdits,
     backlinks = backlinks,
-    missingNote = missingNote,
+    dialog = dialog,
     eventSink = {},
 )

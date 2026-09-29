@@ -19,6 +19,7 @@ import co.artise.android.notes.impl.ui.folder.NotesFolderEntry
 import co.artise.android.notes.impl.ui.folder.NotesFolderEvent
 import co.artise.android.notes.impl.ui.folder.NotesFolderPresenter
 import co.artise.android.notes.impl.ui.note.BacklinksState
+import co.artise.android.notes.impl.ui.note.NoteDialog
 import co.artise.android.notes.impl.ui.note.NoteEvent
 import co.artise.android.notes.impl.ui.note.NotePresenter
 import com.google.common.truth.Truth.assertThat
@@ -75,7 +76,7 @@ class NotesPresentersTest {
             ),
             seenPrivacyNotice = true,
         )
-        NotesFolderPresenter(room, "", repository).test {
+        NotesFolderPresenter(room, "", {}, repository).test {
             val state = consumeItemsUntilPredicate { !it.isRefreshing && it.title.isNotEmpty() }.last()
             assertThat(state.title).isEqualTo("Familia")
             assertThat(state.entries).containsExactly(
@@ -91,7 +92,7 @@ class NotesPresentersTest {
     @Test
     fun `subfolder shows its own notes`() = runTest {
         val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Recetas/Mole.md"), aNote("Recetas/Postres/Flan.md"))))
-        NotesFolderPresenter(room, "Recetas", repository).test {
+        NotesFolderPresenter(room, "Recetas", {}, repository).test {
             val state = consumeItemsUntilPredicate { !it.isRefreshing }.last()
             assertThat(state.title).isEqualTo("Recetas")
             assertThat(state.entries).containsExactly(
@@ -105,7 +106,7 @@ class NotesPresentersTest {
     @Test
     fun `privacy notice shows once`() = runTest {
         val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("a.md"))))
-        NotesFolderPresenter(room, "", repository).test {
+        NotesFolderPresenter(room, "", {}, repository).test {
             val state = consumeItemsUntilPredicate { it.showPrivacyNotice }.last()
             state.eventSink(NotesFolderEvent.DismissPrivacyNotice)
             assertThat(consumeItemsUntilPredicate { !it.showPrivacyNotice }.last().showPrivacyNotice).isFalse()
@@ -119,7 +120,7 @@ class NotesPresentersTest {
     fun `folder offline shows the phone copy`() = runTest {
         val repository =
             FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("a.md"))), syncResult = { Result.failure(offline) }, seenPrivacyNotice = true)
-        NotesFolderPresenter(room, "", repository).test {
+        NotesFolderPresenter(room, "", {}, repository).test {
             val state = consumeItemsUntilPredicate { !it.isRefreshing }.last()
             assertThat(state.sync).isEqualTo(NotesSyncStatus.OFFLINE)
             assertThat(state.entries).hasSize(1)
@@ -134,7 +135,7 @@ class NotesPresentersTest {
             repository.files[room] = listOf(aNote("Súper.md", content = "- leche"))
             Result.success(SyncReport(0, 0, 1, 0))
         }
-        NotePresenter(room, "Súper.md", { }, repository).test {
+        NotePresenter(room, "Súper.md", RecordingNoteNavigator(), repository).test {
             val state = consumeItemsUntilPredicate { !it.isLoading }.last()
             assertThat(state.title).isEqualTo("Súper")
             assertThat(state.content).isEqualTo("- leche")
@@ -144,17 +145,17 @@ class NotesPresentersTest {
     /** Tapping [[Mole]] opens Recetas/Mole.md; a link to a note that doesn't exist explains instead. */
     @Test
     fun `note links open notes or explain`() = runTest {
-        val opened = mutableListOf<String>()
+        val navigator = RecordingNoteNavigator()
         val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md"), aNote("Recetas/Mole.md"))))
-        NotePresenter(room, "Súper.md", { opened += it }, repository).test {
+        NotePresenter(room, "Súper.md", navigator, repository).test {
             val state = consumeItemsUntilPredicate { !it.isLoading }.last()
             state.eventSink(NoteEvent.OpenNoteLink("Mole"))
             state.eventSink(NoteEvent.OpenNoteLink("Leche"))
-            val withMissing = consumeItemsUntilPredicate { it.missingNote != null }.last()
-            assertThat(withMissing.missingNote).isEqualTo("Leche")
-            assertThat(opened).containsExactly("Recetas/Mole.md")
-            withMissing.eventSink(NoteEvent.DismissMissingNote)
-            assertThat(consumeItemsUntilPredicate { it.missingNote == null }.last().missingNote).isNull()
+            val withMissing = consumeItemsUntilPredicate { it.dialog != null }.last()
+            assertThat(withMissing.dialog).isEqualTo(NoteDialog.MissingNote("Leche"))
+            assertThat(navigator.opened).containsExactly("Recetas/Mole.md")
+            withMissing.eventSink(NoteEvent.DismissDialog)
+            assertThat(consumeItemsUntilPredicate { it.dialog == null }.last().dialog).isNull()
         }
     }
 
@@ -165,13 +166,13 @@ class NotesPresentersTest {
             files = mutableMapOf(room to listOf(aNote("Súper.md"))),
             linksResult = { _, path -> Result.success(NoteLinks(path, emptyList(), listOf(Backlink("Recetas/Mole.md", "Ver [[Súper]]")))) },
         )
-        NotePresenter(room, "Súper.md", { }, repository).test {
+        NotePresenter(room, "Súper.md", RecordingNoteNavigator(), repository).test {
             val state = consumeItemsUntilPredicate { it.backlinks is BacklinksState.Loaded }.last()
             assertThat((state.backlinks as BacklinksState.Loaded).backlinks.single().path).isEqualTo("Recetas/Mole.md")
             cancelAndIgnoreRemainingEvents()
         }
         repository.linksResult = { _, _ -> Result.failure(offline) }
-        NotePresenter(room, "Súper.md", { }, repository).test {
+        NotePresenter(room, "Súper.md", RecordingNoteNavigator(), repository).test {
             assertThat(consumeItemsUntilPredicate { it.backlinks == BacklinksState.Offline }.last().content).isEqualTo("text")
             cancelAndIgnoreRemainingEvents()
         }

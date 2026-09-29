@@ -15,9 +15,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import co.artise.android.notes.api.EditState
 import co.artise.android.notes.api.NotesRepository
 import co.artise.android.notes.impl.ui.chats.NotesSyncStatus
 import co.artise.android.notes.impl.ui.chats.toSyncStatus
+import co.artise.android.notes.impl.ui.common.NoteNameProblem
+import co.artise.android.notes.impl.ui.common.NoteNames
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
@@ -28,16 +31,25 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
 
-/** Shows a folder from the phone's copy at once, then syncs the chat and shows the result. */
+fun interface NotesFolderNavigator {
+    /** A note was just created: open it to write. */
+    fun openEditor(path: String)
+}
+
+/**
+ * Shows a folder from the phone's copy at once, syncs the chat, and follows later changes
+ * (edits, choices, other people's changes pulled by a sync).
+ */
 @AssistedInject
 class NotesFolderPresenter(
     @Assisted private val roomId: RoomId,
     @Assisted private val folder: String,
+    @Assisted private val navigator: NotesFolderNavigator,
     private val repository: NotesRepository,
 ) : Presenter<NotesFolderState> {
     @AssistedFactory
     fun interface Factory {
-        fun create(roomId: RoomId, folder: String): NotesFolderPresenter
+        fun create(roomId: RoomId, folder: String, navigator: NotesFolderNavigator): NotesFolderPresenter
     }
 
     @Composable
@@ -45,10 +57,17 @@ class NotesFolderPresenter(
         val scope = rememberCoroutineScope()
         var title by remember { mutableStateOf(folder.substringAfterLast('/')) }
         var entries by remember { mutableStateOf<ImmutableList<NotesFolderEntry>>(persistentListOf()) }
+        var needChoiceCount by remember { mutableIntStateOf(0) }
         var isRefreshing by remember { mutableStateOf(true) }
         var sync by remember { mutableStateOf(NotesSyncStatus.OK) }
         var showPrivacyNotice by remember { mutableStateOf(false) }
+        var newNote by remember { mutableStateOf<NewNoteDialog?>(null) }
         var refreshRequests by remember { mutableIntStateOf(0) }
+
+        suspend fun reload() {
+            entries = NotesFolderEntries.of(repository.files(roomId), folder).toImmutableList()
+            needChoiceCount = repository.edits(roomId).count { it.state != EditState.PENDING }
+        }
 
         LaunchedEffect(Unit) {
             // The notice belongs to the top of a chat's notes, once per account.
@@ -57,12 +76,14 @@ class NotesFolderPresenter(
                 title = repository.cachedChats().firstOrNull { it.roomId == roomId }?.name.orEmpty()
             }
         }
-
+        LaunchedEffect(Unit) {
+            repository.changes(roomId).collect { reload() }
+        }
         LaunchedEffect(refreshRequests) {
-            entries = NotesFolderEntries.of(repository.files(roomId), folder).toImmutableList()
+            reload()
             isRefreshing = true
             sync = repository.sync(roomId).fold(onSuccess = { NotesSyncStatus.OK }, onFailure = { it.toSyncStatus() })
-            entries = NotesFolderEntries.of(repository.files(roomId), folder).toImmutableList()
+            reload()
             isRefreshing = false
         }
 
@@ -72,12 +93,32 @@ class NotesFolderPresenter(
             isRefreshing = isRefreshing,
             sync = sync,
             showPrivacyNotice = showPrivacyNotice,
+            needChoiceCount = needChoiceCount,
+            newNote = newNote,
             eventSink = { event ->
                 when (event) {
                     NotesFolderEvent.Refresh -> refreshRequests++
                     NotesFolderEvent.DismissPrivacyNotice -> {
                         showPrivacyNotice = false
                         scope.launch { repository.markPrivacyNoticeSeen() }
+                    }
+                    NotesFolderEvent.StartNewNote -> newNote = NewNoteDialog(problem = null)
+                    NotesFolderEvent.CancelNewNote -> newNote = null
+                    is NotesFolderEvent.CreateNote -> scope.launch {
+                        val problem = NoteNames.problemWith(folder, event.name, repository.files(roomId).map { it.path })
+                        if (problem != null) {
+                            newNote = NewNoteDialog(problem)
+                            return@launch
+                        }
+                        val path = NoteNames.pathFor(folder, event.name)
+                        // Starts with the name as a title, so the note isn't blank on the server.
+                        repository.createNote(roomId, path, "# ${event.name.trim()}\n\n")
+                            .onSuccess {
+                                newNote = null
+                                repository.syncInBackground(roomId)
+                                navigator.openEditor(path)
+                            }
+                            .onFailure { newNote = NewNoteDialog(problem = NoteNameProblem.EXISTS) }
                     }
                 }
             },

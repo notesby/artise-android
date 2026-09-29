@@ -20,6 +20,8 @@ import co.artise.android.notes.api.NotesSearchResult
 import co.artise.android.notes.api.PendingEdit
 import co.artise.android.notes.api.SyncReport
 import io.element.android.libraries.matrix.api.core.RoomId
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 
 /** In-memory [NotesRepository] for presenter tests: files per chat, and scripted results for server calls. */
 class FakeNotesRepository(
@@ -32,6 +34,20 @@ class FakeNotesRepository(
     var seenPrivacyNotice: Boolean = false,
 ) : NotesRepository {
     var syncCount = 0
+    val backgroundSyncs = mutableListOf<RoomId>()
+    val changesFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 8)
+    val edits = mutableMapOf<RoomId, List<PendingEdit>>()
+    val savedEdits = mutableListOf<Pair<String, String>>()
+    val createdNotes = mutableListOf<Pair<String, String>>()
+    val deletedFiles = mutableListOf<String>()
+    val resolved = mutableListOf<Pair<Long, String?>>()
+    var moveResult: (String, String) -> Result<MovedNote> = { _, _ -> Result.failure(NotesException.Network(IllegalStateException())) }
+
+    override fun changes(roomId: RoomId): Flow<Unit> = changesFlow
+
+    override fun syncInBackground(roomId: RoomId) {
+        backgroundSyncs += roomId
+    }
 
     override suspend fun hasSeenPrivacyNotice() = seenPrivacyNotice
 
@@ -54,23 +70,42 @@ class FakeNotesRepository(
 
     override suspend fun onTreeChanged(roomId: RoomId, tree: String): Result<SyncReport?> = sync(roomId)
 
-    override suspend fun editNote(roomId: RoomId, path: String, content: String) = Unit
+    override suspend fun editNote(roomId: RoomId, path: String, content: String) {
+        savedEdits += path to content
+        files[roomId] = files[roomId].orEmpty().filterNot { it.path == path } + aNote(path, content, hasLocalEdits = true)
+    }
 
-    override suspend fun createNote(roomId: RoomId, path: String, content: String) = Result.success(Unit)
+    override suspend fun createNote(roomId: RoomId, path: String, content: String): Result<Unit> {
+        if (files[roomId].orEmpty().any { it.path == path }) return Result.failure(NotesException.Exists("exists", null))
+        createdNotes += path to content
+        files[roomId] = files[roomId].orEmpty() + aNote(path, content, hasLocalEdits = true)
+        return Result.success(Unit)
+    }
 
-    override suspend fun deleteFile(roomId: RoomId, path: String) = Unit
+    override suspend fun deleteFile(roomId: RoomId, path: String) {
+        deletedFiles += path
+        files[roomId] = files[roomId].orEmpty().filterNot { it.path == path }
+    }
 
-    override suspend fun moveNote(roomId: RoomId, from: String, to: String) = Result.failure<MovedNote>(NotesException.Network(IllegalStateException()))
+    override suspend fun moveNote(roomId: RoomId, from: String, to: String) = moveResult(from, to)
 
-    override suspend fun edits(roomId: RoomId) = emptyList<PendingEdit>()
+    override suspend fun edits(roomId: RoomId) = edits[roomId].orEmpty()
 
-    override suspend fun resolveConflict(editId: Long, content: String) = Unit
+    override suspend fun resolveConflict(editId: Long, content: String) {
+        resolved += editId to content
+    }
 
-    override suspend fun keepDeletedNote(editId: Long) = Unit
+    override suspend fun keepDeletedNote(editId: Long) {
+        resolved += editId to "keep"
+    }
 
-    override suspend fun saveUnderNewName(editId: Long, newPath: String) = Unit
+    override suspend fun saveUnderNewName(editId: Long, newPath: String) {
+        resolved += editId to newPath
+    }
 
-    override suspend fun discardEdit(editId: Long) = Unit
+    override suspend fun discardEdit(editId: Long) {
+        resolved += editId to null
+    }
 
     override suspend fun search(roomId: RoomId, query: String) = Result.success(emptyList<NotesSearchResult>())
 
