@@ -23,6 +23,16 @@ class KonsistLicenseTest {
          \*/
         """.trimIndent().toRegex()
 
+    // Artise: files written for the Artise fork carry Artise's copyright and AGPL only (not Element's commercial license).
+    private val artiseLicense = """
+        /\*
+         \* Copyright 20\d\d Artise\.
+         \*
+         \* SPDX-License-Identifier: AGPL-3.0-only\.
+         \* Please see LICENSE files in the repository root for full details\.
+         \*/
+        """.trimIndent().toRegex()
+
     @Test
     fun `assert that FOSS files have the correct license header`() {
         Konsist
@@ -38,7 +48,7 @@ class KonsistLicenseTest {
                 assertThat(it).isNotEmpty()
             }
             .assertTrue {
-                publicLicense.containsMatchIn(it.text)
+                publicLicense.containsMatchIn(it.text) || artiseLicense.containsMatchIn(it.text)
             }
     }
 
@@ -54,7 +64,7 @@ class KonsistLicenseTest {
                     it.name.startsWith("Template ").not()
             }
             .assertTrue {
-                it.text.count("Element Creations Ltd.") == 1
+                it.text.count("Element Creations Ltd.") + it.text.count(" Artise.\n") == 1
             }
     }
 }

@@ -165,6 +165,8 @@ class KonsistClassNameTest {
                 "Accompanist",
                 "AES",
                 "Android",
+                // Artise: our replacements of Element's Default* services.
+                "Artise",
                 "Asset",
                 "Database",
                 "DBov",
