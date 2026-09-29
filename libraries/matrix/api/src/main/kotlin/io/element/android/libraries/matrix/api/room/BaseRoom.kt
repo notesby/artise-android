@@ -250,6 +250,12 @@ interface BaseRoom : Closeable {
     suspend fun threadRootIdForEvent(eventId: EventId): Result<ThreadId?>
 
     /**
+     * The content (JSON) of the room's state events of a custom [eventType], by state key: the current
+     * state first, then again whenever it changes. Artise uses it to follow `co.artise.notes`.
+     */
+    fun customStateEventsFlow(eventType: String): Flow<Map<String, String>>
+
+    /**
      * Destroy the room and release all resources associated to it.
      */
     fun destroy()

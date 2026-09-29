@@ -60,6 +60,7 @@ class FakeBaseRoom(
     private val loadComposerDraftLambda: () -> Result<ComposerDraft?> = { Result.success<ComposerDraft?>(null) },
     private val clearComposerDraftLambda: () -> Result<Unit> = { Result.success(Unit) },
     private val subscribeToSyncLambda: () -> Unit = { lambdaError() },
+    private val customStateEventsFlowLambda: (String) -> Flow<Map<String, String>> = { lambdaError() },
     private val getRoomVisibilityResult: () -> Result<RoomVisibility> = { lambdaError() },
     private val forgetResult: () -> Result<Unit> = { lambdaError() },
     private val reportRoomResult: (String?) -> Result<Unit> = { lambdaError() },
@@ -104,6 +105,8 @@ class FakeBaseRoom(
     }
 
     private var isDestroyed = false
+
+    override fun customStateEventsFlow(eventType: String): Flow<Map<String, String>> = customStateEventsFlowLambda(eventType)
 
     override fun destroy() {
         isDestroyed = true
