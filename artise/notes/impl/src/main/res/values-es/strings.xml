@@ -75,4 +75,7 @@
     <string name="a11y_notes_format_checklist">Lista de tareas</string>
     <string name="a11y_notes_format_quote">Cita</string>
     <string name="a11y_notes_format_link">Enlazar una nota</string>
+    <string name="a11y_notes_map_zoom_in">Acercar</string>
+    <string name="a11y_notes_map_zoom_out">Alejar</string>
+    <string name="a11y_notes_map_reset">Ver todo el mapa</string>
 </resources>

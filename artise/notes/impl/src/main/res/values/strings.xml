@@ -73,4 +73,7 @@
     <string name="a11y_notes_format_checklist">Checklist</string>
     <string name="a11y_notes_format_quote">Quote</string>
     <string name="a11y_notes_format_link">Link to a note</string>
+    <string name="a11y_notes_map_zoom_in">Zoom in</string>
+    <string name="a11y_notes_map_zoom_out">Zoom out</string>
+    <string name="a11y_notes_map_reset">Show the whole map</string>
 </resources>
