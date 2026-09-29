@@ -26,6 +26,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import co.artise.android.notes.impl.R
@@ -85,8 +90,9 @@ fun NoteEditorView(
                 )
             }
             BasicTextField(
-                state = state.text,
-                inputTransformation = ListContinuation,
+                value = state.value,
+                onValueChange = { state.eventSink(NoteEditorEvent.ValueChanged(it)) },
+                visualTransformation = LivePreviewTransformation(state.rawLines, livePreviewStyles()),
                 enabled = !state.isLoading,
                 textStyle = ElementTheme.typography.fontBodyLgRegular.copy(color = ElementTheme.colors.textPrimary),
                 cursorBrush = SolidColor(ElementTheme.colors.textPrimary),
@@ -117,6 +123,15 @@ fun NoteEditorView(
             }
         }
     }
+    state.linkEdit?.let { edit ->
+        LinkEditDialog(
+            edit = edit,
+            notePaths = state.notePaths,
+            onSave = { state.eventSink(NoteEditorEvent.SaveLink(it)) },
+            onRemove = { state.eventSink(NoteEditorEvent.RemoveLink) },
+            onDismiss = { state.eventSink(NoteEditorEvent.DismissLinkEdit) },
+        )
+    }
     if (state.showSaveChangesDialog) {
         SaveChangesDialog(
             onSaveClick = { state.eventSink(NoteEditorEvent.Save) },
@@ -124,6 +139,24 @@ fun NoteEditorView(
             onDismiss = { state.eventSink(NoteEditorEvent.DismissSaveChangesDialog) },
         )
     }
+}
+
+/** Live preview's looks, from the theme: headings as the reading view shows them, links in link colour. */
+@Composable
+private fun livePreviewStyles(): LivePreviewStyles {
+    val typography = ElementTheme.typography
+    val colors = ElementTheme.colors
+    return LivePreviewStyles(
+        heading1 = SpanStyle(fontSize = typography.fontHeadingLgBold.fontSize, fontWeight = FontWeight.Bold),
+        heading2 = SpanStyle(fontSize = typography.fontHeadingMdBold.fontSize, fontWeight = FontWeight.Bold),
+        heading3 = SpanStyle(fontSize = typography.fontHeadingSmMedium.fontSize, fontWeight = FontWeight.Medium),
+        bold = SpanStyle(fontWeight = FontWeight.Bold),
+        italic = SpanStyle(fontStyle = FontStyle.Italic),
+        strikethrough = SpanStyle(textDecoration = TextDecoration.LineThrough),
+        code = SpanStyle(fontFamily = FontFamily.Monospace, background = colors.bgSubtleSecondary),
+        link = SpanStyle(color = colors.textLinkExternal, textDecoration = TextDecoration.Underline),
+        dim = SpanStyle(color = colors.textSecondary),
+    )
 }
 
 /** The formatting buttons above the keyboard, scrolling sideways on narrow phones. */

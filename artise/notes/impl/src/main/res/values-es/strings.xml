@@ -78,4 +78,9 @@
     <string name="a11y_notes_map_zoom_in">Acercar</string>
     <string name="a11y_notes_map_zoom_out">Alejar</string>
     <string name="a11y_notes_map_reset">Ver todo el mapa</string>
+    <string name="screen_notes_link_edit_title">Editar enlace</string>
+    <string name="screen_notes_link_edit_note">Nota</string>
+    <string name="screen_notes_link_edit_address">Dirección web</string>
+    <string name="screen_notes_link_edit_text">Texto a mostrar (opcional)</string>
+    <string name="screen_notes_link_edit_remove">Quitar enlace</string>
 </resources>
