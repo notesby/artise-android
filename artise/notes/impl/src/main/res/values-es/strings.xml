@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<resources>
+    <string name="screen_notes_title">Notas</string>
+    <string name="screen_notes_chats_empty">Ninguno de tus chats tiene notas todavía. Pídele a Ari que guarde algo, como “Ari, anota que la clave del wifi es…”</string>
+    <string name="screen_notes_offline">Sin conexión. Estas son las notas guardadas en este teléfono.</string>
+    <string name="screen_notes_sync_failed">No se pudieron actualizar las notas. Desliza hacia abajo para intentarlo de nuevo.</string>
+    <string name="screen_notes_privacy_title">Sobre las notas</string>
+    <string name="screen_notes_privacy_body">Ari puede leer las notas de este chat, así que se guardan en el servidor de Artise, sin el cifrado de extremo a extremo de tus mensajes.</string>
+    <string name="screen_notes_privacy_ok">Entendido</string>
+    <string name="screen_notes_folder_empty">Todavía no hay notas aquí.</string>
+    <string name="screen_notes_unsent">Sin enviar</string>
+    <plurals name="screen_notes_folder_count">
+        <item quantity="one">%1$d nota</item>
+        <item quantity="many">%1$d notas</item>
+        <item quantity="other">%1$d notas</item>
+    </plurals>
+    <string name="screen_notes_linked_from">Enlazada desde</string>
+    <string name="screen_notes_linked_from_none">Ninguna otra nota enlaza aquí.</string>
+    <string name="screen_notes_linked_from_offline">Conéctate a internet para ver qué notas enlazan aquí.</string>
+    <string name="screen_notes_missing_note">Todavía no hay una nota llamada “%1$s”.</string>
+    <string name="screen_notes_not_downloaded">Esta nota aún no se ha descargado. Conéctate a internet para abrirla.</string>
+    <string name="screen_notes_search_placeholder">Buscar en las notas</string>
+    <string name="screen_notes_search_empty">No se encontró nada para “%1$s”.</string>
+    <string name="a11y_notes_search">Buscar en las notas</string>
+</resources>

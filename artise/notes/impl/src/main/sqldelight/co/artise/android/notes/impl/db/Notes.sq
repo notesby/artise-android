@@ -43,6 +43,11 @@ CREATE TABLE NotesEditEntity (
 
 CREATE INDEX NotesEditRoom ON NotesEditEntity(room_id, state);
 
+-- One-time things this account has seen, e.g. the privacy notice.
+CREATE TABLE NotesFlagEntity (
+    name TEXT NOT NULL PRIMARY KEY
+);
+
 -- Chats
 
 selectChats:
@@ -131,3 +136,11 @@ SELECT last_insert_rowid();
 
 countWaitingEdits:
 SELECT COUNT(*) FROM NotesEditEntity WHERE room_id = ? AND state != 'pending';
+
+-- Flags
+
+hasFlag:
+SELECT COUNT(*) FROM NotesFlagEntity WHERE name = ?;
+
+setFlag:
+INSERT OR IGNORE INTO NotesFlagEntity(name) VALUES (?);

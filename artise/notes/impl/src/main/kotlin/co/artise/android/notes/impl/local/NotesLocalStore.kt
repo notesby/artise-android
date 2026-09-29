@@ -31,6 +31,12 @@ class NotesLocalStore(private val database: NotesDatabase) {
 
     fun <T> transaction(block: () -> T): T = database.transactionWithResult { block() }
 
+    // Flags
+
+    fun hasFlag(name: String): Boolean = queries.hasFlag(name).executeAsOne() > 0
+
+    fun setFlag(name: String) = queries.setFlag(name)
+
     // Chats
 
     fun chats(): List<NotesChat> = queries.selectChats().executeAsList().map { NotesChat(RoomId(it.room_id), it.name, it.tree.orEmpty()) }

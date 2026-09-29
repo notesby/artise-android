@@ -14,6 +14,11 @@ import io.element.android.libraries.matrix.api.core.RoomId
  * phone at once and queued, and [sync] exchanges both ways with the server when it can.
  */
 interface NotesRepository {
+    /** Whether this account has seen the one-time "Ari can read notes" notice. */
+    suspend fun hasSeenPrivacyNotice(): Boolean
+
+    suspend fun markPrivacyNoticeSeen()
+
     /** Chats with notes, as last synced. */
     suspend fun cachedChats(): List<NotesChat>
 

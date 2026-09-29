@@ -42,7 +42,7 @@ object NotesBindingContainer {
         @ApplicationContext context: Context,
         matrixClient: MatrixClient,
     ): NotesDatabase {
-        val name = "artise_notes_" + sha256(matrixClient.sessionId.value).take(16)
+        val name = databaseName(matrixClient.sessionId.value)
         val secretFile = context.getDatabasePath("$name.key")
         secretFile.parentFile?.mkdirs()
         val driver = SqlCipherDriverFactory(RandomDatabaseSecretProvider(context, secretFile))
@@ -72,6 +72,9 @@ object NotesBindingContainer {
     private fun OkHttpClient.withoutBodyLogging(): OkHttpClient = newBuilder()
         .apply { interceptors().removeAll { it is DynamicHttpLoggingInterceptor } }
         .build()
+
+    /** The account's database file name, without extension; also used to delete it at sign-out. */
+    fun databaseName(userId: String): String = "artise_notes_" + sha256(userId).take(16)
 
     private fun sha256(value: String): String =
         MessageDigest.getInstance("SHA-256").digest(value.toByteArray()).joinToString("") { "%02x".format(it) }

@@ -49,6 +49,12 @@ class NotesSyncEngine(
     // One sync at a time, so the queue is never sent twice.
     private val syncMutex = Mutex()
 
+    override suspend fun hasSeenPrivacyNotice(): Boolean = io { store.hasFlag(FLAG_PRIVACY_NOTICE) }
+
+    override suspend fun markPrivacyNoticeSeen() {
+        io { store.setFlag(FLAG_PRIVACY_NOTICE) }
+    }
+
     override suspend fun cachedChats(): List<NotesChat> = io { store.chats() }
 
     override suspend fun refreshChats(): Result<List<NotesChat>> = api.chats().onSuccess { io { store.replaceChats(it) } }
@@ -365,6 +371,10 @@ class NotesSyncEngine(
     }
 
     private suspend fun <T> io(block: () -> T): T = withContext(dispatchers.io) { block() }
+
+    private companion object {
+        const val FLAG_PRIVACY_NOTICE = "privacy_notice_seen"
+    }
 
     private fun SystemClock.nowSeconds() = epochMillis() / 1000
 

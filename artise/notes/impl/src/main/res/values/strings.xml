@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<resources>
+    <string name="screen_notes_title">Notes</string>
+    <string name="screen_notes_chats_empty">None of your chats has notes yet. Ask Ari to save something, like “Ari, note that the wifi password is…”</string>
+    <string name="screen_notes_offline">You’re offline. These are the notes saved on this phone.</string>
+    <string name="screen_notes_sync_failed">Couldn’t update the notes. Pull down to try again.</string>
+    <string name="screen_notes_privacy_title">About notes</string>
+    <string name="screen_notes_privacy_body">Ari can read the notes in this chat, so they’re stored on the Artise server, not end-to-end encrypted like your messages.</string>
+    <string name="screen_notes_privacy_ok">Got it</string>
+    <string name="screen_notes_folder_empty">No notes here yet.</string>
+    <string name="screen_notes_unsent">Not sent yet</string>
+    <plurals name="screen_notes_folder_count">
+        <item quantity="one">%1$d note</item>
+        <item quantity="other">%1$d notes</item>
+    </plurals>
+    <string name="screen_notes_linked_from">Linked from</string>
+    <string name="screen_notes_linked_from_none">No other note links here.</string>
+    <string name="screen_notes_linked_from_offline">Connect to the internet to see which notes link here.</string>
+    <string name="screen_notes_missing_note">There’s no note called “%1$s” yet.</string>
+    <string name="screen_notes_not_downloaded">This note hasn’t been downloaded yet. Connect to the internet to open it.</string>
+    <string name="screen_notes_search_placeholder">Search notes</string>
+    <string name="screen_notes_search_empty">Nothing found for “%1$s”.</string>
+    <string name="a11y_notes_search">Search notes</string>
+</resources>

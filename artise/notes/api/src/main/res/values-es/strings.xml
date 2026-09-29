@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<resources>
+    <string name="notes_entry_title">Notas</string>
+</resources>

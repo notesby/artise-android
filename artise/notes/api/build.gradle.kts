@@ -14,5 +14,6 @@ android {
 }
 
 dependencies {
+    api(projects.libraries.architecture)
     api(projects.libraries.matrix.api)
 }
