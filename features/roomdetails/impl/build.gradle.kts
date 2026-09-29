@@ -26,6 +26,8 @@ android {
 setupDependencyInjection()
 
 dependencies {
+    // Artise: the chat's notes.
+    implementation(projects.artise.notes.api)
     implementation(projects.appconfig)
     implementation(projects.libraries.core)
     implementation(projects.libraries.architecture)

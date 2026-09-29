@@ -100,6 +100,7 @@ import io.element.android.services.analyticsproviders.api.trackers.captureIntera
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import co.artise.android.notes.api.R as NotesR
 
 /**
  * Ref: https://www.figma.com/design/pDlJZGBsri47FNTXMnEdXB/Compound-Android-Templates?node-id=21-120385
@@ -119,6 +120,7 @@ fun RoomDetailsView(
     openAdminSettings: () -> Unit,
     onJoinCallClick: (CallIntent) -> Unit,
     onPinnedMessagesClick: () -> Unit,
+    onNotesClick: () -> Unit,
     onKnockRequestsClick: () -> Unit,
     onSecurityAndPrivacyClick: () -> Unit,
     onProfileClick: (UserId) -> Unit,
@@ -248,6 +250,8 @@ fun RoomDetailsView(
                     pinnedMessagesCount = state.pinnedMessagesCount,
                     onPinnedMessagesClick = onPinnedMessagesClick
                 )
+                // Artise: the chat's notes.
+                NotesItem(onClick = onNotesClick)
                 PollsItem(
                     openPollHistory = openPollHistory
                 )
@@ -781,6 +785,15 @@ private fun InviteItem(
 }
 
 @Composable
+private fun NotesItem(onClick: () -> Unit) {
+    ListItem(
+        content = { Text(stringResource(NotesR.string.notes_entry_title)) },
+        leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Document())),
+        onClick = onClick,
+    )
+}
+
+@Composable
 private fun PinnedMessagesItem(
     pinnedMessagesCount: Int?,
     onPinnedMessagesClick: () -> Unit,
@@ -938,6 +951,7 @@ private fun ContentToPreview(state: RoomDetailsState) {
         openAdminSettings = {},
         onJoinCallClick = {},
         onPinnedMessagesClick = {},
+        onNotesClick = {},
         onKnockRequestsClick = {},
         onSecurityAndPrivacyClick = {},
         onProfileClick = {},
