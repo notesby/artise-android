@@ -63,10 +63,10 @@ class ArtiseEnterpriseServiceTest {
         }
     }
 
-    /** Push gateways fall back to the app default until Artise's own Sygnal exists. */
+    /** Firebase pushes go through Artise's Sygnal on matrix.artise.co; UnifiedPush keeps the app default. */
     @Test
-    fun `push gateways use the app default for now`() {
-        assertThat(service.firebasePushGateway()).isNull()
+    fun `firebase pushes use the artise gateway`() {
+        assertThat(service.firebasePushGateway()).isEqualTo("https://matrix.artise.co/_matrix/push/v1/notify")
         assertThat(service.unifiedPushDefaultPushGateway()).isNull()
     }
 }
