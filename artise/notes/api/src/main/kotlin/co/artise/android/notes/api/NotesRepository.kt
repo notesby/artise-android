@@ -1,0 +1,72 @@
+/*
+ * Copyright 2026 Artise.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only.
+ * Please see LICENSE files in the repository root for full details.
+ */
+
+package co.artise.android.notes.api
+
+import io.element.android.libraries.matrix.api.core.RoomId
+
+/**
+ * A signed-in person's notes, offline-first: reads come from the phone's copy, edits are saved on the
+ * phone at once and queued, and [sync] exchanges both ways with the server when it can.
+ */
+interface NotesRepository {
+    /** Chats with notes, as last synced. */
+    suspend fun cachedChats(): List<NotesChat>
+
+    /** Asks the server which chats have notes, and forgets chats no longer listed. */
+    suspend fun refreshChats(): Result<List<NotesChat>>
+
+    suspend fun files(roomId: RoomId): List<LocalFile>
+
+    suspend fun file(roomId: RoomId, path: String): LocalFile?
+
+    /** Sends queued edits in order, then pulls what changed. Safe to call often: an unchanged chat costs one `304`. */
+    suspend fun sync(roomId: RoomId): Result<SyncReport>
+
+    /** A live `co.artise.notes` state event said the chat's tree is now [tree]: syncs only if that differs from ours. */
+    suspend fun onTreeChanged(roomId: RoomId, tree: String): Result<SyncReport?>
+
+    /** Saves [content] on the phone and queues it. Several edits before a sync go out as one. */
+    suspend fun editNote(roomId: RoomId, path: String, content: String)
+
+    /** Creates a note on the phone and queues it. Fails with [NotesException.Exists] if the phone already has one there. */
+    suspend fun createNote(roomId: RoomId, path: String, content: String): Result<Unit>
+
+    /** Removes the file from the phone and queues its deletion. */
+    suspend fun deleteFile(roomId: RoomId, path: String)
+
+    /** Renames right away on the server; needs a connection and no unsent edits to that note. */
+    suspend fun moveNote(roomId: RoomId, from: String, to: String): Result<MovedNote>
+
+    /** Unsent edits, including those waiting for the person to choose. */
+    suspend fun edits(roomId: RoomId): List<PendingEdit>
+
+    /** For a [EditState.CONFLICT]: saves [content] (the person's choice or combination) over the server's version. */
+    suspend fun resolveConflict(editId: Long, content: String)
+
+    /** For a [EditState.DELETED]: saves this phone's copy again as a new note. */
+    suspend fun keepDeletedNote(editId: Long)
+
+    /** For an [EditState.EXISTS]: saves this phone's note under [newPath], keeping both. */
+    suspend fun saveUnderNewName(editId: Long, newPath: String)
+
+    /** Drops the edit and goes back to the server's copy. */
+    suspend fun discardEdit(editId: Long)
+
+    // Online-only reads.
+
+    suspend fun search(roomId: RoomId, query: String): Result<List<NotesSearchResult>>
+
+    suspend fun links(roomId: RoomId, path: String): Result<NoteLinks>
+
+    suspend fun graph(roomId: RoomId): Result<NotesGraph>
+
+    suspend fun history(roomId: RoomId, path: String): Result<List<NoteVersion>>
+
+    /** A note as it was at [commit] from [history]. To restore it, pass its content to [editNote]. */
+    suspend fun noteAt(roomId: RoomId, path: String, commit: String): Result<Note>
+}
