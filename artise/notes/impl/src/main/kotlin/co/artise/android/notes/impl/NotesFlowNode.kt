@@ -10,7 +10,12 @@ package co.artise.android.notes.impl
 import android.os.Parcelable
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import co.artise.android.notes.api.NotesEntryPoint
+import co.artise.android.notes.api.NotesRepository
+import co.artise.android.notes.impl.sync.NotesLiveUpdates
 import co.artise.android.notes.impl.ui.chats.NotesChatsNode
 import co.artise.android.notes.impl.ui.choices.NotesChoicesNode
 import co.artise.android.notes.impl.ui.editor.NoteEditorNode
@@ -31,6 +36,7 @@ import io.element.android.libraries.architecture.BaseFlowNode
 import io.element.android.libraries.architecture.createNode
 import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.matrix.api.core.RoomId
+import kotlinx.coroutines.launch
 import kotlinx.parcelize.Parcelize
 
 /** Chats with notes → a chat's folders → a note → the editor, with search and version choices per chat. */
@@ -39,6 +45,8 @@ import kotlinx.parcelize.Parcelize
 class NotesFlowNode(
     @Assisted buildContext: BuildContext,
     @Assisted plugins: List<Plugin>,
+    private val repository: NotesRepository,
+    private val liveUpdates: NotesLiveUpdates,
 ) : BaseFlowNode<NotesFlowNode.NavTarget>(
     backstack = BackStack(
         initialElement = initialTarget(plugins),
@@ -66,6 +74,18 @@ class NotesFlowNode(
 
         @Parcelize
         data class Choices(val roomId: RoomId) : NavTarget
+    }
+
+    override fun onBuilt() {
+        super.onBuilt()
+        lifecycleScope.launch {
+            // Only while notes are on screen; coming back to the foreground starts again, which repeats the
+            // ETag check for chats without the live state event.
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                val entryRoom = listOfNotNull(plugins.filterIsInstance<NotesEntryPoint.Params>().firstOrNull()?.roomId)
+                liveUpdates.keepUpToDate(entryRoom + repository.cachedChats().map { it.roomId })
+            }
+        }
     }
 
     // Shared by every screen: they all move within the flow the same way.

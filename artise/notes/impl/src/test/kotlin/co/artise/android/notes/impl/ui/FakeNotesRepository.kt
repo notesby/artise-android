@@ -68,7 +68,9 @@ class FakeNotesRepository(
         return syncResult(roomId)
     }
 
-    override suspend fun onTreeChanged(roomId: RoomId, tree: String): Result<SyncReport?> = sync(roomId)
+    var onTreeChangedResult: (RoomId, String) -> Result<SyncReport?> = { roomId, _ -> Result.success(null) }
+
+    override suspend fun onTreeChanged(roomId: RoomId, tree: String): Result<SyncReport?> = onTreeChangedResult(roomId, tree)
 
     override suspend fun editNote(roomId: RoomId, path: String, content: String) {
         savedEdits += path to content
