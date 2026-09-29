@@ -64,4 +64,6 @@
     <string name="screen_notes_choice_keep_copy">Conservar mi copia</string>
     <string name="screen_notes_choice_keep_both">Conservar ambas</string>
     <string name="screen_notes_choice_discard">Descartar mi cambio</string>
+    <string name="screen_notes_map">Mapa</string>
+    <string name="screen_notes_map_empty">Todavía no hay notas para mostrar.</string>
 </resources>

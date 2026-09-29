@@ -5,7 +5,7 @@
  * Please see LICENSE files in the repository root for full details.
  */
 
-package co.artise.android.notes.impl.ui.folder
+package co.artise.android.notes.impl.ui.graph
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -23,36 +23,27 @@ import io.element.android.libraries.matrix.api.core.RoomId
 
 @ContributesNode(SessionScope::class)
 @AssistedInject
-class NotesFolderNode(
+class NotesGraphNode(
     @Assisted buildContext: BuildContext,
     @Assisted plugins: List<Plugin>,
-    presenterFactory: NotesFolderPresenter.Factory,
+    presenterFactory: NotesGraphPresenter.Factory,
 ) : Node(buildContext, plugins = plugins) {
-    data class Inputs(val roomId: RoomId, val folder: String) : NodeInputs
+    data class Inputs(val roomId: RoomId) : NodeInputs
 
     interface Callback : Plugin {
-        fun openFolder(roomId: RoomId, folder: String)
         fun openNote(roomId: RoomId, path: String)
-        fun openSearch(roomId: RoomId)
-        fun openEditor(roomId: RoomId, path: String)
-        fun openChoices(roomId: RoomId)
-        fun openMap(roomId: RoomId)
     }
 
     private val inputs: Inputs = inputs()
     private val callback: Callback = callback()
-    private val presenter = presenterFactory.create(inputs.roomId, inputs.folder) { path -> callback.openEditor(inputs.roomId, path) }
+    private val presenter = presenterFactory.create(inputs.roomId)
 
     @Composable
     override fun View(modifier: Modifier) {
-        NotesFolderView(
+        NotesGraphView(
             state = presenter.present(),
             onBackClick = ::navigateUp,
-            onFolderClick = { callback.openFolder(inputs.roomId, it) },
             onNoteClick = { callback.openNote(inputs.roomId, it) },
-            onSearchClick = { callback.openSearch(inputs.roomId) },
-            onReviewChoicesClick = { callback.openChoices(inputs.roomId) },
-            onMapClick = { callback.openMap(inputs.roomId) },
             modifier = modifier,
         )
     }

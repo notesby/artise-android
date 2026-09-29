@@ -43,6 +43,7 @@ fun NotesFolderView(
     onNoteClick: (String) -> Unit,
     onSearchClick: () -> Unit,
     onReviewChoicesClick: () -> Unit,
+    onMapClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     NotesScaffold(
@@ -53,6 +54,9 @@ fun NotesFolderView(
         onRefresh = { state.eventSink(NotesFolderEvent.Refresh) },
         modifier = modifier,
         actions = {
+            IconButton(onClick = onMapClick) {
+                Icon(imageVector = CompoundIcons.Explore(), contentDescription = stringResource(R.string.screen_notes_map))
+            }
             IconButton(onClick = onSearchClick) {
                 Icon(imageVector = CompoundIcons.Search(), contentDescription = stringResource(R.string.a11y_notes_search))
             }
@@ -155,5 +159,5 @@ private fun NotesFolderEntry.key() = when (this) {
 @PreviewsDayNight
 @Composable
 internal fun NotesFolderViewPreview(@PreviewParameter(NotesFolderStatePreviewParam::class) state: NotesFolderState) = ElementPreview {
-    NotesFolderView(state = state, onBackClick = {}, onFolderClick = {}, onNoteClick = {}, onSearchClick = {}, onReviewChoicesClick = {})
+    NotesFolderView(state = state, onBackClick = {}, onFolderClick = {}, onNoteClick = {}, onSearchClick = {}, onReviewChoicesClick = {}, onMapClick = {})
 }
