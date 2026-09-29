@@ -8,6 +8,7 @@
 package co.artise.android.notes.api
 
 import io.element.android.libraries.matrix.api.core.RoomId
+import kotlinx.coroutines.flow.Flow
 
 /**
  * A signed-in person's notes, offline-first: reads come from the phone's copy, edits are saved on the
@@ -28,6 +29,12 @@ interface NotesRepository {
     suspend fun files(roomId: RoomId): List<LocalFile>
 
     suspend fun file(roomId: RoomId, path: String): LocalFile?
+
+    /** Emits whenever the phone's copy of [roomId]'s notes changes: a local edit, a resolved choice, or a sync that changed files. */
+    fun changes(roomId: RoomId): Flow<Unit>
+
+    /** Starts a [sync] that keeps going if the screen that asked for it closes. Failures are silent: the queue stays for next time. */
+    fun syncInBackground(roomId: RoomId)
 
     /** Sends queued edits in order, then pulls what changed. Safe to call often: an unchanged chat costs one `304`. */
     suspend fun sync(roomId: RoomId): Result<SyncReport>

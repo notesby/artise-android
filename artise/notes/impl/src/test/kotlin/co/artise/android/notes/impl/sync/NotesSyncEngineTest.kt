@@ -8,6 +8,7 @@
 package co.artise.android.notes.impl.sync
 
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
+import app.cash.turbine.test
 import co.artise.android.notes.api.EditKind
 import co.artise.android.notes.api.EditState
 import co.artise.android.notes.api.NotesException
@@ -51,6 +52,7 @@ class NotesSyncEngineTest {
             store = NotesLocalStore(NotesDatabase(driver)),
             clock = FakeSystemClock(),
             dispatchers = dispatchers,
+            backgroundScope = backgroundScope,
         )
     }
 
@@ -262,6 +264,41 @@ class NotesSyncEngineTest {
         assertThat(file?.content).isEqualTo("- pan")
         assertThat(file?.version).isEqualTo("v2")
         assertThat(file?.hasLocalEdits).isFalse()
+    }
+
+    /**
+     * Discarding a refused edit to a note the server has goes back to the server's copy on the next sync,
+     * instead of losing the note from the phone.
+     */
+    @Test
+    fun `discarding a refused edit downloads the note again`() = runTest {
+        val engine = engine()
+        engine.firstSync()
+        engine.editNote(room, "Mole.md", "# huge")
+        server.enqueue(put, error(413, "too_big"))
+        server.enqueue(tree, MockResponse().setResponseCode(304))
+        engine.sync(room).getOrThrow()
+        engine.discardEdit(engine.edits(room).single().id)
+
+        server.enqueue(tree, treeResponse("t1", "Súper.md" to "v1", "Mole.md" to "m1", "luna.jpg" to "p1"))
+        server.enqueue(noteKey("Mole.md"), note("Mole.md", "m1", "# Mole"))
+        engine.sync(room).getOrThrow()
+        assertThat(server.requestsTo(tree).last().getHeader("If-None-Match")).isNull()
+        assertThat(engine.file(room, "Mole.md")?.content).isEqualTo("# Mole")
+    }
+
+    /** Local edits and syncs that change files tell open screens to refresh. */
+    @Test
+    fun `changes are signalled`() = runTest {
+        val engine = engine()
+        engine.firstSync()
+        engine.changes(room).test {
+            engine.editNote(room, "Súper.md", "- pan")
+            awaitItem()
+            engine.deleteFile(room, "Mole.md")
+            awaitItem()
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     /** A live state event with the tree we already have triggers no request at all. */

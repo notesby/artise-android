@@ -28,6 +28,12 @@ import co.artise.android.notes.impl.remote.TreeResponse
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.services.toolbox.api.systemclock.SystemClock
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -45,9 +51,21 @@ class NotesSyncEngine(
     private val store: NotesLocalStore,
     private val clock: SystemClock,
     private val dispatchers: CoroutineDispatchers,
+    private val backgroundScope: CoroutineScope,
 ) : NotesRepository {
     // One sync at a time, so the queue is never sent twice.
     private val syncMutex = Mutex()
+    private val changed = MutableSharedFlow<RoomId>(extraBufferCapacity = 16)
+
+    override fun changes(roomId: RoomId): Flow<Unit> = changed.filter { it == roomId }.map { }
+
+    override fun syncInBackground(roomId: RoomId) {
+        backgroundScope.launch { sync(roomId) }
+    }
+
+    private fun notifyChanged(roomId: RoomId) {
+        changed.tryEmit(roomId)
+    }
 
     override suspend fun hasSeenPrivacyNotice(): Boolean = io { store.hasFlag(FLAG_PRIVACY_NOTICE) }
 
@@ -64,9 +82,17 @@ class NotesSyncEngine(
     override suspend fun file(roomId: RoomId, path: String): LocalFile? = io { store.file(roomId, path) }
 
     override suspend fun sync(roomId: RoomId): Result<SyncReport> = syncMutex.withLock {
-        val push = pushQueue(roomId).getOrElse { return Result.failure(it) }
-        val pull = pullTree(roomId).getOrElse { return Result.failure(it) }
-        Result.success(SyncReport(sent = push.sent, needChoice = push.needChoice, updated = pull.updated, removed = pull.removed))
+        val push = pushQueue(roomId).getOrElse {
+            notifyChanged(roomId)
+            return Result.failure(it)
+        }
+        val pull = pullTree(roomId).getOrElse {
+            notifyChanged(roomId)
+            return Result.failure(it)
+        }
+        val report = SyncReport(sent = push.sent, needChoice = push.needChoice, updated = pull.updated, removed = pull.removed)
+        if (report != SyncReport(0, 0, 0, 0)) notifyChanged(roomId)
+        Result.success(report)
     }
 
     override suspend fun onTreeChanged(roomId: RoomId, tree: String): Result<SyncReport?> {
@@ -95,10 +121,11 @@ class NotesSyncEngine(
                 }
             }
         }
+        notifyChanged(roomId)
     }
 
     override suspend fun createNote(roomId: RoomId, path: String, content: String): Result<Unit> = io {
-        store.transaction {
+        store.transaction<Result<Unit>> {
             if (store.file(roomId, path) != null) {
                 Result.failure(NotesException.Exists("A note named $path is already here", null))
             } else {
@@ -107,7 +134,7 @@ class NotesSyncEngine(
                 Result.success(Unit)
             }
         }
-    }
+    }.onSuccess { notifyChanged(roomId) }
 
     override suspend fun deleteFile(roomId: RoomId, path: String) {
         io {
@@ -122,6 +149,7 @@ class NotesSyncEngine(
                 }
             }
         }
+        notifyChanged(roomId)
     }
 
     override suspend fun moveNote(roomId: RoomId, from: String, to: String): Result<MovedNote> = syncMutex.withLock {
@@ -138,38 +166,43 @@ class NotesSyncEngine(
             }
             // The server rewrote links in other notes; pull them.
             if (moved.linksUpdated.isNotEmpty()) pullTree(roomId)
+            notifyChanged(roomId)
         }
     }
 
     override suspend fun edits(roomId: RoomId): List<PendingEdit> = io { store.edits(roomId) }
 
     override suspend fun resolveConflict(editId: Long, content: String) {
-        io {
-            store.transaction {
-                val (roomId, edit) = store.edit(editId) ?: return@transaction
-                val serverVersion = edit.serverCopy?.version ?: return@transaction
+        val changedRoom = io {
+            store.transaction<RoomId?> {
+                val (roomId, edit) = store.edit(editId) ?: return@transaction null
+                val serverVersion = edit.serverCopy?.version ?: return@transaction null
                 // The choice is now based on the server's version; save it on top of that.
                 store.setContent(roomId, edit.path, content, clock.nowSeconds())
                 store.setVersion(roomId, edit.path, serverVersion)
                 store.requeueEdit(editId, edit.path, content, baseVersion = serverVersion)
+                roomId
             }
         }
+        changedRoom?.let(::notifyChanged)
     }
 
     override suspend fun keepDeletedNote(editId: Long) {
-        io {
-            store.transaction {
-                val (roomId, edit) = store.edit(editId) ?: return@transaction
+        val changedRoom = io {
+            store.transaction<RoomId?> {
+                val (roomId, edit) = store.edit(editId) ?: return@transaction null
                 store.setVersion(roomId, edit.path, "")
                 store.requeueEdit(editId, edit.path, edit.content, baseVersion = null)
+                roomId
             }
         }
+        changedRoom?.let(::notifyChanged)
     }
 
     override suspend fun saveUnderNewName(editId: Long, newPath: String) {
-        io {
-            store.transaction {
-                val (roomId, edit) = store.edit(editId) ?: return@transaction
+        val changedRoom = io {
+            store.transaction<RoomId?> {
+                val (roomId, edit) = store.edit(editId) ?: return@transaction null
                 val serverCopy = edit.serverCopy
                 store.renameFile(roomId, edit.path, newPath)
                 store.setVersion(roomId, newPath, "")
@@ -179,14 +212,18 @@ class NotesSyncEngine(
                     val text = serverCopy.content
                     store.putFile(roomId, NotesFile(edit.path, serverCopy.version, text?.byteSize() ?: 0, clock.nowSeconds(), isNote = true), text)
                 }
+                roomId
             }
         }
+        changedRoom?.let(::notifyChanged)
     }
 
     override suspend fun discardEdit(editId: Long) {
-        io {
-            store.transaction {
-                val (roomId, edit) = store.edit(editId) ?: return@transaction
+        val changedRoom = io {
+            store.transaction<RoomId?> {
+                val (roomId, edit) = store.edit(editId) ?: return@transaction null
+                // Read before deleting the edit: afterwards its base version is gone.
+                val baseVersion = store.baseVersion(editId)
                 store.deleteEdit(editId)
                 val serverCopy = edit.serverCopy
                 when {
@@ -196,15 +233,17 @@ class NotesSyncEngine(
                         store.setVersion(roomId, edit.path, serverCopy.version)
                     }
                     // Deleted on the server, or a new note never sent: it's gone.
-                    edit.state == EditState.DELETED || edit.kind == EditKind.SAVE && store.baseVersion(editId) == null -> store.deleteFile(roomId, edit.path)
+                    edit.state == EditState.DELETED || edit.kind == EditKind.SAVE && baseVersion == null -> store.deleteFile(roomId, edit.path)
                     // Otherwise download the server's copy again on the next sync.
                     else -> {
                         store.deleteFile(roomId, edit.path)
                         store.forgetEtag(roomId)
                     }
                 }
+                roomId
             }
         }
+        changedRoom?.let(::notifyChanged)
     }
 
     override suspend fun search(roomId: RoomId, query: String): Result<List<NotesSearchResult>> = api.search(roomId, query)

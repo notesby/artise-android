@@ -21,11 +21,13 @@ import dev.zacsweers.metro.SingleIn
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.di.annotations.ApplicationContext
+import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.network.interceptors.DynamicHttpLoggingInterceptor
 import io.element.android.services.toolbox.api.systemclock.SystemClock
 import io.element.encrypteddb.SqlCipherDriverFactory
 import io.element.encrypteddb.passphrase.RandomDatabaseSecretProvider
+import kotlinx.coroutines.CoroutineScope
 import okhttp3.OkHttpClient
 import java.security.MessageDigest
 
@@ -58,11 +60,13 @@ object NotesBindingContainer {
         database: NotesDatabase,
         systemClock: SystemClock,
         dispatchers: CoroutineDispatchers,
+        @SessionCoroutineScope sessionScope: CoroutineScope,
     ): NotesRepository = NotesSyncEngine(
         api = NotesApiClient(okHttpClient.withoutBodyLogging(), tokenSource, dispatchers),
         store = NotesLocalStore(database),
         clock = systemClock,
         dispatchers = dispatchers,
+        backgroundScope = sessionScope,
     )
 
     /**
