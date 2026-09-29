@@ -11,6 +11,9 @@ sealed interface NoteEvent {
     /** A `[[link]]` was tapped: open that note, or offer to create it. */
     data class OpenNoteLink(val target: String) : NoteEvent
 
+    /** A checklist item was tapped: tick or untick the item on that line of the note. */
+    data class ToggleTask(val lineIndex: Int) : NoteEvent
+
     /** Create the note a missing link points to, and open it to write. */
     data object CreateMissingNote : NoteEvent
 

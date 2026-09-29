@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import co.artise.android.notes.api.LocalFile
 import co.artise.android.notes.api.NotesException
 import co.artise.android.notes.api.NotesRepository
+import co.artise.android.notes.impl.markdown.ChecklistToggle
 import co.artise.android.notes.impl.markdown.NoteLinkResolver
 import co.artise.android.notes.impl.ui.common.NoteNameProblem
 import co.artise.android.notes.impl.ui.common.NoteNames
@@ -105,6 +106,14 @@ class NotePresenter(
                         val paths = repository.files(roomId).map { it.path }
                         val target = NoteLinkResolver.resolve(event.target, paths)
                         if (target != null) navigator.openNote(target) else dialog = NoteDialog.MissingNote(event.target)
+                    }
+                    is NoteEvent.ToggleTask -> scope.launch {
+                        val content = file?.content ?: return@launch
+                        val toggled = ChecklistToggle.toggle(content, event.lineIndex) ?: return@launch
+                        // Shown at once, so a quick second tap starts from this tick rather than the old text.
+                        file = file?.copy(content = toggled, hasLocalEdits = true)
+                        repository.editNote(roomId, path, toggled)
+                        repository.syncInBackground(roomId)
                     }
                     NoteEvent.CreateMissingNote -> scope.launch {
                         val target = (dialog as? NoteDialog.MissingNote)?.target ?: return@launch

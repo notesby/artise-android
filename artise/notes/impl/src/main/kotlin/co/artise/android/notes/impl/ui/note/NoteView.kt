@@ -99,6 +99,7 @@ fun NoteView(
                         }
                     },
                     modifier = Modifier.padding(16.dp),
+                    onTaskToggle = { line -> state.eventSink(NoteEvent.ToggleTask(line)) },
                 )
                 state.isLoading -> Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()

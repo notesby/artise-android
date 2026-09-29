@@ -212,7 +212,21 @@ class NotesEditingPresentersTest {
         }
     }
 
-    // Note: create from link, rename, delete
+    // Note: tick checklist items, create from link, rename, delete
+
+    /** Tapping a checklist item in the note saves the ticked note and sends it. */
+    @Test
+    fun `ticking a checklist item saves the note`() = runTest {
+        val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md", "- [ ] leche\n- [ ] pan"))))
+        NotePresenter(room, "Súper.md", RecordingNoteNavigator(), repository).test {
+            val state = consumeItemsUntilPredicate { !it.isLoading }.last()
+            state.eventSink(NoteEvent.ToggleTask(1))
+            awaitUntil { repository.savedEdits.isNotEmpty() }
+            assertThat(repository.savedEdits).containsExactly("Súper.md" to "- [ ] leche\n- [x] pan")
+            assertThat(repository.backgroundSyncs).containsExactly(room)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 
     /** A link to a missing note can create it next to the current note, then open it to write. */
     @Test

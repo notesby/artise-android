@@ -10,6 +10,7 @@ package co.artise.android.notes.impl.markdown
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -17,12 +18,16 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -76,25 +81,34 @@ fun NoteMarkdownView(
     markdown: String,
     onLinkClick: (NoteLink) -> Unit,
     modifier: Modifier = Modifier,
+    onTaskToggle: ((lineIndex: Int) -> Unit)? = null,
 ) {
     val document = remember(markdown) { NoteMarkdownParser.parse(markdown) }
+    val actions = NoteActions(onLinkClick, onTaskToggle)
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Blocks(parent = document, onLinkClick = onLinkClick)
+        Blocks(parent = document, actions = actions)
     }
 }
 
+/** What taps in a note do: follow a link, or tick a checklist item (`null`: checklists are read-only). */
+private data class NoteActions(
+    val onLinkClick: (NoteLink) -> Unit,
+    val onTaskToggle: ((Int) -> Unit)?,
+)
+
 @Composable
-private fun Blocks(parent: Node, onLinkClick: (NoteLink) -> Unit) {
-    parent.children().forEach { Block(it, onLinkClick) }
+private fun Blocks(parent: Node, actions: NoteActions) {
+    parent.children().forEach { Block(it, actions) }
 }
 
 @Composable
-private fun Block(node: Node, onLinkClick: (NoteLink) -> Unit) {
+private fun Block(node: Node, actions: NoteActions) {
+    val onLinkClick = actions.onLinkClick
     when (node) {
         is Heading -> InlineText(node, headingStyle(node.level), onLinkClick)
         is Paragraph -> InlineText(node, ElementTheme.typography.fontBodyLgRegular, onLinkClick)
-        is BulletList -> ListBlock(node, ordered = false, start = 1, onLinkClick = onLinkClick)
-        is OrderedList -> ListBlock(node, ordered = true, start = node.markerStartNumber ?: 1, onLinkClick = onLinkClick)
+        is BulletList -> ListBlock(node, ordered = false, start = 1, actions = actions)
+        is OrderedList -> ListBlock(node, ordered = true, start = node.markerStartNumber ?: 1, actions = actions)
         is BlockQuote -> Row(Modifier.height(IntrinsicSize.Min)) {
             Column(
                 Modifier
@@ -103,7 +117,7 @@ private fun Block(node: Node, onLinkClick: (NoteLink) -> Unit) {
                     .background(ElementTheme.colors.borderInteractiveSecondary)
             ) {}
             Column(Modifier.padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Blocks(node, onLinkClick)
+                Blocks(node, actions)
             }
         }
         is FencedCodeBlock -> CodeBlock(node.literal)
@@ -125,28 +139,51 @@ private fun headingStyle(level: Int): TextStyle = when (level) {
 }
 
 @Composable
-private fun ListBlock(list: Node, ordered: Boolean, start: Int, onLinkClick: (NoteLink) -> Unit) {
+private fun ListBlock(list: Node, ordered: Boolean, start: Int, actions: NoteActions) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         list.children().filterIsInstance<ListItem>().forEachIndexed { index, item ->
             // The checkbox marker sits at the start of the item, or of its first paragraph.
             val task = item.firstChild as? TaskListItemMarker ?: item.firstChild?.firstChild as? TaskListItemMarker
-            val marker = when {
-                task != null -> if (task.isChecked) "☑" else "☐"
-                ordered -> "${start + index}."
-                else -> "•"
-            }
+            val line = item.sourceSpans.firstOrNull()?.lineIndex
+            val onTaskToggle = actions.onTaskToggle
             Row {
-                Text(
-                    text = marker,
-                    style = ElementTheme.typography.fontBodyLgRegular,
-                    color = ElementTheme.colors.textSecondary,
-                    modifier = Modifier.width(28.dp),
-                )
+                if (task != null && line != null && onTaskToggle != null) {
+                    Checkbox(checked = task.isChecked, onToggle = { onTaskToggle(line) })
+                } else {
+                    val marker = when {
+                        task != null -> if (task.isChecked) "☑" else "☐"
+                        ordered -> "${start + index}."
+                        else -> "•"
+                    }
+                    Text(
+                        text = marker,
+                        style = ElementTheme.typography.fontBodyLgRegular,
+                        color = ElementTheme.colors.textSecondary,
+                        modifier = Modifier.width(28.dp),
+                    )
+                }
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Blocks(item, onLinkClick)
+                    Blocks(item, actions)
                 }
             }
         }
+    }
+}
+
+/** A tappable checkbox for a checklist item, big enough to hit with a thumb and announced as a checkbox. */
+@Composable
+private fun Checkbox(checked: Boolean, onToggle: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(width = 28.dp, height = 28.dp)
+            .toggleable(value = checked, role = Role.Checkbox, onValueChange = { onToggle() }),
+        contentAlignment = Alignment.TopStart,
+    ) {
+        Text(
+            text = if (checked) "☑" else "☐",
+            style = ElementTheme.typography.fontBodyLgRegular,
+            color = if (checked) ElementTheme.colors.textSecondary else ElementTheme.colors.textPrimary,
+        )
     }
 }
 
