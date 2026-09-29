@@ -66,4 +66,13 @@
     <string name="screen_notes_choice_discard">Descartar mi cambio</string>
     <string name="screen_notes_map">Mapa</string>
     <string name="screen_notes_map_empty">Todavía no hay notas para mostrar.</string>
+    <string name="a11y_notes_format_bold">Negrita</string>
+    <string name="a11y_notes_format_italic">Cursiva</string>
+    <string name="a11y_notes_format_strikethrough">Tachado</string>
+    <string name="a11y_notes_format_heading">Título</string>
+    <string name="a11y_notes_format_bullets">Lista con viñetas</string>
+    <string name="a11y_notes_format_numbers">Lista numerada</string>
+    <string name="a11y_notes_format_checklist">Lista de tareas</string>
+    <string name="a11y_notes_format_quote">Cita</string>
+    <string name="a11y_notes_format_link">Enlazar una nota</string>
 </resources>

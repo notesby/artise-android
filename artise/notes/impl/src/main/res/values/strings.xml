@@ -64,4 +64,13 @@
     <string name="screen_notes_choice_discard">Discard my change</string>
     <string name="screen_notes_map">Map</string>
     <string name="screen_notes_map_empty">No notes to show yet.</string>
+    <string name="a11y_notes_format_bold">Bold</string>
+    <string name="a11y_notes_format_italic">Italic</string>
+    <string name="a11y_notes_format_strikethrough">Strikethrough</string>
+    <string name="a11y_notes_format_heading">Heading</string>
+    <string name="a11y_notes_format_bullets">Bulleted list</string>
+    <string name="a11y_notes_format_numbers">Numbered list</string>
+    <string name="a11y_notes_format_checklist">Checklist</string>
+    <string name="a11y_notes_format_quote">Quote</string>
+    <string name="a11y_notes_format_link">Link to a note</string>
 </resources>

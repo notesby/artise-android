@@ -124,6 +124,13 @@ class NoteEditorPresenter(
                             selection = TextRange(newCursor)
                         }
                     }
+                    is NoteEditorEvent.Format -> {
+                        val edited = MarkdownFormatting.apply(event.action, text.text.toString(), text.selection.start, text.selection.end)
+                        text.edit {
+                            replace(0, length, edited.text)
+                            selection = TextRange(edited.start, edited.end)
+                        }
+                    }
                     NoteEditorEvent.Save -> if (hasUnsavedChanges) save() else navigator.onDone()
                     NoteEditorEvent.Back -> if (hasUnsavedChanges) showSaveChangesDialog = true else navigator.onDone()
                     NoteEditorEvent.DiscardChanges -> {

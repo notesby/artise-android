@@ -8,6 +8,7 @@
 package co.artise.android.notes.impl.ui
 
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.ui.text.TextRange
 import app.cash.turbine.ReceiveTurbine
 import co.artise.android.notes.api.EditKind
 import co.artise.android.notes.api.EditState
@@ -18,6 +19,7 @@ import co.artise.android.notes.api.ServerCopy
 import co.artise.android.notes.impl.ui.choices.NotesChoicesEvent
 import co.artise.android.notes.impl.ui.choices.NotesChoicesPresenter
 import co.artise.android.notes.impl.ui.common.NoteNameProblem
+import co.artise.android.notes.impl.ui.editor.FormatAction
 import co.artise.android.notes.impl.ui.editor.NoteEditorEvent
 import co.artise.android.notes.impl.ui.editor.NoteEditorPresenter
 import co.artise.android.notes.impl.ui.folder.NewNoteDialog
@@ -113,6 +115,21 @@ class NotesEditingPresentersTest {
             suggesting.eventSink(NoteEditorEvent.SelectSuggestion(suggesting.suggestions.single()))
             val completed = consumeItemsUntilPredicate { it.suggestions.isEmpty() }.last()
             assertThat(completed.text.text.toString()).isEqualTo("Para el [[Mole]]")
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    /** A toolbar button formats the selection in the editor's text, keeping it selected. */
+    @Test
+    fun `toolbar formats the selection`() = runTest {
+        val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md", "comprar pan"))))
+        NoteEditorPresenter(room, "Súper.md", null, {}, repository).test {
+            val state = consumeItemsUntilPredicate { !it.isLoading }.last()
+            state.text.edit { selection = TextRange(8, 11) }
+            state.eventSink(NoteEditorEvent.Format(FormatAction.BOLD))
+            val formatted = consumeItemsUntilPredicate { it.hasUnsavedChanges }.last()
+            assertThat(formatted.text.text.toString()).isEqualTo("comprar **pan**")
+            assertThat(formatted.text.selection).isEqualTo(TextRange(10, 13))
             cancelAndIgnoreRemainingEvents()
         }
     }
