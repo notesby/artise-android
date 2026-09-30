@@ -58,5 +58,5 @@ data class LinkEditState(
     val end: Int,
     val link: EditableLink,
     /** A link being added from the toolbar, not one already in the note. */
-    val isNew: Boolean = false,
+    val isNew: Boolean,
 )

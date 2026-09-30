@@ -51,11 +51,11 @@ data class EmbedState(
     val file: String?,
     val failed: Boolean,
     /** In bytes, when known; shown on document cards. */
-    val size: Long? = null,
+    val size: Long?,
     /** Being downloaded to open it. */
-    val isDownloading: Boolean = false,
+    val isDownloading: Boolean,
     /** Added on this phone and not on the server yet; `null` once it's there. */
-    val upload: UploadStatus? = null,
+    val upload: UploadStatus?,
 )
 
 /** [this] with each embed's upload status; one not in [uploads] is on the server. */
