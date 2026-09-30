@@ -40,6 +40,9 @@ interface StickerRepository {
 
     suspend fun addToMine(picture: StickerPicture, description: String): Result<Sticker>
 
+    /** Adds a sticker whose picture is on the server already (one someone sent). */
+    suspend fun addUploaded(sticker: Sticker): Result<Sticker>
+
     suspend fun remove(sticker: Sticker): Result<Unit>
 
     /** The sticker's picture on the server; a starter sticker is uploaded the first time, then remembered. */
@@ -76,6 +79,10 @@ class DefaultStickerRepository(
             mimeType = picture.mimeType,
             size = picture.bytes.size.toLong(),
         )
+        addUploaded(sticker).getOrThrow()
+    }
+
+    override suspend fun addUploaded(sticker: Sticker): Result<Sticker> = runCatchingExceptions {
         packLock.withLock {
             val content = matrixClient.getAccountData(ImagePack.USER_PACK_EVENT_TYPE).getOrThrow()
             val shortcode = ImagePack.freeShortcode(content)

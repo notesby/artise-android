@@ -45,6 +45,12 @@ class StickerPickerPresenterTest {
             return Result.success(sticker)
         }
 
+        override suspend fun addUploaded(sticker: Sticker): Result<Sticker> {
+            val saved = sticker.copy(id = "sticker_${mine.value.size + 1}")
+            mine.value = mine.value + saved
+            return Result.success(saved)
+        }
+
         override suspend fun remove(sticker: Sticker): Result<Unit> {
             mine.value = mine.value - sticker
             return Result.success(Unit)

@@ -42,14 +42,13 @@ class DefaultStickerMaker(
 ) : StickerMaker {
     override suspend fun make(photo: Uri): Result<MadeSticker> = runCatchingExceptions {
         val decoded = withContext(dispatchers.io) { decode(photo) } ?: error("Couldn't read the photo")
-        val cutOut = cutout.cutOut(decoded)
+        // A picture with a transparent background already (from a sticker app) is used as it is.
+        val alreadyCutOut = withContext(dispatchers.computation) {
+            decoded.takeIf { it.hasAlpha() }?.let(::visibleBox)?.takeIf { it != whole(decoded) }?.let { decoded }
+        }
+        val cutOut = alreadyCutOut ?: cutout.cutOut(decoded)
         withContext(dispatchers.computation) {
-            val box = cutOut?.let { bitmap ->
-                val pixels = IntArray(bitmap.width * bitmap.height).also { bitmap.getPixels(it, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height) }
-                StickerGeometry.visibleBox(bitmap.width, bitmap.height, padding = max(bitmap.width, bitmap.height) / PADDING_DIVISOR) { x, y ->
-                    pixels[y * bitmap.width + x] ushr ALPHA_SHIFT
-                }
-            }
+            val box = cutOut?.let { visibleBox(it) }
             val source = if (box != null) cutOut else decoded
             val area = box ?: StickerGeometry.centerSquare(decoded.width, decoded.height)
             val (width, height) = StickerGeometry.fit(area.width, area.height)
@@ -58,6 +57,15 @@ class DefaultStickerMaker(
             MadeSticker(StickerPicture(encode(scaled), width, height, "image/webp"), isCutOut = box != null)
         }
     }
+
+    private fun visibleBox(bitmap: Bitmap): PixelBox? {
+        val pixels = IntArray(bitmap.width * bitmap.height).also { bitmap.getPixels(it, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height) }
+        return StickerGeometry.visibleBox(bitmap.width, bitmap.height, padding = max(bitmap.width, bitmap.height) / PADDING_DIVISOR) { x, y ->
+            pixels[y * bitmap.width + x] ushr ALPHA_SHIFT
+        }
+    }
+
+    private fun whole(bitmap: Bitmap) = PixelBox(0, 0, bitmap.width, bitmap.height)
 
     /** In ordinary memory (not the graphics hardware), upright, and no bigger than needed for the cut-out. */
     private fun decode(uri: Uri): Bitmap? {

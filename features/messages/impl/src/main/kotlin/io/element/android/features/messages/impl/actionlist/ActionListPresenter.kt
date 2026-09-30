@@ -36,6 +36,7 @@ import io.element.android.features.messages.impl.timeline.model.event.TimelineIt
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemRedactedContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemRtcNotificationContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemStateContent
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemStickerContent
 import io.element.android.features.messages.impl.timeline.model.event.canBeCopied
 import io.element.android.features.messages.impl.timeline.model.event.canBeForwarded
 import io.element.android.features.messages.impl.timeline.model.event.canReact
@@ -200,6 +201,10 @@ class DefaultActionListPresenter(
             if (timelineItem.isRemote && timelineItem.content.canBeForwarded()) {
                 add(TimelineItemAction.Forward)
             }
+            // Artise: stickers on the server as they are (not encrypted files) can be saved as they are.
+            if (timelineItem.content.canBeSavedAsSticker() && timelineMode !is Timeline.Mode.PinnedEvents) {
+                add(TimelineItemAction.SaveSticker)
+            }
             if (timelineItem.isEditable && usersEventPermissions.canSendMessage) {
                 if (timelineItem.content is TimelineItemEventContentWithAttachment ||
                     timelineItem.content is TimelineItemGalleryContent ||
@@ -252,6 +257,10 @@ class DefaultActionListPresenter(
             .let(postProcessor::process)
     }
 }
+
+/** Artise: a sticker whose picture is on the server as it is (not an encrypted file) can be reused as it is. */
+private fun TimelineItemEventContent.canBeSavedAsSticker(): Boolean =
+    this is TimelineItemStickerContent && mediaSource.json == null && mediaSource.safeUrl.startsWith("mxc://")
 
 /**
  * Post filter the actions based on the content of the event.

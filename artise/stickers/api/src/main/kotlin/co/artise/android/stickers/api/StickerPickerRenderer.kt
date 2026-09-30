@@ -25,3 +25,18 @@ fun interface KeyboardStickerSender {
      */
     suspend fun trySend(room: JoinedRoom, uri: Uri): Boolean
 }
+
+/** A sticker someone sent, already on the server: saving it to your stickers reuses the same picture. */
+data class ReceivedSticker(
+    val mxcUrl: String,
+    val description: String,
+    val width: Int,
+    val height: Int,
+    val mimeType: String,
+    val size: Long,
+)
+
+/** "Save to my stickers" on a sticker in a chat. */
+fun interface ReceivedStickerSaver {
+    suspend fun save(sticker: ReceivedSticker): Result<Unit>
+}
