@@ -111,8 +111,18 @@ private fun FileChip(name: String, isImage: Boolean, onClick: (() -> Unit)?, mod
  * (the file stays private; that app only gets to read it). Returns false when no app can open it.
  */
 internal fun Context.openDownloadedFile(request: OpenFileRequest): Boolean {
-    val file = File(request.file)
-    val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
+    // Only the cache is shared with other apps. A photo still waiting to upload lives in app storage: copy it out first.
+    val source = File(request.file)
+    val file = if (source.canonicalPath.startsWith(cacheDir.canonicalPath)) {
+        source
+    } else {
+        File(File(cacheDir, "notes_open").apply { mkdirs() }, request.name).also { source.copyTo(it, overwrite = true) }
+    }
+    val uri = try {
+        FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
+    } catch (e: IllegalArgumentException) {
+        return false
+    }
     val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(file.extension.lowercase()) ?: "application/octet-stream"
     val intent = Intent(Intent.ACTION_VIEW)
         .setDataAndType(uri, mimeType)

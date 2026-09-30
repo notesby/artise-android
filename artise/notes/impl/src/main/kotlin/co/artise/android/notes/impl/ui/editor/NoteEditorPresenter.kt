@@ -259,8 +259,13 @@ class NoteEditorPresenter(
         val at = maxOf(current.selection.start, current.selection.end)
         val name = attachmentPath.substringAfterLast('/')
         val embed = if (NoteEmbeds.isImage(attachmentPath)) {
-            val before = if (at == 0 || text[at - 1] == '\n') "" else "\n"
-            val after = if (at < text.length && text[at] == '\n') "" else "\n"
+            // A paragraph of its own (blank lines around it), which every Markdown app shows as a photo.
+            val before = when {
+                at == 0 || text.substring(0, at).endsWith("\n\n") -> ""
+                text[at - 1] == '\n' -> "\n"
+                else -> "\n\n"
+            }
+            val after = if (text.substring(at).startsWith("\n\n")) "" else "\n\n"
             "$before![[$name]]$after"
         } else {
             "[[$name]]"

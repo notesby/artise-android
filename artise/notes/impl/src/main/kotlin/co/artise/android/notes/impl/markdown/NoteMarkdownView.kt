@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,6 +45,8 @@ import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.Checkbox
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.Text
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import org.commonmark.ext.gfm.strikethrough.Strikethrough
 import org.commonmark.ext.gfm.tables.TableBlock
 import org.commonmark.ext.gfm.tables.TableCell
@@ -113,17 +116,7 @@ private fun Block(node: Node, actions: NoteActions) {
     val onLinkClick = actions.onLinkClick
     when (node) {
         is Heading -> InlineText(node, headingStyle(node.level), onLinkClick)
-        is Paragraph -> {
-            // A paragraph of only embeds ("![[photo.jpg]]" on its own line) shows the photos and files themselves.
-            val parts = node.children().filterNot { it is SoftLineBreak || it is HardLineBreak || it is TextNode && it.literal.isBlank() }.toList()
-            val embed = actions.embed
-            val targets = parts.mapNotNull { (it as? Image)?.destination?.let(::embedTarget) }
-            if (embed != null && parts.isNotEmpty() && targets.size == parts.size) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { targets.forEach { embed(it) } }
-            } else {
-                InlineText(node, bodyStyle(), onLinkClick)
-            }
-        }
+        is Paragraph -> ParagraphWithEmbeds(node, actions)
         is BulletList -> ListBlock(node, ordered = false, start = 1, actions = actions)
         is OrderedList -> ListBlock(node, ordered = true, start = node.markerStartNumber ?: 1, actions = actions)
         is BlockQuote -> Row(Modifier.height(IntrinsicSize.Min)) {
@@ -232,14 +225,75 @@ private fun TableView(table: TableBlock, onLinkClick: (NoteLink) -> Unit) {
     }
 }
 
+/** A paragraph split around its embeds: runs of text, and the photos or files between them. */
+@Immutable
+private sealed interface ParagraphPiece {
+    data class Text(val nodes: ImmutableList<Node>) : ParagraphPiece
+
+    data class Embed(val target: String) : ParagraphPiece
+}
+
+/**
+ * A paragraph whose embedded photos and files ("![[photo.jpg]]") show in place, even when they share the paragraph
+ * with text, as notes from Ari or Obsidian often do ("Hoy:\n![[foto.jpg]]"). The text around them flows as usual.
+ */
 @Composable
-private fun InlineText(node: Node, style: TextStyle, onLinkClick: (NoteLink) -> Unit) {
+private fun ParagraphWithEmbeds(paragraph: Paragraph, actions: NoteActions) {
+    val embed = actions.embed
+    val pieces = remember(paragraph) { piecesOf(paragraph) }
+    if (embed == null || pieces.none { it is ParagraphPiece.Embed }) {
+        InlineText(paragraph.children().toList().toImmutableList(), bodyStyle(), actions.onLinkClick)
+        return
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        pieces.forEach { piece ->
+            when (piece) {
+                is ParagraphPiece.Embed -> embed(piece.target)
+                is ParagraphPiece.Text -> InlineText(piece.nodes, bodyStyle(), actions.onLinkClick)
+            }
+        }
+    }
+}
+
+private fun piecesOf(paragraph: Paragraph): ImmutableList<ParagraphPiece> {
+    val pieces = mutableListOf<ParagraphPiece>()
+    val run = mutableListOf<Node>()
+    fun endRun() {
+        if (run.isNotEmpty()) pieces.add(ParagraphPiece.Text(run.toImmutableList()))
+        run.clear()
+    }
+    for (child in paragraph.children()) {
+        val target = (child as? Image)?.destination?.let(::embedTarget)
+        if (target != null) {
+            endRun()
+            pieces.add(ParagraphPiece.Embed(target))
+        } else {
+            run.add(child)
+        }
+    }
+    endRun()
+    return pieces.toImmutableList()
+}
+
+@Composable
+private fun InlineText(node: Node, style: TextStyle, onLinkClick: (NoteLink) -> Unit) =
+    InlineText(node.children().toList().toImmutableList(), style, onLinkClick)
+
+@Composable
+private fun InlineText(nodes: ImmutableList<Node>, style: TextStyle, onLinkClick: (NoteLink) -> Unit) {
     val linkColor = ElementTheme.colors.textLinkExternal
     val codeBackground = ElementTheme.colors.bgSubtleSecondary
-    val text = remember(node, linkColor, codeBackground) {
-        buildAnnotatedString { appendInlines(node, onLinkClick, linkColor, codeBackground) }
+    val text = remember(nodes, linkColor, codeBackground) {
+        buildAnnotatedString { appendInlines(nodes.asSequence(), onLinkClick, linkColor, codeBackground) }.trimmed()
     }
     if (text.isNotEmpty()) Text(text = text, style = style, color = ElementTheme.colors.textPrimary)
+}
+
+/** Without the spaces and line breaks an embed leaves at the start or end of a text run. */
+private fun AnnotatedString.trimmed(): AnnotatedString {
+    val start = text.indexOfFirst { !it.isWhitespace() }.coerceAtLeast(0)
+    val end = text.indexOfLast { !it.isWhitespace() } + 1
+    return if (start == 0 && end == text.length) this else subSequence(start, end.coerceAtLeast(start))
 }
 
 private fun AnnotatedString.Builder.appendInlines(
@@ -247,8 +301,15 @@ private fun AnnotatedString.Builder.appendInlines(
     onLinkClick: (NoteLink) -> Unit,
     linkColor: androidx.compose.ui.graphics.Color,
     codeBackground: androidx.compose.ui.graphics.Color,
+) = appendInlines(parent.children(), onLinkClick, linkColor, codeBackground)
+
+private fun AnnotatedString.Builder.appendInlines(
+    nodes: Sequence<Node>,
+    onLinkClick: (NoteLink) -> Unit,
+    linkColor: androidx.compose.ui.graphics.Color,
+    codeBackground: androidx.compose.ui.graphics.Color,
 ) {
-    parent.children().forEach { node ->
+    nodes.forEach { node ->
         when (node) {
             is TextNode -> append(node.literal)
             is SoftLineBreak -> append(" ")

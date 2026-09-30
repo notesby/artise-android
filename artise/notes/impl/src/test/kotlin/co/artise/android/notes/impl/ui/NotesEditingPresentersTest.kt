@@ -258,7 +258,7 @@ class NotesEditingPresentersTest {
             val state = consumeItemsUntilPredicate { !it.isLoading }.last()
             state.eventSink(NoteEditorEvent.Attach("content://photo"))
             val withPhoto = consumeItemsUntilPredicate { it.value.text.contains("luna") }.last()
-            assertThat(withPhoto.value.text).isEqualTo("Hoy\n![[luna.jpg]]\n")
+            assertThat(withPhoto.value.text).isEqualTo("Hoy\n\n![[luna.jpg]]\n\n")
             assertThat(repository.attachments.single().first).isEqualTo("attachments/luna.jpg")
             // The upload starts at once, or waits in the queue when offline.
             assertThat(repository.backgroundSyncs).containsExactly(room)
