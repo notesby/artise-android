@@ -18,7 +18,7 @@ object BuildTimeConfig {
     val URL_COPYRIGHT: String? = null
     val URL_ACCEPTABLE_USE: String? = null
     val URL_PRIVACY: String? = "https://artise.co/privacy.html"
-    val URL_POLICY: String? = null
+    val URL_POLICY: String? = "https://artise.co/privacy.html"
     val SERVICES_MAPTILER_BASE_URL: String? = null
     val SERVICES_MAPTILER_APIKEY: String? = null
     val SERVICES_MAPTILER_LIGHT_MAPID: String? = null
