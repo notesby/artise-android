@@ -85,8 +85,10 @@ Use the questionnaire's "Communication" or "Social" category.
 
 - **Encryption and deletion:**
   - Data is encrypted in transit: **yes**.
-  - People can ask for their data to be deleted: **yes**. They can deactivate their account in the app, or use the
-    privacy request form on artise.co.
+  - People can ask for their data to be deleted: **yes**. In the app: Settings → Delete account, which opens
+    `https://chat.artise.co/account/delete` (`?lang=es` in Spanish). The page does the deletion and ends the app's
+    session, and the app then returns to sign-in. Also by the privacy request form on artise.co.
+  - **Delete account URL** (asked in Data safety): `https://chat.artise.co/account/delete`.
 - **Shared with third parties: none.** The AI providers and hosting companies listed in the privacy notice are
   service providers acting for Artise. Google doesn't count those as "sharing".
 - **Collected:** all of the following. Purpose: app functionality. Required, because it's how the app works, except
