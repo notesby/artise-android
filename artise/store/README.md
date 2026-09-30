@@ -101,9 +101,9 @@ Use the questionnaire's "Communication" or "Social" category.
 | Files and documents | Sent in chats and added to notes. |
 | Other user-generated content | Notes. |
 | Approximate and precise location | Only when someone shares their location in a chat (optional). |
-| Device or other IDs | The push token that routes notifications to this phone. |
+| Device or other IDs | The push token and Firebase installation ID that route notifications to this phone. |
 
-**Not collected:** contacts, calendar, health, financial info, web history, app activity analytics, crash logs,
+**Not collected** (checked in the bundle, see 5b): contacts, calendar, health, financial info, web history, app activity analytics, crash logs,
 diagnostics. The app has no analytics or crash reporting.
 
 ### Permission declarations
@@ -138,20 +138,61 @@ live location", show the notification, then stop it.
 - **Install permission:** `REQUEST_INSTALL_PACKAGES` is removed from Play builds (`app/src/gplay/AndroidManifest.xml`). Play only allows it for apps
   whose main purpose is installing apps. An APK sent in a chat now opens in the system installer, which asks by
   itself.
-- **Analytics and crash reports:** none are built in. The PostHog and Sentry keys are empty in
-  `plugins/src/main/kotlin/config/BuildTimeConfig.kt`.
+
+## 5b. What the app contacts: checked in the bundle (2026-09-30, version 26.09.3)
+
+These were checked against the release bundle itself (its code, manifest and bundled web files) and the build settings
+compiled into it. Network traffic on a phone wasn't captured. Re-check after merging a new Element release.
+
+**No analytics, crash reporting or ads:**
+- **Element's analytics:** the Play build uses Element's no-op analytics module (`ModulesConfig`: Artise builds have
+  analytics disabled). The PostHog and Sentry libraries aren't in the build, and there's no consent screen.
+- **Firebase:** Firebase Analytics and Crashlytics aren't included. The manifest also sets
+  `firebase_analytics_collection_deactivated=true`. Firebase Messaging's delivery-metrics export is off by default,
+  and nothing turns it on.
+- **Bug reports:** `ArtiseEnterpriseService` returns `BugReportUrl.Disabled`, so reports can't be sent. Element's
+  address (`rageshakes.element.io`) is still compiled in as an unused default.
+- **Call screen:** the web bundle (Element Call) contains PostHog and Sentry code. The app passes it empty keys
+  (`ELEMENT_CALL_*` build variables are unset), and its `config.json` has none, so it stays off. A build machine with
+  those variables set would turn it on.
+- **Ads:** no ad SDK is included.
+
+**Services contacted besides the Artise server:**
+
+| Service | When | What it receives |
+|---|---|---|
+| Google Firebase Cloud Messaging and Installations | Always, for notifications | A push token and installation ID for the phone. Pushes carry only an event ID. |
+| MapTiler (`api.maptiler.com`) | Opening a map to share, view or follow a location | The phone's IP address. No key is set, so MapTiler refuses and **the map stays blank** (see below). Location previews in chats make no request without a key. |
+| Google Cloud Storage and jsDelivr | Only if someone turns on background blur during a call | The phone's IP address, while downloading the blur model. |
+| A UnifiedPush distributor and gateway | Only if the person installs one and picks it in the notification settings | Pushes, instead of Firebase. |
+
+The copyright and acceptable-use links in Settings → About still open element.io pages, and help links open
+element.io. That only happens when tapped.
+
+**Decisions to make before the privacy page and forms are final:**
+- **Maps** (live location sharing stays):
+  - (a) Get a MapTiler key. MapTiler then receives the IP address and the map area viewed.
+  - (b) Point maps at a tile server Artise runs.
+  - Either way, the privacy text changes to match.
+- **Background blur:** keep it and disclose it, or turn it off in the Play build.
+- **UnifiedPush:** keep it, or turn it off in the Play build so notifications always go through Artise's own path.
 
 ## 6. Request for the server agent: the privacy notice and a reviewer account
 
 Add a section about the phone app to `https://artise.co/privacy.html`, in both languages. Suggested English text:
 
-> **The Artise app for Android.** The app connects only to your organization's Artise server, with these
-> exceptions. To deliver notifications, your server sends Google's Firebase Cloud Messaging a message with only an
-> event ID (never the message itself). The app then fetches the message from your server and decrypts it on the
-> phone. Google receives a push token for your phone to route those notifications. The app uses your location only
-> when you share it in a chat, once or live, and live sharing shows a notification until you stop it. The camera
-> and microphone are used only for photos, voice messages and calls you start. The app has no ads, analytics or
-> crash reporting.
+> **The Artise app for Android.** The app connects to your organization's Artise server. It also connects to these
+> services:
+> - **Google Firebase Cloud Messaging**, to deliver notifications. Your server sends it only an event ID, never the
+>   message itself. The app then fetches the message from your server and decrypts it on the phone. Google receives
+>   a push token and an installation ID for your phone to route notifications.
+> - **[Maps: fill in after the maps decision in section 5b.]**
+> - **Google Cloud Storage and jsDelivr**, only if you turn on background blur during a call. They receive your
+>   phone's IP address while the blur model downloads.
+>
+> The app uses your location only when you share it in a chat, once or live. Live sharing shows a notification until
+> you stop it. The camera and microphone are used only for photos, voice messages and calls you start. The app has
+> no ads and no analytics, and it sends no crash reports.
 
 Add Google LLC to the processors table: "Delivering app notifications (Firebase Cloud Messaging), only an event ID;
 United States".
