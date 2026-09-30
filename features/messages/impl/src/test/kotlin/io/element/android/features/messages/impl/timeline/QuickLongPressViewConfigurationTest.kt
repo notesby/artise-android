@@ -12,8 +12,8 @@ import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
 class QuickLongPressViewConfigurationTest {
-    private fun phoneWith(longPress: Long) = object : ViewConfiguration {
-        override val longPressTimeoutMillis = longPress
+    private fun phoneWith(holdMillis: Long) = object : ViewConfiguration {
+        override val longPressTimeoutMillis = holdMillis
         override val doubleTapTimeoutMillis = 300L
         override val doubleTapMinTimeMillis = 40L
         override val touchSlop = 8f
