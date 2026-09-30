@@ -23,9 +23,11 @@ import co.artise.android.notes.api.NotesSearchResult
 import co.artise.android.notes.api.PendingEdit
 import co.artise.android.notes.api.SyncReport
 import co.artise.android.notes.impl.attachments.PhotoConverter
+import co.artise.android.notes.impl.attachments.PrefetchPolicy
 import co.artise.android.notes.impl.local.NotesLocalStore
 import co.artise.android.notes.impl.remote.NotesApiClient
 import co.artise.android.notes.impl.remote.TreeResponse
+import co.artise.android.notes.impl.ui.note.NoteEmbeds
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.services.toolbox.api.systemclock.SystemClock
@@ -64,6 +66,8 @@ class NotesSyncEngine(
     private val pendingDir: File,
     /** Turns queued HEIC or big photos into JPEGs before they upload (photos queued before that was done on attach). */
     private val photoConverter: PhotoConverter,
+    /** Whether photos may be downloaded ahead of time (Wi-Fi only). */
+    private val prefetchPolicy: PrefetchPolicy,
 ) : NotesRepository {
     // One sync per chat at a time, so a chat's queue is never sent twice. Different chats don't wait for each other:
     // opening one chat's notes shouldn't wait behind the background check of all the others.
@@ -107,6 +111,7 @@ class NotesSyncEngine(
         }
         val report = SyncReport(sent = push.sent, needChoice = push.needChoice, updated = pull.updated, removed = pull.removed, failed = push.failed)
         if (report != SyncReport(0, 0, 0, 0)) notifyChanged(roomId)
+        if (prefetchPolicy.canPrefetch()) backgroundScope.launch { prefetchPhotos(roomId) }
         Result.success(report)
     }
 
@@ -213,13 +218,54 @@ class NotesSyncEngine(
         }
         val version = io { store.file(roomId, path) }?.version.orEmpty()
         val cached = cacheFileFor(roomId, path, version)
-        if (version.isNotEmpty() && io { cached.exists() }) return Result.success(cached)
+        if (version.isNotEmpty() && io { cached.exists() }) {
+            // Recently used: the last to go when the phone's copies are trimmed.
+            io { cached.setLastModified(clock.epochMillis()) }
+            return Result.success(cached)
+        }
         return api.raw(roomId, path).map { bytes ->
             io {
                 cached.parentFile?.mkdirs()
                 cached.writeBytes(bytes)
+                trimCache()
             }
             cached
+        }
+    }
+
+    /**
+     * Downloads the photos embedded in the chat's notes that aren't on the phone yet, so notes show them offline.
+     * Photos only (documents download when opened) and none over [MAX_PREFETCH_BYTES].
+     */
+    private suspend fun prefetchPhotos(roomId: RoomId) {
+        val photos = io {
+            val files = store.files(roomId)
+            val byPath = files.associateBy { it.path }
+            val paths = files.map { it.path }
+            files.asSequence()
+                .filter { it.isNote && it.content != null }
+                .flatMap { NoteEmbeds.resolve(it.content.orEmpty(), paths).values }
+                .distinct()
+                .mapNotNull { byPath[it] }
+                .filter { NoteEmbeds.isImage(it.path) && it.version.isNotEmpty() && it.size <= MAX_PREFETCH_BYTES }
+                .filterNot { cacheFileFor(roomId, it.path, it.version).exists() }
+                .toList()
+        }
+        for (photo in photos) {
+            if (!prefetchPolicy.canPrefetch()) return
+            // A failure just means it downloads when the note is opened.
+            attachment(roomId, photo.path)
+        }
+    }
+
+    /** Keeps the phone's copies under [MAX_CACHE_BYTES], removing the least recently used first. */
+    private fun trimCache() {
+        val cached = attachmentsDir.listFiles()?.filter { it.isFile }?.sortedBy { it.lastModified() } ?: return
+        var total = cached.sumOf { it.length() }
+        for (file in cached) {
+            if (total <= MAX_CACHE_BYTES) break
+            total -= file.length()
+            file.delete()
         }
     }
 
@@ -581,6 +627,12 @@ class NotesSyncEngine(
     companion object {
         private const val FLAG_PRIVACY_NOTICE = "privacy_notice_seen"
         const val ATTACHMENTS_FOLDER = "attachments"
+
+        /** Room on the phone for downloaded photos and files; files waiting to upload aren't counted or removed. */
+        const val MAX_CACHE_BYTES = 300L * 1024 * 1024
+
+        /** Bigger photos only download when their note is opened. */
+        const val MAX_PREFETCH_BYTES = 15L * 1024 * 1024
         private const val MAX_RENAME_TRIES = 5
 
         private fun String.extensionWithDot() = substringAfterLast('.', "").takeIf { it.length in 1..5 }?.let { ".$it" }.orEmpty()

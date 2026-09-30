@@ -10,15 +10,18 @@ package co.artise.android.notes.impl.ui.note
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.text.format.Formatter
 import android.webkit.MimeTypeMap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -27,6 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import co.artise.android.notes.impl.R
@@ -73,8 +77,15 @@ internal fun NoteEmbedView(
         ) {
             CircularProgressIndicator()
         }
-        // A file, or a photo that couldn't be downloaded yet: tapping tries again.
-        else -> FileChip(name = embed.name, isImage = embed.isImage, onClick = { onOpen(embed.path) }, modifier = modifier)
+        // A document, or a photo that couldn't be downloaded yet: tapping opens it (or tries again).
+        else -> FileChip(
+            name = embed.name,
+            isImage = embed.isImage,
+            onClick = { onOpen(embed.path) },
+            modifier = modifier,
+            size = embed.size,
+            isDownloading = embed.isDownloading,
+        )
     }
 }
 
@@ -86,34 +97,52 @@ internal fun NoteEmbedView(
 internal fun photoRequest(file: String): ImageRequest =
     ImageRequest.Builder(LocalContext.current).data(File(file)).allowHardware(false).build()
 
+/** A document (or a photo that couldn't load) as a card: its kind of file and size, a spinner while it downloads. */
 @Composable
-private fun FileChip(name: String, isImage: Boolean, onClick: (() -> Unit)?, modifier: Modifier = Modifier) {
+private fun FileChip(
+    name: String,
+    isImage: Boolean,
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+    size: Long? = null,
+    isDownloading: Boolean = false,
+) {
+    val context = LocalContext.current
     Row(
         modifier = modifier
+            .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(ElementTheme.colors.bgSubtleSecondary)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .then(if (onClick != null && !isDownloading) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Icon(
-            imageVector = if (isImage) CompoundIcons.Image() else CompoundIcons.Attachment(),
+            imageVector = if (isImage) CompoundIcons.Image() else CompoundIcons.Document(),
             contentDescription = null,
             tint = ElementTheme.colors.iconSecondary,
         )
-        Text(
-            text = name,
-            style = ElementTheme.typography.fontBodyMdMedium,
-            color = if (onClick != null) ElementTheme.colors.textPrimary else ElementTheme.colors.textSecondary,
-        )
-        if (onClick == null) {
+        Column(Modifier.weight(1f)) {
             Text(
-                stringResource(R.string.screen_notes_attachment_missing),
-                style = ElementTheme.typography.fontBodySmRegular,
-                color = ElementTheme.colors.textSecondary
+                text = name,
+                style = ElementTheme.typography.fontBodyLgMedium,
+                color = if (onClick != null) ElementTheme.colors.textPrimary else ElementTheme.colors.textSecondary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
+            val details = when {
+                onClick == null -> stringResource(R.string.screen_notes_attachment_missing)
+                else -> listOfNotNull(
+                    name.substringAfterLast('.', "").uppercase().takeIf { it.isNotEmpty() && it.length <= 5 },
+                    size?.let { Formatter.formatShortFileSize(context, it) },
+                ).joinToString(" · ")
+            }
+            if (details.isNotEmpty()) {
+                Text(details, style = ElementTheme.typography.fontBodySmRegular, color = ElementTheme.colors.textSecondary)
+            }
         }
+        if (isDownloading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
     }
 }
 

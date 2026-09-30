@@ -250,7 +250,7 @@ class NotesEditingPresentersTest {
         }
     }
 
-    /** A photo is uploaded and embedded on a line of its own at the cursor; a file becomes a link. */
+    /** A photo or a document is added in a paragraph of its own at the cursor, so it shows as a picture or a card. */
     @Test
     fun `attachments are uploaded and embedded`() = runTest {
         val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md", "Hoy"))))
@@ -268,7 +268,7 @@ class NotesEditingPresentersTest {
         NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock, reader).test {
             val state = consumeItemsUntilPredicate { !it.isLoading }.last()
             state.eventSink(NoteEditorEvent.Attach("content://file"))
-            assertThat(consumeItemsUntilPredicate { it.value.text.contains("factura") }.last().value.text).isEqualTo("Hoy[[factura.pdf]]")
+            assertThat(consumeItemsUntilPredicate { it.value.text.contains("factura") }.last().value.text).isEqualTo("Hoy\n\n![[factura.pdf]]\n\n")
             cancelAndIgnoreRemainingEvents()
         }
     }

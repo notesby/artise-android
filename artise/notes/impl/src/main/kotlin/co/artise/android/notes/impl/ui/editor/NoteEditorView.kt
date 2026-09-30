@@ -80,6 +80,7 @@ import io.element.android.libraries.designsystem.components.dialogs.SaveChangesD
 import io.element.android.libraries.designsystem.components.list.ListItemContent
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
+import io.element.android.libraries.designsystem.theme.components.CircularProgressIndicator
 import io.element.android.libraries.designsystem.theme.components.DropdownMenu
 import io.element.android.libraries.designsystem.theme.components.DropdownMenuItem
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
@@ -94,7 +95,6 @@ import io.element.android.libraries.designsystem.theme.components.TextButton
 import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.ui.strings.CommonStrings
 import kotlinx.collections.immutable.ImmutableMap
-import java.io.File
 
 @Composable
 fun NoteEditorView(
@@ -266,10 +266,13 @@ private fun NotePreview(state: NoteEditorState, modifier: Modifier = Modifier) {
     }
 }
 
-/** The note's photos as thumbnails under the text while editing, since the text itself can't show pictures. */
+/**
+ * The note's photos and documents as thumbnails under the text while editing, since the text itself can't show
+ * them: photos first, then documents with their kind of file.
+ */
 @Composable
 private fun PhotoStrip(embeds: ImmutableMap<String, EmbedState>, onOpen: (path: String) -> Unit) {
-    val photos = embeds.values.filter { it.isImage }.distinctBy { it.path }
+    val photos = embeds.values.distinctBy { it.path }.sortedBy { !it.isImage }
     if (photos.isEmpty()) return
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -282,11 +285,25 @@ private fun PhotoStrip(embeds: ImmutableMap<String, EmbedState>, onOpen: (path: 
                 .clip(shape)
                 .background(ElementTheme.colors.bgSubtleSecondary, shape)
                 .clickable(onClickLabel = photo.name) { onOpen(photo.path) }
-            if (photo.file != null) {
-                AsyncImage(model = photoRequest(photo.file), contentDescription = photo.name, contentScale = ContentScale.Crop, modifier = thumbnail)
-            } else {
-                Box(thumbnail, contentAlignment = Alignment.Center) {
-                    Icon(imageVector = CompoundIcons.Image(), contentDescription = photo.name, tint = ElementTheme.colors.iconSecondary)
+            when {
+                photo.isImage && photo.file != null ->
+                    AsyncImage(model = photoRequest(photo.file), contentDescription = photo.name, contentScale = ContentScale.Crop, modifier = thumbnail)
+                photo.isDownloading -> Box(thumbnail, contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                }
+                else -> Column(thumbnail.padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                    Icon(
+                        imageVector = if (photo.isImage) CompoundIcons.Image() else CompoundIcons.Document(),
+                        contentDescription = photo.name,
+                        tint = ElementTheme.colors.iconSecondary,
+                    )
+                    if (!photo.isImage) {
+                        Text(
+                            text = photo.name.substringAfterLast('.', "").uppercase().take(5),
+                            style = ElementTheme.typography.fontBodyXsMedium,
+                            color = ElementTheme.colors.textSecondary,
+                        )
+                    }
                 }
             }
         }

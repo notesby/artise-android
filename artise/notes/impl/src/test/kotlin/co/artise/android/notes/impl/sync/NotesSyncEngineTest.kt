@@ -27,6 +27,7 @@ import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.services.toolbox.test.systemclock.FakeSystemClock
 import io.element.android.tests.testutils.testCoroutineDispatchers
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
@@ -43,6 +44,9 @@ class NotesSyncEngineTest {
     private val room = RoomId(A_ROOM)
     private val tree = "GET /chats/$A_ROOM_ENCODED/tree"
     private val put = "PUT /chats/$A_ROOM_ENCODED/note"
+
+    // Whether the phone is on Wi-Fi, for downloading photos ahead of time.
+    private var onWifi = false
 
     // Stands in for Android's decoder: "converts" HEIC by returning fixed JPEG bytes, leaves everything else alone.
     private val photoConverter = PhotoConverter { _, type -> if (type == "image/heic") byteArrayOf(7, 7) else null }
@@ -62,6 +66,7 @@ class NotesSyncEngineTest {
             attachmentsDir = Files.createTempDirectory("attachments").toFile(),
             pendingDir = Files.createTempDirectory("pending").toFile(),
             photoConverter = photoConverter,
+            prefetchPolicy = { onWifi },
         )
     }
 
@@ -439,6 +444,36 @@ class NotesSyncEngineTest {
         engine.discardEdit(refused.id)
         assertThat(engine.edits(room)).isEmpty()
         assertThat(engine.file(room, "attachments/luna.jpg")).isNull()
+    }
+
+    /** On Wi-Fi, photos embedded in notes download after a sync, so they show offline; documents wait to be opened. */
+    @Test
+    fun `photos are downloaded ahead of time on wifi`() = runTest {
+        onWifi = true
+        val engine = engine()
+        server.enqueue(tree, treeResponse("t1", "Mole.md" to "m1", "luna.jpg" to "p1", "factura.pdf" to "f1"))
+        server.enqueue(noteKey("Mole.md"), note("Mole.md", "m1", "![[luna.jpg]]\\n\\n![[factura.pdf]]"))
+        server.always("GET /chats/$A_ROOM_ENCODED/raw?path=luna.jpg", MockResponse().setBody(Buffer().write(byteArrayOf(5))))
+        engine.sync(room).getOrThrow()
+        // advanceUntilIdle() stops once the test itself is done; runCurrent() also runs the background download.
+        runCurrent()
+        assertThat(server.requestsTo("GET /chats/$A_ROOM_ENCODED/raw?path=luna.jpg")).hasSize(1)
+        assertThat(server.requestsTo("GET /chats/$A_ROOM_ENCODED/raw?path=factura.pdf")).isEmpty()
+        // Already on the phone: showing it costs nothing.
+        assertThat(engine.attachment(room, "luna.jpg").getOrThrow().readBytes()).isEqualTo(byteArrayOf(5))
+        assertThat(server.requestsTo("GET /chats/$A_ROOM_ENCODED/raw?path=luna.jpg")).hasSize(1)
+    }
+
+    /** On mobile data nothing downloads ahead of time: families' prepaid data isn't spent on photos nobody opened. */
+    @Test
+    fun `nothing downloads ahead of time on mobile data`() = runTest {
+        onWifi = false
+        val engine = engine()
+        server.enqueue(tree, treeResponse("t1", "Mole.md" to "m1", "luna.jpg" to "p1"))
+        server.enqueue(noteKey("Mole.md"), note("Mole.md", "m1", "![[luna.jpg]]"))
+        engine.sync(room).getOrThrow()
+        runCurrent()
+        assertThat(server.requests.none { it.path.orEmpty().contains("/raw") }).isTrue()
     }
 
     /** An attachment is downloaded once; opening it again uses the copy on the phone. */

@@ -90,10 +90,18 @@ class NotePresenter(
         }
         LaunchedEffect(file?.content) {
             val content = file?.content ?: return@LaunchedEffect
-            val found = NoteEmbeds.resolve(content, repository.files(roomId).map { it.path })
+            val files = repository.files(roomId).associateBy { it.path }
+            val found = NoteEmbeds.resolve(content, files.keys)
             embeds = found.mapValues { (_, embedPath) ->
                 val known = embeds.values.firstOrNull { it.path == embedPath }
-                known ?: EmbedState(embedPath, NoteEmbeds.nameOf(embedPath), NoteEmbeds.isImage(embedPath), file = null, failed = false)
+                known ?: EmbedState(
+                    path = embedPath,
+                    name = NoteEmbeds.nameOf(embedPath),
+                    isImage = NoteEmbeds.isImage(embedPath),
+                    file = null,
+                    failed = false,
+                    size = files[embedPath]?.size?.takeIf { it > 0 },
+                )
             }.toImmutableMap()
             // Photos show inside the note: download each one not on the phone yet.
             for ((target, embed) in embeds) {
@@ -112,8 +120,16 @@ class NotePresenter(
             )
         }
 
+        fun markDownloading(attachmentPath: String, downloading: Boolean) {
+            embeds = embeds.mapValues { (_, embed) -> if (embed.path == attachmentPath) embed.copy(isDownloading = downloading) else embed }
+                .toImmutableMap()
+        }
+
         suspend fun openAttachment(attachmentPath: String) {
-            repository.attachment(roomId, attachmentPath).fold(
+            markDownloading(attachmentPath, true)
+            val result = repository.attachment(roomId, attachmentPath)
+            markDownloading(attachmentPath, false)
+            result.fold(
                 onSuccess = { downloaded -> openFile = OpenFileRequest(downloaded.absolutePath, NoteEmbeds.nameOf(attachmentPath)) },
                 onFailure = { dialog = NoteDialog.AttachmentUnavailable },
             )

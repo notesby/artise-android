@@ -81,6 +81,7 @@ class NoteEditorPresenter(
         var isAttaching by remember { mutableStateOf(false) }
         var isPreviewing by remember { mutableStateOf(false) }
         var allPaths by remember { mutableStateOf(emptyList<String>()) }
+        var sizes by remember { mutableStateOf(emptyMap<String, Long>()) }
         var embeds by remember { mutableStateOf<ImmutableMap<String, EmbedState>>(persistentMapOf()) }
         var openFile by remember { mutableStateOf<OpenFileRequest?>(null) }
         var openFileProblem by remember { mutableStateOf(false) }
@@ -98,6 +99,7 @@ class NoteEditorPresenter(
             val files = repository.files(roomId)
             notePaths = files.filter { it.isNote }.map { it.path }.toImmutableList()
             allPaths = files.map { it.path }
+            sizes = files.associate { it.path to it.size }
             isLoaded = true
         }
 
@@ -106,7 +108,14 @@ class NoteEditorPresenter(
         LaunchedEffect(embedTargets) {
             embeds = embedTargets.mapValues { (_, embedPath) ->
                 embeds.values.firstOrNull { it.path == embedPath }
-                    ?: EmbedState(embedPath, NoteEmbeds.nameOf(embedPath), NoteEmbeds.isImage(embedPath), file = null, failed = false)
+                    ?: EmbedState(
+                        path = embedPath,
+                        name = NoteEmbeds.nameOf(embedPath),
+                        isImage = NoteEmbeds.isImage(embedPath),
+                        file = null,
+                        failed = false,
+                        size = sizes[embedPath]?.takeIf { it > 0 },
+                    )
             }.toImmutableMap()
             // Photos show in the strip and the preview: load each one not loaded yet.
             for ((target, embed) in embeds) {
@@ -239,7 +248,9 @@ class NoteEditorPresenter(
                     is NoteEditorEvent.Attach -> if (!isAttaching) {
                         isAttaching = true
                         scope.launch {
+                            var uploadedSize: Long? = null
                             val uploaded = attachmentReader.read(event.uri).mapCatchingExceptions { picked ->
+                                uploadedSize = picked.bytes.size.toLong()
                                 repository.addAttachment(roomId, picked.name, picked.bytes, picked.mimeType).getOrThrow()
                             }
                             isAttaching = false
@@ -247,6 +258,7 @@ class NoteEditorPresenter(
                                 onSuccess = { attachmentPath ->
                                     // Known at once, so the photo appears in the strip and the preview right away.
                                     allPaths = allPaths + attachmentPath
+                                    sizes = sizes + (attachmentPath to (uploadedSize ?: 0L))
                                     commit(insertEmbed(value, attachmentPath), isTyping = false)
                                     // Upload now if there's a connection; otherwise it waits in the queue.
                                     repository.syncInBackground(roomId)
@@ -264,7 +276,13 @@ class NoteEditorPresenter(
                         commit(value.copy(text = it), isTyping = false)
                     }
                     is NoteEditorEvent.OpenAttachment -> scope.launch {
-                        repository.attachment(roomId, event.path).fold(
+                        fun mark(downloading: Boolean) {
+                            embeds = embeds.mapValues { (_, e) -> if (e.path == event.path) e.copy(isDownloading = downloading) else e }.toImmutableMap()
+                        }
+                        mark(true)
+                        val result = repository.attachment(roomId, event.path)
+                        mark(false)
+                        result.fold(
                             onSuccess = { openFile = OpenFileRequest(it.absolutePath, NoteEmbeds.nameOf(event.path)) },
                             onFailure = { openFileProblem = true },
                         )
@@ -300,25 +318,21 @@ class NoteEditorPresenter(
     }
 
     /**
-     * Writes the attachment at the cursor: a photo as `![[name]]` on a line of its own, so it shows in the note;
-     * other files as a `[[name]]` link. Obsidian finds both by name.
+     * Writes the attachment at the cursor as `![[name]]` in a paragraph of its own: a photo shows as the picture,
+     * a document as a card to open. Obsidian finds both by name and embeds them the same way.
      */
     private fun insertEmbed(current: TextFieldValue, attachmentPath: String): TextFieldValue {
         val text = current.text
         val at = maxOf(current.selection.start, current.selection.end)
         val name = attachmentPath.substringAfterLast('/')
-        val embed = if (NoteEmbeds.isImage(attachmentPath)) {
-            // A paragraph of its own (blank lines around it), which every Markdown app shows as a photo.
-            val before = when {
-                at == 0 || text.substring(0, at).endsWith("\n\n") -> ""
-                text[at - 1] == '\n' -> "\n"
-                else -> "\n\n"
-            }
-            val after = if (text.substring(at).startsWith("\n\n")) "" else "\n\n"
-            "$before![[$name]]$after"
-        } else {
-            "[[$name]]"
+        // Blank lines around it, which every Markdown app reads as its own paragraph.
+        val before = when {
+            at == 0 || text.substring(0, at).endsWith("\n\n") -> ""
+            text[at - 1] == '\n' -> "\n"
+            else -> "\n\n"
         }
+        val after = if (text.substring(at).startsWith("\n\n")) "" else "\n\n"
+        val embed = "$before![[$name]]$after"
         return TextFieldValue(text.substring(0, at) + embed + text.substring(at), TextRange(at + embed.length))
     }
 

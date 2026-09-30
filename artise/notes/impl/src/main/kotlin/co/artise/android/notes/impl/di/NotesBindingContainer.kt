@@ -10,6 +10,7 @@ package co.artise.android.notes.impl.di
 import android.content.Context
 import co.artise.android.notes.api.NotesRepository
 import co.artise.android.notes.impl.attachments.PhotoConverter
+import co.artise.android.notes.impl.attachments.PrefetchPolicy
 import co.artise.android.notes.impl.auth.NotesTokenSource
 import co.artise.android.notes.impl.db.NotesDatabase
 import co.artise.android.notes.impl.local.NotesLocalStore
@@ -66,6 +67,7 @@ object NotesBindingContainer {
         dispatchers: CoroutineDispatchers,
         @SessionCoroutineScope sessionScope: CoroutineScope,
         photoConverter: PhotoConverter,
+        prefetchPolicy: PrefetchPolicy,
     ): NotesRepository = NotesSyncEngine(
         api = NotesApiClient(okHttpClient.withoutBodyLogging(), tokenSource, dispatchers),
         store = NotesLocalStore(database),
@@ -75,6 +77,7 @@ object NotesBindingContainer {
         attachmentsDir = attachmentsDir(context, matrixClient.sessionId.value),
         pendingDir = pendingUploadsDir(context, matrixClient.sessionId.value),
         photoConverter = photoConverter,
+        prefetchPolicy = prefetchPolicy,
     )
 
     /** Photos and files waiting to upload: app storage, so Android doesn't clear them like the cache. */

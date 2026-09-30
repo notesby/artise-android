@@ -48,6 +48,10 @@ data class EmbedState(
     val isImage: Boolean,
     val file: String?,
     val failed: Boolean,
+    /** In bytes, when known; shown on document cards. */
+    val size: Long? = null,
+    /** Being downloaded to open it. */
+    val isDownloading: Boolean = false,
 )
 
 /** Open [file] (on the phone) in the app the person uses for that kind of file. */
