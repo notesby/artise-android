@@ -61,6 +61,20 @@ enum class UploadStatus {
     FAILED,
 }
 
+/** A photo or file in a chat's notes, and the notes that use it (embedded or linked). */
+data class MediaFile(
+    val path: String,
+    val size: Long,
+    val modified: Long,
+    /** The notes that show or link it; empty when no note uses it. */
+    val usedBy: List<String>,
+    /** Added on this phone and not on the server yet. */
+    val upload: UploadStatus?,
+)
+
+/** A photo or file wasn't deleted because notes use it: [usedBy] says which. */
+class MediaInUseException(val usedBy: List<String>) : Exception("Used by ${usedBy.size} notes")
+
 /** An edit made on this phone that hasn't reached the server. */
 data class PendingEdit(
     val id: Long,

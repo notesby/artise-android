@@ -13,6 +13,7 @@ import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import app.cash.turbine.test
 import co.artise.android.notes.api.EditKind
 import co.artise.android.notes.api.EditState
+import co.artise.android.notes.api.MediaInUseException
 import co.artise.android.notes.api.NotesException
 import co.artise.android.notes.api.UploadStatus
 import co.artise.android.notes.impl.A_ROOM
@@ -521,6 +522,96 @@ class NotesSyncEngineTest {
         ).inOrder()
         assertThat(analytics.capturedEvents.map { it.getName() }).containsExactly("NotesNoteSaved", "NotesAttachmentAdded", "NotesAttachmentAdded")
         assertThat(analytics.capturedEvents.flatMap { it.getProperties().orEmpty().values }).containsExactly("photo", "document")
+    }
+
+    private suspend fun NotesSyncEngine.syncWithPhoto(moleText: String) {
+        server.enqueue(tree, treeResponse("t1", "Mole.md" to "m1", "luna.jpg" to "p1", "factura.pdf" to "f1"))
+        server.enqueue(noteKey("Mole.md"), note("Mole.md", "m1", moleText))
+        sync(room).getOrThrow()
+    }
+
+    private val lunaLinks = "GET /chats/$A_ROOM_ENCODED/links?path=luna.jpg"
+    private val lunaDelete = "DELETE /chats/$A_ROOM_ENCODED/file?path=luna.jpg&base=p1"
+
+    /** The photos and files list says which notes use each one, from the notes on the phone. */
+    @Test
+    fun `media lists which notes use each file`() = runTest {
+        val engine = engine()
+        engine.syncWithPhoto("![[luna.jpg]]")
+        val media = engine.media(room).associateBy { it.path }
+        assertThat(media.keys).containsExactly("luna.jpg", "factura.pdf")
+        assertThat(media["luna.jpg"]?.usedBy).containsExactly("Mole.md")
+        assertThat(media["factura.pdf"]?.usedBy).isEmpty()
+    }
+
+    /** An unused file is deleted only after the notes are refreshed and the server confirms no note uses it. */
+    @Test
+    fun `unused files are deleted after checking the server`() = runTest {
+        val engine = engine()
+        engine.syncWithPhoto("# Mole")
+        server.enqueue(tree, MockResponse().setResponseCode(304))
+        server.enqueue(lunaLinks, json(body = """{"path": "luna.jpg", "outgoing": [], "backlinks": []}"""))
+        server.enqueue(lunaDelete, json(body = """{"path": "luna.jpg", "deleted": true}"""))
+        server.always(tree, MockResponse().setResponseCode(304))
+        engine.deleteMedia(room, "luna.jpg", removeFromNotes = false).getOrThrow()
+        runCurrent()
+        assertThat(server.requestsTo(lunaDelete)).hasSize(1)
+        assertThat(engine.file(room, "luna.jpg")).isNull()
+        assertThat(engine.edits(room)).isEmpty()
+    }
+
+    /** A file another app's note uses (the server knows) isn't deleted: the person is told which notes use it. */
+    @Test
+    fun `files used elsewhere are kept`() = runTest {
+        val engine = engine()
+        engine.syncWithPhoto("# Mole")
+        server.enqueue(tree, MockResponse().setResponseCode(304))
+        server.enqueue(lunaLinks, json(body = """{"path": "luna.jpg", "backlinks": [{"path": "Viaje.md", "line": "![[luna.jpg]]"}]}"""))
+        val error = engine.deleteMedia(room, "luna.jpg", removeFromNotes = false).exceptionOrNull()
+        assertThat((error as MediaInUseException).usedBy).containsExactly("Viaje.md")
+        assertThat(engine.file(room, "luna.jpg")).isNotNull()
+        assertThat(server.requestsTo(lunaDelete)).isEmpty()
+    }
+
+    /** "Remove from notes and delete": the notes lose the photo first, then the file is deleted. */
+    @Test
+    fun `files are taken out of notes before deleting`() = runTest {
+        val engine = engine()
+        engine.syncWithPhoto("Hoy\n\n![[luna.jpg]]\n\nfin")
+        server.enqueue(tree, MockResponse().setResponseCode(304))
+        server.enqueue(lunaLinks, json(body = """{"path": "luna.jpg", "backlinks": [{"path": "Mole.md", "line": "![[luna.jpg]]"}]}"""))
+        server.enqueue(put, json(body = """{"path": "Mole.md", "version": "m2", "merged": false}"""))
+        server.enqueue(lunaDelete, json(body = """{"path": "luna.jpg", "deleted": true}"""))
+        server.always(tree, MockResponse().setResponseCode(304))
+        engine.deleteMedia(room, "luna.jpg", removeFromNotes = true).getOrThrow()
+        runCurrent()
+        assertThat(engine.file(room, "Mole.md")?.content).isEqualTo("Hoy\n\nfin")
+        val writes = server.requests.map { it.method + " " + it.path.orEmpty().substringBefore('?') }.filter { !it.startsWith("GET") }
+        assertThat(writes).containsExactly("PUT /api/notes/v1/chats/$A_ROOM_ENCODED/note", "DELETE /api/notes/v1/chats/$A_ROOM_ENCODED/file").inOrder()
+    }
+
+    /**
+     * If a note elsewhere starts using the file between the check and the delete, the server keeps it (`in_use`): the
+     * delete waits for a choice, with the server's reason, and dropping it brings the file back on the next sync.
+     */
+    @Test
+    fun `the server can keep a file notes use`() = runTest {
+        val engine = engine()
+        engine.syncWithPhoto("# Mole")
+        server.enqueue(tree, MockResponse().setResponseCode(304))
+        server.enqueue(lunaLinks, json(body = """{"path": "luna.jpg", "backlinks": []}"""))
+        server.enqueue(lunaDelete, error(409, "in_use", """"used_by": ["Viaje.md"]"""))
+        server.always(tree, MockResponse().setResponseCode(304))
+        engine.deleteMedia(room, "luna.jpg", removeFromNotes = false).getOrThrow()
+        runCurrent()
+        val refused = engine.edits(room).single()
+        assertThat(refused.kind).isEqualTo(EditKind.DELETE)
+        assertThat(refused.state).isEqualTo(EditState.REJECTED)
+
+        engine.discardEdit(refused.id)
+        server.enqueue(tree, treeResponse("t1", "Mole.md" to "m1", "luna.jpg" to "p1", "factura.pdf" to "f1"))
+        engine.sync(room).getOrThrow()
+        assertThat(engine.file(room, "luna.jpg")).isNotNull()
     }
 
     /** On Wi-Fi, photos embedded in notes download after a sync, so they show offline; documents wait to be opened. */
