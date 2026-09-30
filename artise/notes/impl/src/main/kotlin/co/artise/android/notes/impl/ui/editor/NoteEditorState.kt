@@ -8,7 +8,10 @@
 package co.artise.android.notes.impl.ui.editor
 
 import androidx.compose.ui.text.input.TextFieldValue
+import co.artise.android.notes.impl.ui.note.EmbedState
+import co.artise.android.notes.impl.ui.note.OpenFileRequest
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableMap
 
 data class NoteEditorState(
     val title: String,
@@ -29,6 +32,14 @@ data class NoteEditorState(
     /** A photo or file is being uploaded. */
     val isAttaching: Boolean,
     val attachError: AttachError?,
+    /** Showing the finished note (photos, links, checkboxes) instead of the text being edited. */
+    val isPreviewing: Boolean,
+    /** Photos and files embedded in the text, by the target written in it; photos load by themselves. */
+    val embeds: ImmutableMap<String, EmbedState>,
+    /** A photo or file to hand to another app, once. */
+    val openFile: OpenFileRequest?,
+    /** A photo or file couldn't be opened (usually no connection), or no app takes it. */
+    val openFileProblem: Boolean,
     val canUndo: Boolean,
     val canRedo: Boolean,
     val showSaveChangesDialog: Boolean,

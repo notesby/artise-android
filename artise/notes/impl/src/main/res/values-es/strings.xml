@@ -100,4 +100,6 @@
     <string name="screen_notes_attach_camera_denied">Para tomar fotos aquí, permite que Artise use la cámara en los ajustes del teléfono.</string>
     <string name="screen_notes_attach_no_camera">No hay una app de cámara en este teléfono.</string>
     <string name="screen_notes_sync_partial">Algunos de tus cambios aún no se pudieron enviar. Se enviarán en la próxima actualización.</string>
+    <string name="a11y_notes_preview">Vista previa</string>
+    <string name="a11y_notes_back_to_editing">Volver a editar</string>
 </resources>

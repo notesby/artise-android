@@ -31,6 +31,19 @@ sealed interface NoteEditorEvent {
 
     data object DismissAttachError : NoteEditorEvent
 
+    /** Switch between editing the text and previewing the finished note. */
+    data object TogglePreview : NoteEditorEvent
+
+    /** In the preview, a checklist item was tapped: tick it in the text. */
+    data class ToggleTask(val lineIndex: Int) : NoteEditorEvent
+
+    /** A photo in the strip or the preview was tapped: open it in another app. */
+    data class OpenAttachment(val path: String) : NoteEditorEvent
+
+    data class FileOpenHandled(val opened: Boolean) : NoteEditorEvent
+
+    data object DismissOpenFileProblem : NoteEditorEvent
+
     data object Undo : NoteEditorEvent
 
     data object Redo : NoteEditorEvent

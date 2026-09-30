@@ -21,7 +21,9 @@ import androidx.compose.ui.text.input.TextFieldValue
 import co.artise.android.notes.api.NotesRepository
 import co.artise.android.notes.impl.markdown.ChecklistToggle
 import co.artise.android.notes.impl.ui.folder.NotesFolderEntries
+import co.artise.android.notes.impl.ui.note.EmbedState
 import co.artise.android.notes.impl.ui.note.NoteEmbeds
+import co.artise.android.notes.impl.ui.note.OpenFileRequest
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
@@ -30,8 +32,11 @@ import io.element.android.libraries.core.extensions.mapCatchingExceptions
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.services.toolbox.api.systemclock.SystemClock
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.launch
 
 fun interface NoteEditorNavigator {
@@ -74,6 +79,11 @@ class NoteEditorPresenter(
         val redoStack = remember { mutableStateListOf<TextFieldValue>() }
         var lastTypingAt by remember { mutableLongStateOf(0L) }
         var isAttaching by remember { mutableStateOf(false) }
+        var isPreviewing by remember { mutableStateOf(false) }
+        var allPaths by remember { mutableStateOf(emptyList<String>()) }
+        var embeds by remember { mutableStateOf<ImmutableMap<String, EmbedState>>(persistentMapOf()) }
+        var openFile by remember { mutableStateOf<OpenFileRequest?>(null) }
+        var openFileProblem by remember { mutableStateOf(false) }
         var attachError by remember { mutableStateOf<AttachError?>(null) }
 
         LaunchedEffect(Unit) {
@@ -85,8 +95,25 @@ class NoteEditorPresenter(
             }
             value = TextFieldValue(initial, TextRange(initial.length))
             original = initial
-            notePaths = repository.files(roomId).filter { it.isNote }.map { it.path }.toImmutableList()
+            val files = repository.files(roomId)
+            notePaths = files.filter { it.isNote }.map { it.path }.toImmutableList()
+            allPaths = files.map { it.path }
             isLoaded = true
+        }
+
+        // The photos and files the text embeds right now; looked up as the text changes (a quick scan).
+        val embedTargets = remember(value.text, allPaths) { NoteEmbeds.resolve(value.text, allPaths) }
+        LaunchedEffect(embedTargets) {
+            embeds = embedTargets.mapValues { (_, embedPath) ->
+                embeds.values.firstOrNull { it.path == embedPath }
+                    ?: EmbedState(embedPath, NoteEmbeds.nameOf(embedPath), NoteEmbeds.isImage(embedPath), file = null, failed = false)
+            }.toImmutableMap()
+            // Photos show in the strip and the preview: load each one not loaded yet.
+            for ((target, embed) in embeds) {
+                if (!embed.isImage || embed.file != null || embed.failed) continue
+                val result = repository.attachment(roomId, embed.path)
+                embeds = (embeds + (target to embed.copy(file = result.getOrNull()?.absolutePath, failed = result.isFailure))).toImmutableMap()
+            }
         }
 
         val text = value.text
@@ -182,6 +209,10 @@ class NoteEditorPresenter(
             notePaths = notePaths,
             linkEdit = linkEdit,
             isAttaching = isAttaching,
+            isPreviewing = isPreviewing,
+            embeds = embeds,
+            openFile = openFile,
+            openFileProblem = openFileProblem,
             attachError = attachError,
             canUndo = undoStack.isNotEmpty(),
             canRedo = redoStack.isNotEmpty(),
@@ -214,6 +245,8 @@ class NoteEditorPresenter(
                             isAttaching = false
                             uploaded.fold(
                                 onSuccess = { attachmentPath ->
+                                    // Known at once, so the photo appears in the strip and the preview right away.
+                                    allPaths = allPaths + attachmentPath
                                     commit(insertEmbed(value, attachmentPath), isTyping = false)
                                     // Upload now if there's a connection; otherwise it waits in the queue.
                                     repository.syncInBackground(roomId)
@@ -225,6 +258,22 @@ class NoteEditorPresenter(
                         }
                     }
                     NoteEditorEvent.DismissAttachError -> attachError = null
+                    NoteEditorEvent.TogglePreview -> isPreviewing = !isPreviewing
+                    is NoteEditorEvent.ToggleTask -> ChecklistToggle.toggle(value.text, event.lineIndex)?.let {
+                        // "[ ]" and "[x]" are the same length, so the cursor stays valid.
+                        commit(value.copy(text = it), isTyping = false)
+                    }
+                    is NoteEditorEvent.OpenAttachment -> scope.launch {
+                        repository.attachment(roomId, event.path).fold(
+                            onSuccess = { openFile = OpenFileRequest(it.absolutePath, NoteEmbeds.nameOf(event.path)) },
+                            onFailure = { openFileProblem = true },
+                        )
+                    }
+                    is NoteEditorEvent.FileOpenHandled -> {
+                        openFile = null
+                        if (!event.opened) openFileProblem = true
+                    }
+                    NoteEditorEvent.DismissOpenFileProblem -> openFileProblem = false
                     NoteEditorEvent.Undo -> undoStack.removeLastOrNull()?.let { previous ->
                         redoStack += value
                         value = previous

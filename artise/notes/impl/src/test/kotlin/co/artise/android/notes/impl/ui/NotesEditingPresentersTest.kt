@@ -289,6 +289,36 @@ class NotesEditingPresentersTest {
         assertThat(repository.backgroundSyncs).isEmpty()
     }
 
+    /**
+     * The note's photos load for the strip and the preview; in the preview a tick changes the text being edited (and
+     * can be undone); a tapped photo is handed to another app.
+     */
+    @Test
+    fun `preview and photo strip`() = runTest {
+        val photo = java.nio.file.Files.createTempFile("luna", ".jpg").toFile()
+        val repository = FakeNotesRepository(
+            files = mutableMapOf(
+                room to listOf(aNote("Súper.md", "- [ ] pan\n\n![[luna.jpg]]"), aNote("attachments/luna.jpg").copy(isNote = false)),
+            ),
+        )
+        repository.attachmentResult = { Result.success(photo) }
+        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock, reader).test {
+            val loaded = consumeItemsUntilPredicate { it.embeds["luna.jpg"]?.file != null }.last()
+            assertThat(loaded.embeds["luna.jpg"]?.isImage).isTrue()
+
+            loaded.eventSink(NoteEditorEvent.TogglePreview)
+            val previewing = consumeItemsUntilPredicate { it.isPreviewing }.last()
+            previewing.eventSink(NoteEditorEvent.ToggleTask(0))
+            val ticked = consumeItemsUntilPredicate { it.value.text.startsWith("- [x]") }.last()
+            assertThat(ticked.canUndo).isTrue()
+            assertThat(ticked.hasUnsavedChanges).isTrue()
+
+            ticked.eventSink(NoteEditorEvent.OpenAttachment("attachments/luna.jpg"))
+            assertThat(consumeItemsUntilPredicate { it.openFile != null }.last().openFile?.file).isEqualTo(photo.absolutePath)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     /** A toolbar button formats the selection in the editor's text, keeping it selected. */
     @Test
     fun `toolbar formats the selection`() = runTest {

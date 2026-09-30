@@ -11,6 +11,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
 
 open class NoteEditorStatePreviewParam : PreviewParameterProvider<NoteEditorState> {
     override val values: Sequence<NoteEditorState>
@@ -27,6 +28,7 @@ open class NoteEditorStatePreviewParam : PreviewParameterProvider<NoteEditorStat
             ),
             aNoteEditorState(text = "- leche" + NoteEditorPresenter.CONFLICT_SEPARATOR + "- pan", isResolvingConflict = true),
             aNoteEditorState(showSaveChangesDialog = true),
+            aNoteEditorState(isPreviewing = true),
         )
 }
 
@@ -36,6 +38,7 @@ fun aNoteEditorState(
     isResolvingConflict: Boolean = false,
     suggestions: List<WikiLinkSuggestion> = emptyList(),
     showSaveChangesDialog: Boolean = false,
+    isPreviewing: Boolean = false,
 ) = NoteEditorState(
     title = "Súper",
     value = TextFieldValue(text, TextRange(cursor)),
@@ -47,6 +50,10 @@ fun aNoteEditorState(
     notePaths = persistentListOf("Recetas/Mole.md", "Súper.md"),
     linkEdit = null,
     isAttaching = false,
+    isPreviewing = isPreviewing,
+    embeds = persistentMapOf(),
+    openFile = null,
+    openFileProblem = false,
     attachError = null,
     canUndo = true,
     canRedo = false,

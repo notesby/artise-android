@@ -14,9 +14,13 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,23 +28,32 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -52,6 +65,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.core.content.ContextCompat
 import co.artise.android.notes.impl.R
+import co.artise.android.notes.impl.markdown.NoteLink
+import co.artise.android.notes.impl.markdown.NoteMarkdownView
+import co.artise.android.notes.impl.ui.note.EmbedState
+import co.artise.android.notes.impl.ui.note.NoteEmbedView
+import co.artise.android.notes.impl.ui.note.openDownloadedFile
+import coil3.compose.AsyncImage
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.libraries.designsystem.components.button.BackButton
@@ -73,6 +92,8 @@ import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TextButton
 import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.ui.strings.CommonStrings
+import kotlinx.collections.immutable.ImmutableMap
+import java.io.File
 
 @Composable
 fun NoteEditorView(
@@ -87,6 +108,14 @@ fun NoteEditorView(
                 titleStr = state.title,
                 navigationIcon = { BackButton(onClick = { state.eventSink(NoteEditorEvent.Back) }) },
                 actions = {
+                    // Eye: see the finished note (photos, links, checkboxes); pencil: back to editing.
+                    IconButton(onClick = { state.eventSink(NoteEditorEvent.TogglePreview) }, enabled = !state.isLoading) {
+                        if (state.isPreviewing) {
+                            Icon(imageVector = CompoundIcons.Edit(), contentDescription = stringResource(R.string.a11y_notes_back_to_editing))
+                        } else {
+                            Icon(imageVector = CompoundIcons.VisibilityOn(), contentDescription = stringResource(R.string.a11y_notes_preview))
+                        }
+                    }
                     IconButton(onClick = { state.eventSink(NoteEditorEvent.Undo) }, enabled = state.canUndo) {
                         Icon(imageVector = Icons.AutoMirrored.Filled.Undo, contentDescription = stringResource(R.string.a11y_notes_undo))
                     }
@@ -117,6 +146,10 @@ fun NoteEditorView(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             }
+            if (state.isPreviewing) {
+                NotePreview(state, Modifier.weight(1f))
+                return@Column
+            }
             BasicTextField(
                 value = state.value,
                 onValueChange = { state.eventSink(NoteEditorEvent.ValueChanged(it)) },
@@ -139,6 +172,7 @@ fun NoteEditorView(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                 )
             }
+            PhotoStrip(state.embeds, onOpen = { state.eventSink(NoteEditorEvent.OpenAttachment(it)) })
             HorizontalDivider()
             if (state.suggestions.isEmpty()) {
                 FormattingToolbar(
@@ -165,6 +199,17 @@ fun NoteEditorView(
                 }
             }
         }
+    }
+    val context = LocalContext.current
+    state.openFile?.let { request ->
+        LaunchedEffect(request) { state.eventSink(NoteEditorEvent.FileOpenHandled(opened = context.openDownloadedFile(request))) }
+    }
+    if (state.openFileProblem) {
+        ErrorDialog(
+            content = stringResource(R.string.screen_notes_attachment_unavailable),
+            title = null,
+            onSubmit = { state.eventSink(NoteEditorEvent.DismissOpenFileProblem) },
+        )
     }
     state.linkEdit?.let { edit ->
         LinkEditDialog(
@@ -193,6 +238,57 @@ fun NoteEditorView(
             onDiscardClick = { state.eventSink(NoteEditorEvent.DiscardChanges) },
             onDismiss = { state.eventSink(NoteEditorEvent.DismissSaveChangesDialog) },
         )
+    }
+}
+
+/** The note as it will read: photos, links and checkboxes work, like the note screen. Ticks change the text being edited. */
+@Composable
+private fun NotePreview(state: NoteEditorState, modifier: Modifier = Modifier) {
+    val uriHandler = LocalUriHandler.current
+    Column(
+        modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+    ) {
+        NoteMarkdownView(
+            markdown = state.value.text,
+            onLinkClick = { link ->
+                // Web links open; links to other notes wait until the edit is saved, so nothing is lost.
+                if (link is NoteLink.Web) uriHandler.openUri(link.url)
+            },
+            onTaskToggle = { line -> state.eventSink(NoteEditorEvent.ToggleTask(line)) },
+            embed = { target ->
+                NoteEmbedView(target, state.embeds[target], onOpen = { path -> state.eventSink(NoteEditorEvent.OpenAttachment(path)) })
+            },
+            modifier = Modifier.padding(16.dp),
+        )
+    }
+}
+
+/** The note's photos as thumbnails under the text while editing, since the text itself can't show pictures. */
+@Composable
+private fun PhotoStrip(embeds: ImmutableMap<String, EmbedState>, onOpen: (path: String) -> Unit) {
+    val photos = embeds.values.filter { it.isImage }.distinctBy { it.path }
+    if (photos.isEmpty()) return
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(photos, key = { it.path }) { photo ->
+            val shape = RoundedCornerShape(8.dp)
+            val thumbnail = Modifier
+                .size(72.dp)
+                .clip(shape)
+                .background(ElementTheme.colors.bgSubtleSecondary, shape)
+                .clickable(onClickLabel = photo.name) { onOpen(photo.path) }
+            if (photo.file != null) {
+                AsyncImage(model = File(photo.file), contentDescription = photo.name, contentScale = ContentScale.Crop, modifier = thumbnail)
+            } else {
+                Box(thumbnail, contentAlignment = Alignment.Center) {
+                    Icon(imageVector = CompoundIcons.Image(), contentDescription = photo.name, tint = ElementTheme.colors.iconSecondary)
+                }
+            }
+        }
     }
 }
 
