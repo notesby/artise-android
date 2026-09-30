@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<!-- Artise: the analytics consent screen, accurate for Google Analytics for Firebase. Overrides Element's text. -->
+<resources>
+    <string name="screen_analytics_prompt_help_us_improve">Share which screens and buttons you use, to help us improve Artise. It goes to Google Analytics for Firebase.</string>
+    <string name="screen_analytics_prompt_data_usage">We never send your messages, notes, names or contacts</string>
+    <string name="screen_analytics_prompt_third_party_sharing">Nothing is used for ads or sold</string>
+    <string name="screen_analytics_settings_help_us_improve">Share which screens and buttons you use, to help us improve Artise. It goes to Google Analytics for Firebase.</string>
+</resources>

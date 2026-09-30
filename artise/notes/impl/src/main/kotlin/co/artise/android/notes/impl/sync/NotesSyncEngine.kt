@@ -23,6 +23,8 @@ import co.artise.android.notes.api.NotesSearchResult
 import co.artise.android.notes.api.PendingEdit
 import co.artise.android.notes.api.SyncReport
 import co.artise.android.notes.api.UploadStatus
+import co.artise.android.notes.impl.analytics.NotesAction
+import co.artise.android.notes.impl.analytics.NotesEvent
 import co.artise.android.notes.impl.attachments.PhotoConverter
 import co.artise.android.notes.impl.attachments.PrefetchPolicy
 import co.artise.android.notes.impl.local.NotesLocalStore
@@ -32,6 +34,7 @@ import co.artise.android.notes.impl.ui.note.NoteEmbedRemover
 import co.artise.android.notes.impl.ui.note.NoteEmbeds
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.services.analytics.api.AnalyticsService
 import io.element.android.services.toolbox.api.systemclock.SystemClock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -70,6 +73,8 @@ class NotesSyncEngine(
     private val photoConverter: PhotoConverter,
     /** Whether photos may be downloaded ahead of time (Wi-Fi only). */
     private val prefetchPolicy: PrefetchPolicy,
+    /** Counts what's done with notes, for people who said yes on "Help improve Artise"; never names or text. */
+    private val analyticsService: AnalyticsService,
 ) : NotesRepository {
     // One sync per chat at a time, so a chat's queue is never sent twice. Different chats don't wait for each other:
     // opening one chat's notes shouldn't wait behind the background check of all the others.
@@ -127,6 +132,7 @@ class NotesSyncEngine(
     }
 
     override suspend fun editNote(roomId: RoomId, path: String, content: String) {
+        analyticsService.capture(NotesEvent(NotesAction.NoteSaved))
         io {
             store.transaction {
                 val now = clock.nowSeconds()
@@ -150,7 +156,10 @@ class NotesSyncEngine(
         notifyChanged(roomId)
     }
 
-    override suspend fun createNote(roomId: RoomId, path: String, content: String): Result<Unit> = io {
+    override suspend fun createNote(roomId: RoomId, path: String, content: String): Result<Unit> = createNoteLocally(roomId, path, content)
+        .onSuccess { analyticsService.capture(NotesEvent(NotesAction.NoteCreated)) }
+
+    private suspend fun createNoteLocally(roomId: RoomId, path: String, content: String): Result<Unit> = io {
         store.transaction<Result<Unit>> {
             if (store.file(roomId, path) != null) {
                 Result.failure(NotesException.Exists("A note named $path is already here", null))
@@ -163,6 +172,7 @@ class NotesSyncEngine(
     }.onSuccess { notifyChanged(roomId) }
 
     override suspend fun deleteFile(roomId: RoomId, path: String) {
+        analyticsService.capture(NotesEvent(NotesAction.NoteDeleted))
         io {
             store.transaction {
                 val file = store.file(roomId, path) ?: return@transaction
@@ -181,7 +191,10 @@ class NotesSyncEngine(
         notifyChanged(roomId)
     }
 
-    override suspend fun moveNote(roomId: RoomId, from: String, to: String): Result<MovedNote> = lockFor(roomId).withLock {
+    override suspend fun moveNote(roomId: RoomId, from: String, to: String): Result<MovedNote> = moveNoteOnServer(roomId, from, to)
+        .onSuccess { analyticsService.capture(NotesEvent(NotesAction.NoteRenamed)) }
+
+    private suspend fun moveNoteOnServer(roomId: RoomId, from: String, to: String): Result<MovedNote> = lockFor(roomId).withLock {
         val file = io { store.file(roomId, from) } ?: return Result.failure(NotesException.NotFound("No note named $from"))
         if (file.hasLocalEdits || file.version.isEmpty()) {
             return Result.failure(NotesException.Conflict("$from has changes that haven't been sent yet. Sync first.", null))
@@ -200,6 +213,7 @@ class NotesSyncEngine(
     }
 
     override suspend fun addAttachment(roomId: RoomId, fileName: String, bytes: ByteArray, contentType: String): Result<String> {
+        analyticsService.capture(NotesEvent(NotesAction.AttachmentAdded, kind = if (contentType.startsWith("image/")) "photo" else "document"))
         val path = io {
             store.transaction {
                 val taken = store.files(roomId).map { it.path.lowercase() }.toSet()
@@ -296,6 +310,7 @@ class NotesSyncEngine(
         }
 
     override suspend fun retryUpload(roomId: RoomId, path: String) {
+        analyticsService.capture(NotesEvent(NotesAction.UploadRetried))
         io {
             val edit = store.edits(roomId).firstOrNull { it.kind == EditKind.UPLOAD && it.path == path } ?: return@io
             if (edit.state != EditState.PENDING) store.markEdit(edit.id, EditState.PENDING)
@@ -306,6 +321,7 @@ class NotesSyncEngine(
     }
 
     override suspend fun cancelUpload(roomId: RoomId, path: String) {
+        analyticsService.capture(NotesEvent(NotesAction.UploadCancelled))
         // Waits for a push in progress: an upload is never dropped halfway through.
         lockFor(roomId).withLock {
             io {
@@ -323,6 +339,7 @@ class NotesSyncEngine(
     }
 
     override suspend fun resolveConflict(editId: Long, content: String) {
+        analyticsService.capture(NotesEvent(NotesAction.ChoiceMade, kind = "combined"))
         val changedRoom = io {
             store.transaction<RoomId?> {
                 val (roomId, edit) = store.edit(editId) ?: return@transaction null
@@ -338,6 +355,7 @@ class NotesSyncEngine(
     }
 
     override suspend fun keepDeletedNote(editId: Long) {
+        analyticsService.capture(NotesEvent(NotesAction.ChoiceMade, kind = "kept_deleted"))
         val changedRoom = io {
             store.transaction<RoomId?> {
                 val (roomId, edit) = store.edit(editId) ?: return@transaction null
@@ -350,6 +368,7 @@ class NotesSyncEngine(
     }
 
     override suspend fun saveUnderNewName(editId: Long, newPath: String) {
+        analyticsService.capture(NotesEvent(NotesAction.ChoiceMade, kind = "new_name"))
         val changedRoom = io {
             store.transaction<RoomId?> {
                 val (roomId, edit) = store.edit(editId) ?: return@transaction null
@@ -369,6 +388,7 @@ class NotesSyncEngine(
     }
 
     override suspend fun discardEdit(editId: Long) {
+        analyticsService.capture(NotesEvent(NotesAction.ChoiceMade, kind = "discarded"))
         val changedRoom = io {
             store.transaction<RoomId?> {
                 val (roomId, edit) = store.edit(editId) ?: return@transaction null
@@ -404,6 +424,7 @@ class NotesSyncEngine(
     }
 
     override suspend fun search(roomId: RoomId, query: String): Result<List<NotesSearchResult>> = api.search(roomId, query)
+        .onSuccess { analyticsService.capture(NotesEvent(NotesAction.SearchUsed)) }
 
     override suspend fun links(roomId: RoomId, path: String): Result<NoteLinks> = api.links(roomId, path)
 

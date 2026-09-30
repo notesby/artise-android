@@ -19,6 +19,8 @@ import co.artise.android.notes.impl.A_ROOM
 import co.artise.android.notes.impl.A_ROOM_ENCODED
 import co.artise.android.notes.impl.FakeNotesTokenSource
 import co.artise.android.notes.impl.NotesMockServer
+import co.artise.android.notes.impl.analytics.NotesAction
+import co.artise.android.notes.impl.analytics.NotesEvent
 import co.artise.android.notes.impl.attachments.PhotoConverter
 import co.artise.android.notes.impl.db.NotesDatabase
 import co.artise.android.notes.impl.error
@@ -27,6 +29,7 @@ import co.artise.android.notes.impl.local.NotesLocalStore
 import co.artise.android.notes.impl.remote.NotesApiClient
 import com.google.common.truth.Truth.assertThat
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.services.analytics.test.FakeAnalyticsService
 import io.element.android.services.toolbox.test.systemclock.FakeSystemClock
 import io.element.android.tests.testutils.testCoroutineDispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -51,6 +54,7 @@ class NotesSyncEngineTest {
 
     // Whether the phone is on Wi-Fi, for downloading photos ahead of time.
     private var onWifi = false
+    private val analytics = FakeAnalyticsService()
 
     // Stands in for Android's decoder: "converts" HEIC by returning fixed JPEG bytes, leaves everything else alone.
     private val photoConverter = PhotoConverter { _, type -> if (type == "image/heic") byteArrayOf(7, 7) else null }
@@ -71,6 +75,7 @@ class NotesSyncEngineTest {
             pendingDir = Files.createTempDirectory("pending").toFile(),
             photoConverter = photoConverter,
             prefetchPolicy = { onWifi },
+            analyticsService = analytics,
         )
     }
 
@@ -499,6 +504,23 @@ class NotesSyncEngineTest {
         server.enqueue(tree, MockResponse().setResponseCode(304))
         engine.sync(room).getOrThrow()
         assertThat(server.requests.none { it.path.orEmpty().contains("/raw") }).isTrue()
+    }
+
+    /** For "Help improve Artise", actions are counted with the kind of file only: never a note's name or text. */
+    @Test
+    fun `note actions are counted without names`() = runTest {
+        val engine = engine()
+        engine.firstSync()
+        engine.editNote(room, "Mole.md", "secreto")
+        engine.addAttachment(room, "luna.jpg", byteArrayOf(1), "image/jpeg").getOrThrow()
+        engine.addAttachment(room, "factura.pdf", byteArrayOf(2), "application/pdf").getOrThrow()
+        assertThat(analytics.capturedEvents).containsExactly(
+            NotesEvent(NotesAction.NoteSaved),
+            NotesEvent(NotesAction.AttachmentAdded, kind = "photo"),
+            NotesEvent(NotesAction.AttachmentAdded, kind = "document"),
+        ).inOrder()
+        assertThat(analytics.capturedEvents.map { it.getName() }).containsExactly("NotesNoteSaved", "NotesAttachmentAdded", "NotesAttachmentAdded")
+        assertThat(analytics.capturedEvents.flatMap { it.getProperties().orEmpty().values }).containsExactly("photo", "document")
     }
 
     /** On Wi-Fi, photos embedded in notes download after a sync, so they show offline; documents wait to be opened. */

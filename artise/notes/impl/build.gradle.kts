@@ -51,9 +51,12 @@ dependencies {
     implementation("org.commonmark:commonmark-ext-autolink:0.30.0")
     implementation(libs.androidx.compose.material.icons)
     implementation(libs.coil.compose)
+    implementation(projects.services.analytics.api)
+    implementation(libs.appyx.core)
 
     testCommonDependencies(libs)
     testImplementation(projects.libraries.matrix.test)
+    testImplementation(projects.services.analytics.test)
     testImplementation(projects.services.toolbox.test)
     testImplementation(libs.network.mockwebserver)
     testImplementation(libs.sqldelight.driver.jvm)

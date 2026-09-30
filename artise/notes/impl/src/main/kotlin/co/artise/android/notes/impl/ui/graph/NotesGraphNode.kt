@@ -9,6 +9,8 @@ package co.artise.android.notes.impl.ui.graph
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import co.artise.android.notes.impl.analytics.NotesScreen
+import co.artise.android.notes.impl.analytics.trackScreen
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.Node
 import com.bumble.appyx.core.plugin.Plugin
@@ -20,6 +22,7 @@ import io.element.android.libraries.architecture.callback
 import io.element.android.libraries.architecture.inputs
 import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.services.analytics.api.AnalyticsService
 
 @ContributesNode(SessionScope::class)
 @AssistedInject
@@ -27,7 +30,12 @@ class NotesGraphNode(
     @Assisted buildContext: BuildContext,
     @Assisted plugins: List<Plugin>,
     presenterFactory: NotesGraphPresenter.Factory,
+    analyticsService: AnalyticsService,
 ) : Node(buildContext, plugins = plugins) {
+    init {
+        trackScreen(analyticsService, NotesScreen.NotesMap)
+    }
+
     data class Inputs(val roomId: RoomId) : NodeInputs
 
     interface Callback : Plugin {

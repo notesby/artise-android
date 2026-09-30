@@ -26,6 +26,7 @@ import io.element.android.libraries.di.annotations.ApplicationContext
 import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.network.interceptors.DynamicHttpLoggingInterceptor
+import io.element.android.services.analytics.api.AnalyticsService
 import io.element.android.services.toolbox.api.systemclock.SystemClock
 import io.element.encrypteddb.SqlCipherDriverFactory
 import io.element.encrypteddb.passphrase.RandomDatabaseSecretProvider
@@ -68,6 +69,7 @@ object NotesBindingContainer {
         @SessionCoroutineScope sessionScope: CoroutineScope,
         photoConverter: PhotoConverter,
         prefetchPolicy: PrefetchPolicy,
+        analyticsService: AnalyticsService,
     ): NotesRepository = NotesSyncEngine(
         api = NotesApiClient(okHttpClient.withoutBodyLogging(), tokenSource, dispatchers),
         store = NotesLocalStore(database),
@@ -78,6 +80,7 @@ object NotesBindingContainer {
         pendingDir = pendingUploadsDir(context, matrixClient.sessionId.value),
         photoConverter = photoConverter,
         prefetchPolicy = prefetchPolicy,
+        analyticsService = analyticsService,
     )
 
     /** Photos and files waiting to upload: app storage, so Android doesn't clear them like the cache. */

@@ -24,6 +24,7 @@ dependencies {
     implementation(projects.features.enterprise.implFoss)
     implementation(projects.libraries.architecture)
     implementation(projects.libraries.matrix.api)
+    implementation(projects.libraries.di)
 
     testCommonDependencies(libs)
     testImplementation(projects.libraries.matrix.test)
