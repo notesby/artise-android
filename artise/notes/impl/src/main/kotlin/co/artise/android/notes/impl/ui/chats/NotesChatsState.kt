@@ -27,4 +27,7 @@ enum class NotesSyncStatus {
 
     /** The server answered with an error. */
     FAILED,
+
+    /** Updated, but some of this phone's changes couldn't be sent yet; they'll be retried. */
+    PARTIAL,
 }

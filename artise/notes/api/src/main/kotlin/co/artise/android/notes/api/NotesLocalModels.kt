@@ -69,4 +69,6 @@ data class SyncReport(
     val updated: Int,
     /** Files removed because they're gone from the server. */
     val removed: Int,
+    /** Edits the server couldn't take this time (e.g. an error on its side); they stay queued for the next sync. */
+    val failed: Int = 0,
 )

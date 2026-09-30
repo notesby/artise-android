@@ -37,9 +37,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 import java.io.File
 import java.security.MessageDigest
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * [NotesRepository] over the [NotesApiClient] and the phone's [NotesLocalStore], following the contract's
@@ -60,8 +62,11 @@ class NotesSyncEngine(
     /** Where attachments wait to upload: app storage, not the cache, which Android may clear. */
     private val pendingDir: File,
 ) : NotesRepository {
-    // One sync at a time, so the queue is never sent twice.
-    private val syncMutex = Mutex()
+    // One sync per chat at a time, so a chat's queue is never sent twice. Different chats don't wait for each other:
+    // opening one chat's notes shouldn't wait behind the background check of all the others.
+    private val roomLocks = ConcurrentHashMap<RoomId, Mutex>()
+
+    private fun lockFor(roomId: RoomId): Mutex = roomLocks.getOrPut(roomId) { Mutex() }
     private val changed = MutableSharedFlow<RoomId>(extraBufferCapacity = 16)
 
     override fun changes(roomId: RoomId): Flow<Unit> = changed.filter { it == roomId }.map { }
@@ -88,7 +93,7 @@ class NotesSyncEngine(
 
     override suspend fun file(roomId: RoomId, path: String): LocalFile? = io { store.file(roomId, path) }
 
-    override suspend fun sync(roomId: RoomId): Result<SyncReport> = syncMutex.withLock {
+    override suspend fun sync(roomId: RoomId): Result<SyncReport> = lockFor(roomId).withLock {
         val push = pushQueue(roomId).getOrElse {
             notifyChanged(roomId)
             return Result.failure(it)
@@ -97,7 +102,7 @@ class NotesSyncEngine(
             notifyChanged(roomId)
             return Result.failure(it)
         }
-        val report = SyncReport(sent = push.sent, needChoice = push.needChoice, updated = pull.updated, removed = pull.removed)
+        val report = SyncReport(sent = push.sent, needChoice = push.needChoice, updated = pull.updated, removed = pull.removed, failed = push.failed)
         if (report != SyncReport(0, 0, 0, 0)) notifyChanged(roomId)
         Result.success(report)
     }
@@ -162,7 +167,7 @@ class NotesSyncEngine(
         notifyChanged(roomId)
     }
 
-    override suspend fun moveNote(roomId: RoomId, from: String, to: String): Result<MovedNote> = syncMutex.withLock {
+    override suspend fun moveNote(roomId: RoomId, from: String, to: String): Result<MovedNote> = lockFor(roomId).withLock {
         val file = io { store.file(roomId, from) } ?: return Result.failure(NotesException.NotFound("No note named $from"))
         if (file.hasLocalEdits || file.version.isEmpty()) {
             return Result.failure(NotesException.Conflict("$from has changes that haven't been sent yet. Sync first.", null))
@@ -315,14 +320,19 @@ class NotesSyncEngine(
 
     override suspend fun noteAt(roomId: RoomId, path: String, commit: String): Result<Note> = api.note(roomId, path, atCommit = commit)
 
-    private data class PushResult(val sent: Int, val needChoice: Int)
+    private data class PushResult(val sent: Int, val needChoice: Int, val failed: Int)
 
     private data class PullResult(val updated: Int, val removed: Int)
 
-    /** Step 2: sends pending edits in order. Stops at a network or sign-in failure, leaving the rest queued. */
+    /**
+     * Step 2: sends pending edits in order. Stops at a network or sign-in failure, leaving the rest queued. Any other
+     * failure of one edit (an error on the server's side) sets that edit aside for the next sync and goes on with the
+     * others: one bad item must never hold up the whole chat.
+     */
     private suspend fun pushQueue(roomId: RoomId): Result<PushResult> {
         var sent = 0
         var needChoice = 0
+        var failed = 0
         // An edit waiting for a choice holds back later edits to the same file, so they don't overtake it.
         val heldBack = io { store.edits(roomId) }.filter { it.state != EditState.PENDING }.map { it.path }.toMutableSet()
         for (edit in io { store.pendingEdits(roomId) }) {
@@ -338,16 +348,23 @@ class NotesSyncEngine(
                     needChoice++
                     heldBack += edit.path
                 }
+                PushOutcome.Retry -> {
+                    failed++
+                    heldBack += edit.path
+                }
                 is PushOutcome.Stop -> return Result.failure(outcome.error)
             }
         }
-        return Result.success(PushResult(sent, needChoice))
+        return Result.success(PushResult(sent, needChoice, failed))
     }
 
     private sealed interface PushOutcome {
         data object Sent : PushOutcome
 
         data object NeedsChoice : PushOutcome
+
+        /** Failed this time for a reason on the server's side: stays queued, the push goes on with other edits. */
+        data object Retry : PushOutcome
 
         data class Stop(val error: NotesException) : PushOutcome
     }
@@ -459,13 +476,19 @@ class NotesSyncEngine(
                 store.markEdit(edit.id, EditState.EXISTS, error.current)
                 PushOutcome.NeedsChoice
             }
-            is NotesException.Network, is NotesException.Unauthorized, is NotesException.Server -> PushOutcome.Stop(error as NotesException)
+            // Every other edit would fail the same way: stop and try the whole queue later.
+            is NotesException.Network, is NotesException.Unauthorized -> PushOutcome.Stop(error)
+            // Something on the server's side went wrong with this one (a 5xx, a proxy limit, an unreadable answer).
+            is NotesException.Server -> {
+                Timber.w("Notes: an edit failed with HTTP %d; kept for the next sync", error.status)
+                PushOutcome.Retry
+            }
             is NotesException -> {
                 // Too big, a bad name, not a note, no longer in the chat: retrying won't help.
                 store.markEdit(edit.id, EditState.REJECTED, error = error.message)
                 PushOutcome.NeedsChoice
             }
-            else -> PushOutcome.Stop(NotesException.Server(0, error.message ?: "Unknown error"))
+            else -> PushOutcome.Retry
         }
     }
 

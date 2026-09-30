@@ -26,6 +26,7 @@ internal fun NotesSyncStatusLine(status: NotesSyncStatus, modifier: Modifier = M
         NotesSyncStatus.OK -> return
         NotesSyncStatus.OFFLINE -> stringResource(R.string.screen_notes_offline)
         NotesSyncStatus.FAILED -> stringResource(R.string.screen_notes_sync_failed)
+        NotesSyncStatus.PARTIAL -> stringResource(R.string.screen_notes_sync_partial)
     }
     Text(
         text = text,

@@ -81,8 +81,13 @@ class NotesFolderPresenter(
         }
         LaunchedEffect(refreshRequests) {
             reload()
-            isRefreshing = true
-            sync = repository.sync(roomId).fold(onSuccess = { NotesSyncStatus.OK }, onFailure = { it.toSyncStatus() })
+            // The phone's copy is already on screen: update quietly, with the spinner only when the person pulled
+            // down or there's nothing to show yet.
+            isRefreshing = refreshRequests > 0 || entries.isEmpty()
+            sync = repository.sync(roomId).fold(
+                onSuccess = { report -> if (report.failed > 0) NotesSyncStatus.PARTIAL else NotesSyncStatus.OK },
+                onFailure = { it.toSyncStatus() },
+            )
             reload()
             isRefreshing = false
         }

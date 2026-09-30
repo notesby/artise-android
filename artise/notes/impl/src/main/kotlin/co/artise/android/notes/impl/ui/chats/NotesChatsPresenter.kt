@@ -37,7 +37,8 @@ class NotesChatsPresenter(
 
         LaunchedEffect(refreshRequests) {
             if (refreshRequests == 0) chats = repository.cachedChats().withNames()
-            isRefreshing = true
+            // Cached chats show at once; the spinner only when pulled down or when there's nothing to show yet.
+            isRefreshing = refreshRequests > 0 || chats.isEmpty()
             repository.refreshChats()
                 .onSuccess {
                     chats = it.withNames()

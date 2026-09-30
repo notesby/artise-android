@@ -364,6 +364,33 @@ class NotesSyncEngineTest {
         assertThat(engine.file(room, "attachments/luna (2).jpg")?.version).isEqualTo("a2")
     }
 
+    /**
+     * A server-side error on one item (here a proxy's plain-text 413) doesn't hold up the rest: the note is still sent,
+     * updates are still pulled, and the upload stays queued and goes through on a later sync.
+     */
+    @Test
+    fun `a failing upload does not block the queue`() = runTest {
+        val engine = engine()
+        engine.firstSync()
+        engine.addAttachment(room, "luna.jpg", byteArrayOf(1), "image/jpeg").getOrThrow()
+        engine.editNote(room, "Súper.md", "- pan")
+        server.enqueue(uploadKey, MockResponse().setResponseCode(413).setBody("Request Entity Too Large"))
+        server.enqueue(put, json(body = """{"path": "Súper.md", "version": "v2", "merged": false}"""))
+        server.enqueue(tree, treeResponse("t2", "Súper.md" to "v2", "Mole.md" to "m1", "luna.jpg" to "p1"))
+        val report = engine.sync(room).getOrThrow()
+        assertThat(report.failed).isEqualTo(1)
+        assertThat(report.sent).isEqualTo(1)
+        assertThat(server.requestsTo(tree)).isNotEmpty()
+        val waiting = engine.edits(room).single()
+        assertThat(waiting.kind).isEqualTo(EditKind.UPLOAD)
+        assertThat(waiting.state).isEqualTo(EditState.PENDING)
+
+        server.enqueue(uploadKey, json(201, """{"path": "attachments/luna.jpg", "version": "a1"}"""))
+        server.enqueue(tree, MockResponse().setResponseCode(304))
+        assertThat(engine.sync(room).getOrThrow().failed).isEqualTo(0)
+        assertThat(engine.edits(room)).isEmpty()
+    }
+
     /** An upload the server refuses (too big) waits for a choice; discarding it removes the attachment. */
     @Test
     fun `refused uploads can be discarded`() = runTest {
