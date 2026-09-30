@@ -8,6 +8,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
     <!--
+      Artise, Play builds only. In the app's manifest, because a library's removal doesn't reach other libraries.
       Element asks for this to install APKs people send in chats. Google Play only allows it for apps whose main
       purpose is installing apps, so Artise drops it: an APK then opens in the system installer, which asks by itself.
     -->

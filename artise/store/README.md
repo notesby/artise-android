@@ -135,7 +135,7 @@ live location", show the notification, then stop it.
 
 ## 5. What Artise changes from Element for Play
 
-- **Install permission:** `REQUEST_INSTALL_PACKAGES` is removed (in `artise/enterprise`). Play only allows it for apps
+- **Install permission:** `REQUEST_INSTALL_PACKAGES` is removed from Play builds (`app/src/gplay/AndroidManifest.xml`). Play only allows it for apps
   whose main purpose is installing apps. An APK sent in a chat now opens in the system installer, which asks by
   itself.
 - **Analytics and crash reports:** none are built in. The PostHog and Sentry keys are empty in
