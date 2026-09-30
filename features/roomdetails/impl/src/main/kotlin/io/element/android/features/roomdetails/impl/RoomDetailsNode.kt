@@ -58,6 +58,7 @@ class RoomDetailsNode(
         fun navigateToMediaGallery()
         fun navigateToAdminSettings()
         fun navigateToPinnedMessagesList()
+        fun navigateToNotes()
         fun navigateToKnockRequestsList()
         fun navigateToSecurityAndPrivacy()
         fun navigateToRoomMemberDetails(userId: UserId)
@@ -133,6 +134,7 @@ class RoomDetailsNode(
             openAdminSettings = callback::navigateToAdminSettings,
             onJoinCallClick = callback::navigateToRoomCall,
             onPinnedMessagesClick = callback::navigateToPinnedMessagesList,
+            onNotesClick = callback::navigateToNotes,
             onKnockRequestsClick = callback::navigateToKnockRequestsList,
             onSecurityAndPrivacyClick = callback::navigateToSecurityAndPrivacy,
             onProfileClick = callback::navigateToRoomMemberDetails,

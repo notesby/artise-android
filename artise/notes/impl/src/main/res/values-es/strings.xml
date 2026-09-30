@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<resources>
+    <string name="screen_notes_title">Notas</string>
+    <string name="screen_notes_chats_empty">Ninguno de tus chats tiene notas todavía. Pídele a Ari que guarde algo, como “Ari, anota que la clave del wifi es…”</string>
+    <string name="screen_notes_offline">Sin conexión. Estas son las notas guardadas en este teléfono.</string>
+    <string name="screen_notes_sync_failed">No se pudieron actualizar las notas. Desliza hacia abajo para intentarlo de nuevo.</string>
+    <string name="screen_notes_privacy_title">Sobre las notas</string>
+    <string name="screen_notes_privacy_body">Ari puede leer las notas de este chat, así que se guardan en el servidor de Artise, sin el cifrado de extremo a extremo de tus mensajes.</string>
+    <string name="screen_notes_privacy_ok">Entendido</string>
+    <string name="screen_notes_folder_empty">Todavía no hay notas aquí.</string>
+    <string name="screen_notes_unsent">Sin enviar</string>
+    <plurals name="screen_notes_folder_count">
+        <item quantity="one">%1$d nota</item>
+        <item quantity="many">%1$d notas</item>
+        <item quantity="other">%1$d notas</item>
+    </plurals>
+    <string name="screen_notes_linked_from">Enlazada desde</string>
+    <string name="screen_notes_linked_from_none">Ninguna otra nota enlaza aquí.</string>
+    <string name="screen_notes_linked_from_offline">Conéctate a internet para ver qué notas enlazan aquí.</string>
+    <string name="screen_notes_not_downloaded">Esta nota aún no se ha descargado. Conéctate a internet para abrirla.</string>
+    <string name="screen_notes_search_placeholder">Buscar en las notas</string>
+    <string name="screen_notes_search_empty">No se encontró nada para “%1$s”.</string>
+    <string name="a11y_notes_search">Buscar en las notas</string>
+    <string name="screen_notes_editor_combine_hint">Tu versión está arriba de la línea y la otra abajo. Deja lo que quieras y guarda.</string>
+    <string name="screen_notes_new_note">Nueva nota</string>
+    <string name="screen_notes_new_note_placeholder">Nombre</string>
+    <string name="screen_notes_name_invalid">Usa un nombre sin “/”.</string>
+    <string name="screen_notes_name_exists">Ya hay una nota con este nombre.</string>
+    <string name="screen_notes_create">Crear</string>
+    <string name="screen_notes_missing_note_create">Todavía no hay una nota llamada “%1$s”. ¿La creamos?</string>
+    <string name="screen_notes_edit">Editar</string>
+    <string name="screen_notes_more">Más opciones</string>
+    <string name="screen_notes_rename">Cambiar nombre</string>
+    <string name="screen_notes_delete">Borrar</string>
+    <string name="screen_notes_delete_title">¿Borrar “%1$s”?</string>
+    <string name="screen_notes_delete_body">Se borra para todos en este chat.</string>
+    <string name="screen_notes_rename_offline">Para cambiar el nombre necesitas conexión. Inténtalo cuando estés en línea.</string>
+    <string name="screen_notes_rename_unsent">Espera a que se envíen tus cambios a esta nota y vuelve a intentarlo.</string>
+    <string name="screen_notes_rename_failed">No se pudo cambiar el nombre. Inténtalo más tarde.</string>
+    <plurals name="screen_notes_choices_banner">
+        <item quantity="one">%1$d nota necesita que elijas una versión.</item>
+        <item quantity="many">%1$d notas necesitan que elijas una versión.</item>
+        <item quantity="other">%1$d notas necesitan que elijas una versión.</item>
+    </plurals>
+    <string name="screen_notes_choices_review">Revisar</string>
+    <string name="screen_notes_choices_title">Elige una versión</string>
+    <string name="screen_notes_choices_empty">No hay nada que elegir. Todos tus cambios están guardados.</string>
+    <string name="screen_notes_choice_conflict">Otra persona cambió las mismas líneas mientras editabas.</string>
+    <string name="screen_notes_choice_delete_conflict">Borraste esta nota, pero otra persona la cambió mientras tanto.</string>
+    <string name="screen_notes_choice_deleted">Otra persona borró esta nota mientras la editabas.</string>
+    <string name="screen_notes_choice_exists">Otra persona creó una nota con este nombre al mismo tiempo.</string>
+    <string name="screen_notes_choice_rejected">Este cambio no se pudo guardar: %1$s</string>
+    <string name="screen_notes_choice_mine">Tu versión</string>
+    <string name="screen_notes_choice_theirs">La otra versión</string>
+    <string name="screen_notes_choice_keep_mine">Quedarme con la mía</string>
+    <string name="screen_notes_choice_keep_theirs">Quedarme con la otra</string>
+    <string name="screen_notes_choice_combine">Combinar</string>
+    <string name="screen_notes_choice_keep_copy">Conservar mi copia</string>
+    <string name="screen_notes_choice_keep_both">Conservar ambas</string>
+    <string name="screen_notes_choice_discard">Descartar mi cambio</string>
+    <string name="screen_notes_map">Mapa</string>
+    <string name="screen_notes_map_empty">Todavía no hay notas para mostrar.</string>
+    <string name="a11y_notes_format_bold">Negrita</string>
+    <string name="a11y_notes_format_italic">Cursiva</string>
+    <string name="a11y_notes_format_strikethrough">Tachado</string>
+    <string name="a11y_notes_format_heading">Título</string>
+    <string name="a11y_notes_format_bullets">Lista con viñetas</string>
+    <string name="a11y_notes_format_numbers">Lista numerada</string>
+    <string name="a11y_notes_format_checklist">Lista de tareas</string>
+    <string name="a11y_notes_format_quote">Cita</string>
+    <string name="a11y_notes_format_link">Enlazar una nota</string>
+    <string name="a11y_notes_map_zoom_in">Acercar</string>
+    <string name="a11y_notes_map_zoom_out">Alejar</string>
+    <string name="a11y_notes_map_reset">Ver todo el mapa</string>
+    <string name="screen_notes_link_edit_title">Editar enlace</string>
+    <string name="screen_notes_link_edit_note">Nota</string>
+    <string name="screen_notes_link_edit_address">Dirección web</string>
+    <string name="screen_notes_link_edit_text">Texto a mostrar (opcional)</string>
+    <string name="screen_notes_link_edit_remove">Quitar enlace</string>
+    <string name="a11y_notes_undo">Deshacer</string>
+    <string name="a11y_notes_redo">Rehacer</string>
+    <string name="a11y_notes_format_web_link">Enlazar una página web</string>
+    <string name="screen_notes_link_edit_open">Abrir en el navegador</string>
+    <string name="screen_notes_attachment_missing">no encontrado</string>
+    <string name="screen_notes_attachment_unavailable">No se pudo abrir el archivo. Conéctate a internet e inténtalo de nuevo.</string>
+    <string name="screen_notes_attachment_no_app">Ninguna app de este teléfono puede abrir este tipo de archivo.</string>
+    <string name="a11y_notes_attach">Adjuntar foto o archivo</string>
+    <string name="screen_notes_attach_photo">Foto</string>
+    <string name="screen_notes_attach_file">Archivo</string>
+    <string name="screen_notes_attach_uploading">Subiendo…</string>
+    <string name="screen_notes_attach_too_big">Ese archivo pesa más de 50 MB.</string>
+    <string name="screen_notes_attach_failed">No se pudo adjuntar el archivo. Inténtalo de nuevo.</string>
+    <string name="screen_notes_attach_take_photo">Tomar foto</string>
+    <string name="screen_notes_attach_camera_denied">Para tomar fotos aquí, permite que Artise use la cámara en los ajustes del teléfono.</string>
+    <string name="screen_notes_attach_no_camera">No hay una app de cámara en este teléfono.</string>
+    <string name="screen_notes_sync_partial">Algunos de tus cambios aún no se pudieron enviar. Se enviarán en la próxima actualización.</string>
+    <string name="a11y_notes_preview">Vista previa</string>
+    <string name="a11y_notes_back_to_editing">Volver a editar</string>
+    <string name="screen_notes_upload_waiting">Esperando para subir</string>
+    <string name="screen_notes_upload_uploading">Subiendo…</string>
+    <string name="screen_notes_upload_retrying">Aún no se pudo subir. Se volverá a intentar.</string>
+    <string name="screen_notes_upload_failed">No se pudo subir este archivo.</string>
+    <string name="screen_notes_upload_retry">Reintentar</string>
+    <string name="screen_notes_upload_open">Abrir</string>
+    <string name="screen_notes_upload_cancel">Cancelar subida</string>
+    <string name="screen_notes_upload_keep">Conservar</string>
+    <string name="screen_notes_upload_cancel_title">¿Cancelar esta subida?</string>
+    <string name="screen_notes_upload_cancel_message">“%1$s” todavía no está en el servidor. Se quitará de este teléfono y de la nota.</string>
+</resources>

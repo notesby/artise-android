@@ -1,0 +1,65 @@
+/*
+ * Copyright 2026 Artise.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only.
+ * Please see LICENSE files in the repository root for full details.
+ */
+
+package co.artise.android.notes.impl.ui.editor
+
+import androidx.compose.ui.text.input.TextFieldValue
+
+sealed interface NoteEditorEvent {
+    /** Typing, or the cursor moving (including a tap, which may hit a checkbox or a link). */
+    data class ValueChanged(val value: TextFieldValue) : NoteEditorEvent
+
+    data class SelectSuggestion(val suggestion: WikiLinkSuggestion) : NoteEditorEvent
+
+    /** A toolbar button: format the selection or the current lines. */
+    data class Format(val action: FormatAction) : NoteEditorEvent
+
+    /** The link dialog's result: write [link] in place of the link that was tapped. */
+    data class SaveLink(val link: EditableLink) : NoteEditorEvent
+
+    /** Remove the tapped link, keeping the text people saw. */
+    data object RemoveLink : NoteEditorEvent
+
+    data object DismissLinkEdit : NoteEditorEvent
+
+    /** The person picked a photo or file ([uri] from the Android picker) to add at the cursor. */
+    data class Attach(val uri: String) : NoteEditorEvent
+
+    data object DismissAttachError : NoteEditorEvent
+
+    /** Switch between editing the text and previewing the finished note. */
+    data object TogglePreview : NoteEditorEvent
+
+    /** In the preview, a checklist item was tapped: tick it in the text. */
+    data class ToggleTask(val lineIndex: Int) : NoteEditorEvent
+
+    /** A photo in the strip or the preview was tapped: open it in another app. */
+    data class OpenAttachment(val path: String) : NoteEditorEvent
+
+    /** Try a waiting or failed upload of a photo or file again now. */
+    data class RetryUpload(val path: String) : NoteEditorEvent
+
+    /** Drop a photo or file not uploaded yet (already confirmed), and take it out of the text. */
+    data class CancelUpload(val path: String) : NoteEditorEvent
+
+    data class FileOpenHandled(val opened: Boolean) : NoteEditorEvent
+
+    data object DismissOpenFileProblem : NoteEditorEvent
+
+    data object Undo : NoteEditorEvent
+
+    data object Redo : NoteEditorEvent
+
+    data object Save : NoteEditorEvent
+
+    /** Back pressed: leave, or ask first when there are unsaved changes. */
+    data object Back : NoteEditorEvent
+
+    data object DiscardChanges : NoteEditorEvent
+
+    data object DismissSaveChangesDialog : NoteEditorEvent
+}

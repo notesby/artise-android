@@ -275,6 +275,7 @@ dependencies {
         // Artise: our EnterpriseService replaces the FOSS one (server lock, brand, no bug reports).
         implementation(projects.artise.enterprise)
         implementation(projects.artise.appicon)
+        implementation(projects.artise.notes.impl)
     }
     allFeaturesImpl(project)
     implementation(projects.features.migration.api)

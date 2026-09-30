@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<resources>
+    <string name="screen_notes_title">Notes</string>
+    <string name="screen_notes_chats_empty">None of your chats has notes yet. Ask Ari to save something, like “Ari, note that the wifi password is…”</string>
+    <string name="screen_notes_offline">You’re offline. These are the notes saved on this phone.</string>
+    <string name="screen_notes_sync_failed">Couldn’t update the notes. Pull down to try again.</string>
+    <string name="screen_notes_privacy_title">About notes</string>
+    <string name="screen_notes_privacy_body">Ari can read the notes in this chat, so they’re stored on the Artise server, not end-to-end encrypted like your messages.</string>
+    <string name="screen_notes_privacy_ok">Got it</string>
+    <string name="screen_notes_folder_empty">No notes here yet.</string>
+    <string name="screen_notes_unsent">Not sent yet</string>
+    <plurals name="screen_notes_folder_count">
+        <item quantity="one">%1$d note</item>
+        <item quantity="other">%1$d notes</item>
+    </plurals>
+    <string name="screen_notes_linked_from">Linked from</string>
+    <string name="screen_notes_linked_from_none">No other note links here.</string>
+    <string name="screen_notes_linked_from_offline">Connect to the internet to see which notes link here.</string>
+    <string name="screen_notes_not_downloaded">This note hasn’t been downloaded yet. Connect to the internet to open it.</string>
+    <string name="screen_notes_search_placeholder">Search notes</string>
+    <string name="screen_notes_search_empty">Nothing found for “%1$s”.</string>
+    <string name="a11y_notes_search">Search notes</string>
+    <string name="screen_notes_editor_combine_hint">Your version is above the line and the other one below. Keep what you want, then save.</string>
+    <string name="screen_notes_new_note">New note</string>
+    <string name="screen_notes_new_note_placeholder">Name</string>
+    <string name="screen_notes_name_invalid">Use a name without “/”.</string>
+    <string name="screen_notes_name_exists">There’s already a note with this name.</string>
+    <string name="screen_notes_create">Create</string>
+    <string name="screen_notes_missing_note_create">There’s no note called “%1$s” yet. Create it?</string>
+    <string name="screen_notes_edit">Edit</string>
+    <string name="screen_notes_more">More options</string>
+    <string name="screen_notes_rename">Rename</string>
+    <string name="screen_notes_delete">Delete</string>
+    <string name="screen_notes_delete_title">Delete “%1$s”?</string>
+    <string name="screen_notes_delete_body">It’s deleted for everyone in this chat.</string>
+    <string name="screen_notes_rename_offline">Renaming needs a connection. Try again when you’re online.</string>
+    <string name="screen_notes_rename_unsent">Wait until your changes to this note are sent, then try again.</string>
+    <string name="screen_notes_rename_failed">Couldn’t rename the note. Try again later.</string>
+    <plurals name="screen_notes_choices_banner">
+        <item quantity="one">%1$d note needs you to choose a version.</item>
+        <item quantity="other">%1$d notes need you to choose a version.</item>
+    </plurals>
+    <string name="screen_notes_choices_review">Review</string>
+    <string name="screen_notes_choices_title">Choose a version</string>
+    <string name="screen_notes_choices_empty">Nothing to choose. All your changes are saved.</string>
+    <string name="screen_notes_choice_conflict">Someone else changed the same lines while you were editing.</string>
+    <string name="screen_notes_choice_delete_conflict">You deleted this note, but someone changed it meanwhile.</string>
+    <string name="screen_notes_choice_deleted">Someone deleted this note while you were editing it.</string>
+    <string name="screen_notes_choice_exists">Someone created a note with this name at the same time.</string>
+    <string name="screen_notes_choice_rejected">This change couldn’t be saved: %1$s</string>
+    <string name="screen_notes_choice_mine">Your version</string>
+    <string name="screen_notes_choice_theirs">The other version</string>
+    <string name="screen_notes_choice_keep_mine">Keep mine</string>
+    <string name="screen_notes_choice_keep_theirs">Keep the other</string>
+    <string name="screen_notes_choice_combine">Combine</string>
+    <string name="screen_notes_choice_keep_copy">Keep my copy</string>
+    <string name="screen_notes_choice_keep_both">Keep both</string>
+    <string name="screen_notes_choice_discard">Discard my change</string>
+    <string name="screen_notes_map">Map</string>
+    <string name="screen_notes_map_empty">No notes to show yet.</string>
+    <string name="a11y_notes_format_bold">Bold</string>
+    <string name="a11y_notes_format_italic">Italic</string>
+    <string name="a11y_notes_format_strikethrough">Strikethrough</string>
+    <string name="a11y_notes_format_heading">Heading</string>
+    <string name="a11y_notes_format_bullets">Bulleted list</string>
+    <string name="a11y_notes_format_numbers">Numbered list</string>
+    <string name="a11y_notes_format_checklist">Checklist</string>
+    <string name="a11y_notes_format_quote">Quote</string>
+    <string name="a11y_notes_format_link">Link to a note</string>
+    <string name="a11y_notes_map_zoom_in">Zoom in</string>
+    <string name="a11y_notes_map_zoom_out">Zoom out</string>
+    <string name="a11y_notes_map_reset">Show the whole map</string>
+    <string name="screen_notes_link_edit_title">Edit link</string>
+    <string name="screen_notes_link_edit_note">Note</string>
+    <string name="screen_notes_link_edit_address">Web address</string>
+    <string name="screen_notes_link_edit_text">Text to show (optional)</string>
+    <string name="screen_notes_link_edit_remove">Remove link</string>
+    <string name="a11y_notes_undo">Undo</string>
+    <string name="a11y_notes_redo">Redo</string>
+    <string name="a11y_notes_format_web_link">Link to a website</string>
+    <string name="screen_notes_link_edit_open">Open in the browser</string>
+    <string name="screen_notes_attachment_missing">not found</string>
+    <string name="screen_notes_attachment_unavailable">Couldn’t open the file. Connect to the internet and try again.</string>
+    <string name="screen_notes_attachment_no_app">No app on this phone can open this kind of file.</string>
+    <string name="a11y_notes_attach">Attach a photo or file</string>
+    <string name="screen_notes_attach_photo">Photo</string>
+    <string name="screen_notes_attach_file">File</string>
+    <string name="screen_notes_attach_uploading">Uploading…</string>
+    <string name="screen_notes_attach_too_big">That file is over 50 MB.</string>
+    <string name="screen_notes_attach_failed">Couldn’t add the file. Try again.</string>
+    <string name="screen_notes_attach_take_photo">Take a photo</string>
+    <string name="screen_notes_attach_camera_denied">To take photos here, allow Artise to use the camera in your phone’s settings.</string>
+    <string name="screen_notes_attach_no_camera">There’s no camera app on this phone.</string>
+    <string name="screen_notes_sync_partial">Some of your changes couldn’t be sent yet. They’ll be sent on the next update.</string>
+    <string name="a11y_notes_preview">Preview</string>
+    <string name="a11y_notes_back_to_editing">Back to editing</string>
+    <string name="screen_notes_upload_waiting">Waiting to upload</string>
+    <string name="screen_notes_upload_uploading">Uploading…</string>
+    <string name="screen_notes_upload_retrying">Couldn’t upload yet. It’ll try again.</string>
+    <string name="screen_notes_upload_failed">Couldn’t upload this file.</string>
+    <string name="screen_notes_upload_retry">Retry</string>
+    <string name="screen_notes_upload_open">Open</string>
+    <string name="screen_notes_upload_cancel">Cancel upload</string>
+    <string name="screen_notes_upload_keep">Keep</string>
+    <string name="screen_notes_upload_cancel_title">Cancel this upload?</string>
+    <string name="screen_notes_upload_cancel_message">“%1$s” isn’t on the server yet. It will be removed from this phone and from the note.</string>
+</resources>

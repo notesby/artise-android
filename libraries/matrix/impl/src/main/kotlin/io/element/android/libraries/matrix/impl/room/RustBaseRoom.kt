@@ -46,9 +46,12 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
 import org.matrix.rustcomponents.sdk.CallDeclineListener
 import org.matrix.rustcomponents.sdk.RoomInfoListener
+import org.matrix.rustcomponents.sdk.RoomStateEvent
+import org.matrix.rustcomponents.sdk.RoomStateEventsListener
 import org.matrix.rustcomponents.sdk.use
 import timber.log.Timber
 import uniffi.matrix_sdk_base.EncryptionState
+import uniffi.ruma_events.stateEventTypeFromString
 import org.matrix.rustcomponents.sdk.Room as InnerRoom
 
 class RustBaseRoom(
@@ -83,6 +86,25 @@ class RustBaseRoom(
             }
         })
     }.stateIn(roomCoroutineScope, started = SharingStarted.Lazily, initialValue = initialRoomInfo)
+
+    override fun customStateEventsFlow(eventType: String): Flow<Map<String, String>> = mxCallbackFlow {
+        // Custom types are built by the SDK from their name (its PrivateString can't be made in Kotlin).
+        val type = stateEventTypeFromString(eventType)
+        // The subscription reports changes, so send the current state first.
+        runCatchingExceptions { innerRoom.stateEvents(type) }
+            .onSuccess { channel.trySend(it.contentByStateKey()) }
+            .onFailure { Timber.e(it, "Could not read the $eventType state of $roomId") }
+        innerRoom.subscribeToStateEvents(
+            type,
+            object : RoomStateEventsListener {
+                override fun onUpdate(events: List<RoomStateEvent>) {
+                    channel.trySend(events.contentByStateKey())
+                }
+            },
+        )
+    }
+
+    private fun List<RoomStateEvent>.contentByStateKey(): Map<String, String> = associate { it.stateKey to it.contentJson }
 
     override fun predecessorRoom(): PredecessorRoom? {
         return runCatchingExceptions { innerRoom.predecessorRoom()?.map() }
