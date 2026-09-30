@@ -181,6 +181,7 @@ compiled into it. Network traffic on a phone wasn't captured. Re-check after mer
 | Google Analytics for Firebase | Only after the person says yes on "Help improve Artise" | Usage events (above), an app instance ID, the phone model, the Android and app version, and the approximate region from the IP address. |
 | MapTiler (`api.maptiler.com`) | Opening a map to share, view or follow a location | The phone's IP address. No key is set, so MapTiler refuses and **the map stays blank** (see below). Location previews in chats make no request without a key. |
 | Google Cloud Storage and jsDelivr | Only if someone turns on background blur during a call | The phone's IP address, while downloading the blur model. |
+| Google ML Kit (through Google Play services) | When someone makes a sticker from a photo | **Not the photo** (the cut-out runs on the phone). ML Kit's own diagnostics: device and app information, a per-installation ID, performance numbers and image size/format ([ML Kit data disclosure](https://developers.google.com/ml-kit/android-data-disclosure)). Not behind the analytics consent. Decision pending: keep and disclose, or replace. |
 | A UnifiedPush distributor and gateway | Only if the person installs one and picks it in the notification settings | Pushes, instead of Firebase. |
 
 The copyright and acceptable-use links in Settings → About still open element.io pages, and help links open

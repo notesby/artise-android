@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<resources>
+    <string name="screen_stickers_mine">Mine</string>
+    <string name="screen_stickers_starter">Starter pack</string>
+    <string name="screen_stickers_make">Make a sticker from a photo</string>
+    <string name="screen_stickers_empty">Make stickers from your photos: tap +. They’re saved to your account, on all your devices.</string>
+    <string name="screen_stickers_starter_credit">Starter stickers: Fluent Emoji by Microsoft (MIT License)</string>
+    <string name="screen_stickers_preview_title">Your sticker</string>
+    <string name="screen_stickers_not_cut_out">Nothing to cut out was found, so the whole photo is used.</string>
+    <string name="screen_stickers_save_and_send">Save and send</string>
+    <string name="screen_stickers_save">Save to my stickers</string>
+    <string name="screen_stickers_remove_title">Remove this sticker?</string>
+    <string name="screen_stickers_remove_message">It’s removed from your stickers on all your devices. Messages already sent keep it.</string>
+    <string name="screen_stickers_remove">Remove</string>
+    <string name="screen_stickers_send_failed">Couldn’t send the sticker. Check your connection and try again.</string>
+    <string name="screen_stickers_make_failed">Couldn’t make a sticker from this photo. Try another one.</string>
+    <string name="screen_stickers_save_failed">Couldn’t save the sticker. Check your connection and try again.</string>
+    <string name="screen_stickers_remove_failed">Couldn’t remove the sticker. Check your connection and try again.</string>
+</resources>

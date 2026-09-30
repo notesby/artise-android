@@ -38,6 +38,8 @@ dependencyResolutionManagement {
                 includeGroupByRegex("com\\.android\\.tools.*")
                 includeGroupByRegex("com\\.google\\.firebase.*")
                 includeGroupByRegex("com\\.google\\.android.*")
+                // Artise: on-device photo cut-out for stickers (ML Kit subject segmentation).
+                includeGroupByRegex("com\\.google\\.mlkit.*")
             }
         }
         mavenCentral()

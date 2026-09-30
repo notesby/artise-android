@@ -26,6 +26,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import co.artise.android.stickers.api.KeyboardStickerSender
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
@@ -145,6 +146,7 @@ class MessageComposerPresenter(
     private val featureFlagService: FeatureFlagService,
     private val contentScannerService: ContentScannerService,
     private val contentValidationCache: EventContentValidationCache,
+    private val keyboardStickerSender: KeyboardStickerSender,
 ) : Presenter<MessageComposerState> {
     @AssistedFactory
     interface Factory {
@@ -284,7 +286,11 @@ class MessageComposerPresenter(
                         slashCommandAction = slashCommandAction,
                     )
                 }
-                is MessageComposerEvent.SendUri -> {
+                is MessageComposerEvent.SendUri -> localCoroutineScope.launch {
+                    // Artise: a sticker from the keyboard (Gboard, Samsung Keyboard, sticker apps) goes as a sticker,
+                    // unless it's a reply, which needs the usual path to stay a reply.
+                    val isNormalMode = messageComposerContext.composerMode is MessageComposerMode.Normal
+                    if (isNormalMode && threadRoot == null && keyboardStickerSender.trySend(room, event.uri)) return@launch
                     val inReplyToEventId = (messageComposerContext.composerMode as? MessageComposerMode.Reply)?.eventId
                     sessionCoroutineScope.sendAttachment(
                         attachment = Attachment.Media(
