@@ -10,11 +10,14 @@ package co.artise.android.notes.impl.attachments
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
+import android.graphics.Matrix
 import android.os.Build
+import androidx.exifinterface.media.ExifInterface
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import io.element.android.libraries.core.extensions.runCatchingExceptions
 import timber.log.Timber
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import kotlin.math.max
@@ -113,7 +116,34 @@ class DefaultPhotoConverter : PhotoConverter {
             inSampleSize = sample
             inPreferredConfig = Bitmap.Config.ARGB_8888
         }
-        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options) ?: return null
+        return upright(bitmap, bytes)
+    }
+
+    /** BitmapFactory ignores the camera's "which way is up" tag (ImageDecoder applies it): turn the photo upright. */
+    private fun upright(bitmap: Bitmap, bytes: ByteArray): Bitmap {
+        val orientation = runCatchingExceptions {
+            ExifInterface(ByteArrayInputStream(bytes)).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+        }.getOrDefault(ExifInterface.ORIENTATION_NORMAL)
+        val matrix = Matrix()
+        when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+            ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+            ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.postScale(-1f, 1f)
+            ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.postScale(1f, -1f)
+            ExifInterface.ORIENTATION_TRANSPOSE -> {
+                matrix.postRotate(90f)
+                matrix.postScale(-1f, 1f)
+            }
+            ExifInterface.ORIENTATION_TRANSVERSE -> {
+                matrix.postRotate(270f)
+                matrix.postScale(-1f, 1f)
+            }
+            else -> return bitmap
+        }
+        Timber.d("Notes: turned a photo upright (orientation %d)", orientation)
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
     }
 
     private fun scaleDown(bitmap: Bitmap): Bitmap {

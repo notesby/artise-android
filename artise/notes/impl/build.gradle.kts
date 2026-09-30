@@ -38,6 +38,7 @@ dependencies {
     implementation(platform(libs.network.okhttp.bom))
     implementation(libs.serialization.json)
     implementation(libs.timber)
+    implementation(libs.androidx.exifinterface)
     implementation(libs.sqldelight.driver.android)
     implementation(libs.sqldelight.coroutines)
     implementation(libs.sqlcipher)
