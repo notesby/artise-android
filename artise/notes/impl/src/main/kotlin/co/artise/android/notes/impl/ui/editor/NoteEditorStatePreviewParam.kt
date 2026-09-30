@@ -46,6 +46,8 @@ fun aNoteEditorState(
     suggestions = persistentListOf(*suggestions.toTypedArray()),
     notePaths = persistentListOf("Recetas/Mole.md", "Súper.md"),
     linkEdit = null,
+    canUndo = true,
+    canRedo = false,
     showSaveChangesDialog = showSaveChangesDialog,
     eventSink = {},
 )

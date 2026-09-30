@@ -21,6 +21,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Redo
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
@@ -33,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import co.artise.android.notes.impl.R
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
@@ -65,6 +69,12 @@ fun NoteEditorView(
                 titleStr = state.title,
                 navigationIcon = { BackButton(onClick = { state.eventSink(NoteEditorEvent.Back) }) },
                 actions = {
+                    IconButton(onClick = { state.eventSink(NoteEditorEvent.Undo) }, enabled = state.canUndo) {
+                        Icon(imageVector = Icons.AutoMirrored.Filled.Undo, contentDescription = stringResource(R.string.a11y_notes_undo))
+                    }
+                    IconButton(onClick = { state.eventSink(NoteEditorEvent.Redo) }, enabled = state.canRedo) {
+                        Icon(imageVector = Icons.AutoMirrored.Filled.Redo, contentDescription = stringResource(R.string.a11y_notes_redo))
+                    }
                     TextButton(
                         text = stringResource(CommonStrings.action_save),
                         onClick = { state.eventSink(NoteEditorEvent.Save) },
@@ -94,7 +104,8 @@ fun NoteEditorView(
                 onValueChange = { state.eventSink(NoteEditorEvent.ValueChanged(it)) },
                 visualTransformation = LivePreviewTransformation(state.rawLines, livePreviewStyles()),
                 enabled = !state.isLoading,
-                textStyle = ElementTheme.typography.fontBodyLgRegular.copy(color = ElementTheme.colors.textPrimary),
+                // Roomy lines, like the reading view, so editing doesn't feel cramped.
+                textStyle = ElementTheme.typography.fontBodyLgRegular.copy(color = ElementTheme.colors.textPrimary, lineHeight = 1.6.em),
                 cursorBrush = SolidColor(ElementTheme.colors.textPrimary),
                 modifier = Modifier
                     .weight(1f)
@@ -156,6 +167,7 @@ private fun livePreviewStyles(): LivePreviewStyles {
         code = SpanStyle(fontFamily = FontFamily.Monospace, background = colors.bgSubtleSecondary),
         link = SpanStyle(color = colors.textLinkExternal, textDecoration = TextDecoration.Underline),
         dim = SpanStyle(color = colors.textSecondary),
+        checkbox = SpanStyle(fontSize = 1.5.em, color = colors.iconAccentPrimary),
     )
 }
 
@@ -187,6 +199,7 @@ private fun FormatAction.icon(): ImageVector = when (this) {
     FormatAction.CHECKLIST -> CompoundIcons.CheckCircle()
     FormatAction.QUOTE -> CompoundIcons.Quote()
     FormatAction.NOTE_LINK -> CompoundIcons.Link()
+    FormatAction.WEB_LINK -> CompoundIcons.WebBrowser()
 }
 
 private fun FormatAction.label(): Int = when (this) {
@@ -199,6 +212,7 @@ private fun FormatAction.label(): Int = when (this) {
     FormatAction.CHECKLIST -> R.string.a11y_notes_format_checklist
     FormatAction.QUOTE -> R.string.a11y_notes_format_quote
     FormatAction.NOTE_LINK -> R.string.a11y_notes_format_link
+    FormatAction.WEB_LINK -> R.string.a11y_notes_format_web_link
 }
 
 @PreviewsDayNight

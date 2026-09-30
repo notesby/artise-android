@@ -26,6 +26,8 @@ data class NoteEditorState(
     val notePaths: ImmutableList<String>,
     /** The link dialog, after tapping a link on a formatted line. */
     val linkEdit: LinkEditState?,
+    val canUndo: Boolean,
+    val canRedo: Boolean,
     val showSaveChangesDialog: Boolean,
     val eventSink: (NoteEditorEvent) -> Unit,
 )
@@ -35,4 +37,6 @@ data class LinkEditState(
     val start: Int,
     val end: Int,
     val link: EditableLink,
+    /** A link being added from the toolbar, not one already in the note. */
+    val isNew: Boolean = false,
 )

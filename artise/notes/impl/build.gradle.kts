@@ -47,6 +47,8 @@ dependencies {
     implementation("org.commonmark:commonmark-ext-gfm-tables:0.30.0")
     implementation("org.commonmark:commonmark-ext-gfm-strikethrough:0.30.0")
     implementation("org.commonmark:commonmark-ext-task-list-items:0.30.0")
+    implementation("org.commonmark:commonmark-ext-autolink:0.30.0")
+    implementation(libs.androidx.compose.material.icons)
 
     testCommonDependencies(libs)
     testImplementation(projects.libraries.matrix.test)

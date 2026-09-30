@@ -33,6 +33,7 @@ import co.artise.android.notes.impl.ui.note.NotePresenter
 import co.artise.android.notes.impl.ui.note.RenameFailure
 import com.google.common.truth.Truth.assertThat
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.services.toolbox.test.systemclock.FakeSystemClock
 import io.element.android.tests.testutils.consumeItemsUntilPredicate
 import io.element.android.tests.testutils.consumeItemsUntilTimeout
 import io.element.android.tests.testutils.test
@@ -66,6 +67,7 @@ class RecordingNoteNavigator : NoteNavigator {
 
 class NotesEditingPresentersTest {
     private val room = RoomId("!familia:artise.co")
+    private val clock = FakeSystemClock(epochMillisResult = 1_000_000)
 
     // Editor
 
@@ -74,7 +76,7 @@ class NotesEditingPresentersTest {
     fun `editor saves and sends in the background`() = runTest {
         var done = false
         val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md", "- leche"))))
-        NoteEditorPresenter(room, "Súper.md", null, { done = true }, repository).test {
+        NoteEditorPresenter(room, "Súper.md", null, { done = true }, repository, clock).test {
             val state = consumeItemsUntilPredicate { !it.isLoading }.last()
             assertThat(state.value.text).isEqualTo("- leche")
             state.eventSink(NoteEditorEvent.ValueChanged(typed("- leche\n- pan")))
@@ -91,7 +93,7 @@ class NotesEditingPresentersTest {
     fun `editor asks before discarding changes`() = runTest {
         var done = false
         val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md", "- leche"))))
-        NoteEditorPresenter(room, "Súper.md", null, { done = true }, repository).test {
+        NoteEditorPresenter(room, "Súper.md", null, { done = true }, repository, clock).test {
             val state = consumeItemsUntilPredicate { !it.isLoading }.last()
             state.eventSink(NoteEditorEvent.ValueChanged(typed("- leche\n- pan")))
             consumeItemsUntilPredicate { it.hasUnsavedChanges }.last().eventSink(NoteEditorEvent.Back)
@@ -108,7 +110,7 @@ class NotesEditingPresentersTest {
     @Test
     fun `editor suggests and completes links`() = runTest {
         val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md", ""), aNote("Recetas/Mole.md"))))
-        NoteEditorPresenter(room, "Súper.md", null, {}, repository).test {
+        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock).test {
             val state = consumeItemsUntilPredicate { !it.isLoading }.last()
             state.eventSink(NoteEditorEvent.ValueChanged(typed("Para el [[mo")))
             val suggesting = consumeItemsUntilPredicate { it.suggestions.isNotEmpty() }.last()
@@ -124,7 +126,7 @@ class NotesEditingPresentersTest {
     @Test
     fun `enter continues a list`() = runTest {
         val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md", "- leche"))))
-        NoteEditorPresenter(room, "Súper.md", null, {}, repository).test {
+        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock).test {
             val state = consumeItemsUntilPredicate { !it.isLoading }.last()
             state.eventSink(NoteEditorEvent.ValueChanged(typed("- leche\n")))
             assertThat(consumeItemsUntilPredicate { it.value.text != "- leche" }.last().value).isEqualTo(typed("- leche\n- "))
@@ -137,7 +139,7 @@ class NotesEditingPresentersTest {
     fun `tapping a checkbox on a formatted line ticks it`() = runTest {
         val text = "Lista\n- [ ] leche"
         val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md", text))))
-        NoteEditorPresenter(room, "Súper.md", null, {}, repository).test {
+        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock).test {
             val state = consumeItemsUntilPredicate { !it.isLoading }.last()
             state.eventSink(NoteEditorEvent.ValueChanged(state.value.copy(selection = TextRange(2))))
             val onFirstLine = consumeItemsUntilPredicate { it.value.selection == TextRange(2) }.last()
@@ -155,7 +157,7 @@ class NotesEditingPresentersTest {
     fun `tapping the text next to a checkbox places the cursor`() = runTest {
         val text = "Lista\n- [ ] leche"
         val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md", text))))
-        NoteEditorPresenter(room, "Súper.md", null, {}, repository).test {
+        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock).test {
             val state = consumeItemsUntilPredicate { !it.isLoading }.last()
             state.eventSink(NoteEditorEvent.ValueChanged(state.value.copy(selection = TextRange(2))))
             val onFirstLine = consumeItemsUntilPredicate { it.value.selection == TextRange(2) }.last()
@@ -172,7 +174,7 @@ class NotesEditingPresentersTest {
     fun `tapping a link edits it`() = runTest {
         val text = "Ver [[Mole]] hoy\nfin"
         val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md", text))))
-        NoteEditorPresenter(room, "Súper.md", null, {}, repository).test {
+        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock).test {
             val state = consumeItemsUntilPredicate { !it.isLoading }.last()
             // The cursor starts at the end, on "fin"; the first line shows formatted.
             state.eventSink(NoteEditorEvent.ValueChanged(state.value.copy(selection = TextRange(text.indexOf("Mole") + 1))))
@@ -189,11 +191,64 @@ class NotesEditingPresentersTest {
         }
     }
 
+    /**
+     * Typing without a pause is one undo step, formatting is its own step, and redo brings changes back.
+     * A new change after undoing clears what could be redone.
+     */
+    @Test
+    fun `undo and redo`() = runTest {
+        val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md", ""))))
+        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock).test {
+            val state = consumeItemsUntilPredicate { !it.isLoading }.last()
+            state.eventSink(NoteEditorEvent.ValueChanged(typed("l")))
+            clock.epochMillisResult += 200
+            state.eventSink(NoteEditorEvent.ValueChanged(typed("leche")))
+            clock.epochMillisResult += 5_000
+            state.eventSink(NoteEditorEvent.ValueChanged(typed("leche y pan")))
+            state.eventSink(NoteEditorEvent.Format(FormatAction.BULLET_LIST))
+            val formatted = consumeItemsUntilPredicate { it.value.text == "- leche y pan" }.last()
+            assertThat(formatted.canUndo).isTrue()
+            assertThat(formatted.canRedo).isFalse()
+
+            formatted.eventSink(NoteEditorEvent.Undo)
+            assertThat(consumeItemsUntilPredicate { it.value.text == "leche y pan" }.last().canRedo).isTrue()
+            formatted.eventSink(NoteEditorEvent.Undo)
+            consumeItemsUntilPredicate { it.value.text == "leche" }
+            formatted.eventSink(NoteEditorEvent.Undo)
+            assertThat(consumeItemsUntilPredicate { it.value.text == "" }.last().canUndo).isFalse()
+
+            formatted.eventSink(NoteEditorEvent.Redo)
+            consumeItemsUntilPredicate { it.value.text == "leche" }
+            formatted.eventSink(NoteEditorEvent.ValueChanged(typed("leche!")))
+            assertThat(consumeItemsUntilPredicate { it.value.text == "leche!" }.last().canRedo).isFalse()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    /** The web link button asks for an address; the selected text becomes the link's text. */
+    @Test
+    fun `web link from the toolbar`() = runTest {
+        val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md", "ver la tienda"))))
+        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock).test {
+            val state = consumeItemsUntilPredicate { !it.isLoading }.last()
+            state.eventSink(NoteEditorEvent.ValueChanged(state.value.copy(selection = TextRange(7, 13))))
+            consumeItemsUntilPredicate { it.value.selection == TextRange(7, 13) }.last().eventSink(NoteEditorEvent.Format(FormatAction.WEB_LINK))
+            val asking = consumeItemsUntilPredicate { it.linkEdit != null }.last()
+            assertThat(asking.linkEdit?.isNew).isTrue()
+            assertThat(asking.linkEdit?.link?.shownText).isEqualTo("tienda")
+            asking.eventSink(NoteEditorEvent.SaveLink(EditableLink(isNote = false, target = "https://tienda.mx", shownText = "tienda")))
+            val saved = consumeItemsUntilPredicate { it.linkEdit == null }.last()
+            assertThat(saved.value.text).isEqualTo("ver la [tienda](https://tienda.mx)")
+            assertThat(saved.value.selection).isEqualTo(TextRange(saved.value.text.length))
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     /** A toolbar button formats the selection in the editor's text, keeping it selected. */
     @Test
     fun `toolbar formats the selection`() = runTest {
         val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md", "comprar pan"))))
-        NoteEditorPresenter(room, "Súper.md", null, {}, repository).test {
+        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock).test {
             val state = consumeItemsUntilPredicate { !it.isLoading }.last()
             state.eventSink(NoteEditorEvent.ValueChanged(state.value.copy(selection = TextRange(8, 11))))
             state.eventSink(NoteEditorEvent.Format(FormatAction.BOLD))
@@ -209,7 +264,7 @@ class NotesEditingPresentersTest {
     fun `editor combines a conflict`() = runTest {
         val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md"))))
         repository.edits[room] = listOf(aConflict(id = 7))
-        NoteEditorPresenter(room, "Súper.md", 7, {}, repository).test {
+        NoteEditorPresenter(room, "Súper.md", 7, {}, repository, clock).test {
             val state = consumeItemsUntilPredicate { !it.isLoading }.last()
             assertThat(state.isResolvingConflict).isTrue()
             assertThat(state.value.text).isEqualTo("- huevos" + NoteEditorPresenter.CONFLICT_SEPARATOR + "- pan")

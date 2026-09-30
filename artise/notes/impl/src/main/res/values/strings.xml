@@ -81,4 +81,8 @@
     <string name="screen_notes_link_edit_address">Web address</string>
     <string name="screen_notes_link_edit_text">Text to show (optional)</string>
     <string name="screen_notes_link_edit_remove">Remove link</string>
+    <string name="a11y_notes_undo">Undo</string>
+    <string name="a11y_notes_redo">Redo</string>
+    <string name="a11y_notes_format_web_link">Link to a website</string>
+    <string name="screen_notes_link_edit_open">Open in the browser</string>
 </resources>

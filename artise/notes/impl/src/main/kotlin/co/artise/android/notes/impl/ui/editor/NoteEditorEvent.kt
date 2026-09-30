@@ -26,6 +26,10 @@ sealed interface NoteEditorEvent {
 
     data object DismissLinkEdit : NoteEditorEvent
 
+    data object Undo : NoteEditorEvent
+
+    data object Redo : NoteEditorEvent
+
     data object Save : NoteEditorEvent
 
     /** Back pressed: leave, or ask first when there are unsaved changes. */

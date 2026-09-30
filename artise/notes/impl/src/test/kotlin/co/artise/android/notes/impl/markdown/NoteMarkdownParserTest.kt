@@ -31,6 +31,13 @@ class NoteMarkdownParserTest {
         assertThat(WikiLinkRewriter.targetOf(link.destination)).isEqualTo("Recetas/Mole")
     }
 
+    /** A web address typed as plain text becomes a link the reading view can open. */
+    @Test
+    fun `plain web addresses become links`() {
+        val links = NoteMarkdownParser.parse("Ver https://tienda.mx/ofertas hoy").all().filterIsInstance<Link>()
+        assertThat(links.single().destination).isEqualTo("https://tienda.mx/ofertas")
+    }
+
     /** Tables are recognised, so they're drawn as rows rather than raw pipes. */
     @Test
     fun `tables are parsed`() {

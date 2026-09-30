@@ -27,6 +27,8 @@ data class LivePreviewStyles(
     val link: SpanStyle,
     /** Secondary text: ticked items, quotes, list numbers, table pipes. */
     val dim: SpanStyle,
+    /** The ☐/☑ drawn for checklist items: larger than the text so it's easy to see and tap. */
+    val checkbox: SpanStyle,
 )
 
 /** Something on a formatted line that a tap acts on instead of placing the cursor. */
@@ -47,10 +49,12 @@ data class EditableLink(
     val shownText: String,
 ) {
     /** The Markdown for this link. */
-    fun toMarkdown(): String = if (isNote) {
-        if (shownText.isBlank()) "[[${target.trim()}]]" else "[[${target.trim()}|${shownText.trim()}]]"
-    } else {
-        "[${shownText.ifBlank { target }.trim()}](${target.trim()})"
+    fun toMarkdown(): String = when {
+        isNote && shownText.isBlank() -> "[[${target.trim()}]]"
+        isNote -> "[[${target.trim()}|${shownText.trim()}]]"
+        // A web address with no text of its own is written as is: it shows as a link anyway.
+        shownText.isBlank() -> target.trim()
+        else -> "[${shownText.trim()}](${target.trim()})"
     }
 
     /** What remains when the link is removed: the text people saw. */
@@ -76,6 +80,9 @@ object LivePreview {
     private val INLINE_CODE = Regex("`([^`\\n]+)`")
     private val WIKI_LINK = Regex("(!?)\\[\\[([^\\[\\]\\n]+)]]")
     private val MARKDOWN_LINK = Regex("\\[([^\\[\\]\\n]+)]\\(([^()\\s]+)\\)")
+
+    /** A web address typed as plain text; trailing punctuation isn't part of it. */
+    private val BARE_URL = Regex("(?<![\\w/(<\\[])(?:https?://|www\\.)[^\\s<>()\\[\\]]*[^\\s<>()\\[\\].,;:!?'\"]")
     private val BOLD = Regex("\\*\\*(?=\\S)(.+?)(?<=\\S)\\*\\*")
     private val STRIKE = Regex("~~(?=\\S)(.+?)(?<=\\S)~~")
     private val ITALIC_STAR = Regex("(?<!\\*)\\*(?=[^\\s*])([^*\\n]+?)(?<=\\S)\\*(?!\\*)")
@@ -136,6 +143,14 @@ object LivePreview {
             val labelStart = match.range.first + 1
             if (column in labelStart until labelStart + match.groupValues[1].length) {
                 val link = EditableLink(isNote = false, target = match.groupValues[2], shownText = match.groupValues[1])
+                return LivePreviewHit.Link(lineStart + match.range.first, lineStart + match.range.last + 1, link)
+            }
+        }
+        for (match in BARE_URL.findAll(line)) {
+            // Inside a [text](address) link, the address is part of that link, handled above.
+            if (MARKDOWN_LINK.findAll(line).any { match.range.first in it.range }) continue
+            if (column in match.range.first until match.range.last + 1) {
+                val link = EditableLink(isNote = false, target = match.value, shownText = "")
                 return LivePreviewHit.Link(lineStart + match.range.first, lineStart + match.range.last + 1, link)
             }
         }
@@ -206,7 +221,7 @@ object LivePreview {
             builder.keep(start + indent)
             val checked = match.groupValues[3].isNotBlank()
             // Taps on the box map inside "[ ]", which is how hitAt knows the box was tapped.
-            builder.replace(start + match.range.last + 1, if (checked) "☑ " else "☐ ", mapTo = start + indent + 3)
+            builder.styled(styles.checkbox) { builder.replace(start + match.range.last + 1, if (checked) "☑ " else "☐ ", mapTo = start + indent + 3) }
             if (checked) {
                 builder.styled(styles.dim) { inline(builder, line, start, start + match.range.last + 1, end, styles) }
             } else {
@@ -246,7 +261,7 @@ object LivePreview {
         var i = from
         while (i < to) {
             val column = i - lineStart
-            val match = listOf(INLINE_CODE, WIKI_LINK, MARKDOWN_LINK, BOLD, STRIKE, ITALIC_STAR, ITALIC_UNDERSCORE)
+            val match = listOf(INLINE_CODE, WIKI_LINK, MARKDOWN_LINK, BARE_URL, BOLD, STRIKE, ITALIC_STAR, ITALIC_UNDERSCORE)
                 .firstNotNullOfOrNull { regex -> regex.matchAt(line, column)?.takeIf { lineStart + it.range.last < to }?.let { regex to it } }
             if (match == null) {
                 builder.keep(i + 1)
@@ -270,6 +285,7 @@ object LivePreview {
                     builder.styled(styles.link) { builder.keep(lineStart + labelEnd) }
                     builder.hide(matchEnd)
                 }
+                BARE_URL -> builder.styled(styles.link) { builder.keep(matchEnd) }
                 MARKDOWN_LINK -> {
                     builder.hide(matchStart + 1)
                     builder.styled(styles.link) { builder.keep(matchStart + 1 + found.groupValues[1].length) }

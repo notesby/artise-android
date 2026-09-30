@@ -25,6 +25,7 @@ class LivePreviewTest {
         code = SpanStyle(color = Color(5)),
         link = SpanStyle(color = Color(6)),
         dim = SpanStyle(color = Color(7)),
+        checkbox = SpanStyle(color = Color(8)),
     )
 
     private val note = "# Súper\n- [ ] leche\n- [x] **pan** integral\nVer [[Recetas/Mole|el mole]] y [web](https://artise.co)"
@@ -122,12 +123,33 @@ class LivePreviewTest {
         assertThat(shown(text, 4..4)).isEqualTo("Plan\n• uno\n▍ cita\nnota y code\n1. primero")
     }
 
+    /** Web addresses typed as plain text show as links, and tapping one edits it; its text isn't changed. */
+    @Test
+    fun `bare web addresses`() {
+        val text = "Compras en https://tienda.mx/ofertas. Y www.artise.co\nfin"
+        val transformed = LivePreview.transform(text, 1..1, styles)
+        assertThat(transformed.text.text).isEqualTo(text)
+        val url = "https://tienda.mx/ofertas"
+        assertThat(transformed.text.spanStyles.any { it.item == styles.link && transformed.text.text.substring(it.start, it.end) == url }).isTrue()
+        val hit = LivePreview.hitAt(text, text.indexOf("tienda")) as LivePreviewHit.Link
+        assertThat(hit.link).isEqualTo(EditableLink(isNote = false, target = url, shownText = ""))
+        assertThat((LivePreview.hitAt(text, text.indexOf("artise")) as LivePreviewHit.Link).link.target).isEqualTo("www.artise.co")
+    }
+
+    /** An address inside [text](address) is part of that link, not a second one. */
+    @Test
+    fun `addresses in markdown links are not separate links`() {
+        val text = "[web](https://artise.co)"
+        assertThat(LivePreview.transform(text, 1..1, styles).text.text).isEqualTo("web")
+    }
+
     /** The dialog writes links back as Markdown, and removing a link keeps the text people saw. */
     @Test
     fun `links write back`() {
         assertThat(EditableLink(true, "Recetas/Mole", "el mole").toMarkdown()).isEqualTo("[[Recetas/Mole|el mole]]")
         assertThat(EditableLink(true, "Súper", "").toMarkdown()).isEqualTo("[[Súper]]")
-        assertThat(EditableLink(false, "https://artise.co", "").toMarkdown()).isEqualTo("[https://artise.co](https://artise.co)")
+        assertThat(EditableLink(false, "https://artise.co", "").toMarkdown()).isEqualTo("https://artise.co")
+        assertThat(EditableLink(false, "https://artise.co", "Artise").toMarkdown()).isEqualTo("[Artise](https://artise.co)")
         assertThat(EditableLink(true, "Recetas/Mole#Salsa", "").label()).isEqualTo("Mole")
     }
 }

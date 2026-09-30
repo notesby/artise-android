@@ -18,6 +18,9 @@ enum class FormatAction {
     CHECKLIST,
     QUOTE,
     NOTE_LINK,
+
+    /** Opens the link dialog for a new web link; the selected text becomes its text. */
+    WEB_LINK,
 }
 
 /** Text with a selection: [start] == [end] is a cursor. */
@@ -42,6 +45,8 @@ object MarkdownFormatting {
             FormatAction.QUOTE -> toggleLinePrefix(text, from, to, LineKind.QUOTE)
             // "[[" opens the note suggestions; choosing one completes the link.
             FormatAction.NOTE_LINK -> EditedText(text.substring(0, from) + "[[" + text.substring(to), from + 2, from + 2)
+            // Needs an address first: the editor opens the link dialog, and the text changes when it's saved.
+            FormatAction.WEB_LINK -> EditedText(text, from, to)
         }
     }
 

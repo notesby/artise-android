@@ -10,7 +10,6 @@ package co.artise.android.notes.impl.markdown
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -18,16 +17,13 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -41,9 +37,11 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
+import io.element.android.libraries.designsystem.theme.components.Checkbox
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.Text
 import org.commonmark.ext.gfm.strikethrough.Strikethrough
@@ -85,7 +83,7 @@ fun NoteMarkdownView(
 ) {
     val document = remember(markdown) { NoteMarkdownParser.parse(markdown) }
     val actions = NoteActions(onLinkClick, onTaskToggle)
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Blocks(parent = document, actions = actions)
     }
 }
@@ -106,7 +104,7 @@ private fun Block(node: Node, actions: NoteActions) {
     val onLinkClick = actions.onLinkClick
     when (node) {
         is Heading -> InlineText(node, headingStyle(node.level), onLinkClick)
-        is Paragraph -> InlineText(node, ElementTheme.typography.fontBodyLgRegular, onLinkClick)
+        is Paragraph -> InlineText(node, bodyStyle(), onLinkClick)
         is BulletList -> ListBlock(node, ordered = false, start = 1, actions = actions)
         is OrderedList -> ListBlock(node, ordered = true, start = node.markerStartNumber ?: 1, actions = actions)
         is BlockQuote -> Row(Modifier.height(IntrinsicSize.Min)) {
@@ -124,11 +122,15 @@ private fun Block(node: Node, actions: NoteActions) {
         is IndentedCodeBlock -> CodeBlock(node.literal)
         is ThematicBreak -> HorizontalDivider()
         is TableBlock -> TableView(node, onLinkClick)
-        is HtmlBlock -> Text(node.literal.trimEnd(), style = ElementTheme.typography.fontBodyLgRegular)
+        is HtmlBlock -> Text(node.literal.trimEnd(), style = bodyStyle())
         // Anything else the parser may produce: show its text rather than nothing.
-        else -> InlineText(node, ElementTheme.typography.fontBodyLgRegular, onLinkClick)
+        else -> InlineText(node, bodyStyle(), onLinkClick)
     }
 }
+
+/** Body text with generous line spacing: notes are read on phones, often by older family members. */
+@Composable
+private fun bodyStyle(): TextStyle = ElementTheme.typography.fontBodyLgRegular.copy(lineHeight = BODY_LINE_HEIGHT)
 
 @Composable
 private fun headingStyle(level: Int): TextStyle = when (level) {
@@ -136,54 +138,44 @@ private fun headingStyle(level: Int): TextStyle = when (level) {
     2 -> ElementTheme.typography.fontHeadingMdBold
     3 -> ElementTheme.typography.fontHeadingSmMedium
     else -> ElementTheme.typography.fontBodyLgMedium
-}
+}.copy(lineHeight = HEADING_LINE_HEIGHT)
+
+private val BODY_LINE_HEIGHT = 1.55.em
+private val HEADING_LINE_HEIGHT = 1.3.em
 
 @Composable
 private fun ListBlock(list: Node, ordered: Boolean, start: Int, actions: NoteActions) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         list.children().filterIsInstance<ListItem>().forEachIndexed { index, item ->
             // The checkbox marker sits at the start of the item, or of its first paragraph.
             val task = item.firstChild as? TaskListItemMarker ?: item.firstChild?.firstChild as? TaskListItemMarker
             val line = item.sourceSpans.firstOrNull()?.lineIndex
             val onTaskToggle = actions.onTaskToggle
-            Row {
-                if (task != null && line != null && onTaskToggle != null) {
-                    Checkbox(checked = task.isChecked, onToggle = { onTaskToggle(line) })
+            Row(verticalAlignment = if (task != null) Alignment.CenterVertically else Alignment.Top) {
+                if (task != null) {
+                    // A full-size checkbox (48dp to tap); read-only where the note can't be edited.
+                    Checkbox(
+                        checked = task.isChecked,
+                        onCheckedChange = if (line != null && onTaskToggle != null) {
+                            { onTaskToggle(line) }
+                        } else {
+                            null
+                        },
+                    )
                 } else {
-                    val marker = when {
-                        task != null -> if (task.isChecked) "☑" else "☐"
-                        ordered -> "${start + index}."
-                        else -> "•"
-                    }
+                    val marker = if (ordered) "${start + index}." else "•"
                     Text(
                         text = marker,
-                        style = ElementTheme.typography.fontBodyLgRegular,
+                        style = bodyStyle(),
                         color = ElementTheme.colors.textSecondary,
                         modifier = Modifier.width(28.dp),
                     )
                 }
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Blocks(item, actions)
                 }
             }
         }
-    }
-}
-
-/** A tappable checkbox for a checklist item, big enough to hit with a thumb and announced as a checkbox. */
-@Composable
-private fun Checkbox(checked: Boolean, onToggle: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(width = 28.dp, height = 28.dp)
-            .toggleable(value = checked, role = Role.Checkbox, onValueChange = { onToggle() }),
-        contentAlignment = Alignment.TopStart,
-    ) {
-        Text(
-            text = if (checked) "☑" else "☐",
-            style = ElementTheme.typography.fontBodyLgRegular,
-            color = if (checked) ElementTheme.colors.textSecondary else ElementTheme.colors.textPrimary,
-        )
     }
 }
 
@@ -206,7 +198,7 @@ private fun TableView(table: TableBlock, onLinkClick: (NoteLink) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         var first = true
         table.descendants().filterIsInstance<TableRow>().forEach { row ->
-            val style = if (first) ElementTheme.typography.fontBodyLgMedium else ElementTheme.typography.fontBodyLgRegular
+            val style = if (first) ElementTheme.typography.fontBodyLgMedium else bodyStyle()
             val linkColor = ElementTheme.colors.textLinkExternal
             val codeBackground = ElementTheme.colors.bgSubtleSecondary
             val text = buildAnnotatedString {
