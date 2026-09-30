@@ -110,4 +110,29 @@
     <string name="screen_notes_upload_keep">Keep</string>
     <string name="screen_notes_upload_cancel_title">Cancel this upload?</string>
     <string name="screen_notes_upload_cancel_message">“%1$s” isn’t on the server yet. It will be removed from this phone and from the note.</string>
+    <string name="screen_notes_media_title">Photos and files</string>
+    <string name="screen_notes_media_all">All</string>
+    <string name="screen_notes_media_unused">Unused (%1$d)</string>
+    <string name="screen_notes_media_delete_unused">Delete all unused (%1$s)</string>
+    <string name="screen_notes_media_empty">No photos or files in these notes yet.</string>
+    <string name="screen_notes_media_none_unused">Every photo and file is used in a note.</string>
+    <string name="screen_notes_media_not_used">Not used in any note</string>
+    <string name="screen_notes_media_open">Open</string>
+    <string name="screen_notes_media_delete">Delete</string>
+    <string name="screen_notes_media_delete_title">Delete “%1$s”?</string>
+    <string name="screen_notes_media_delete_message">No note uses it. It’s deleted for everyone in this chat. Before deleting, Artise checks again that no note uses it.</string>
+    <string name="screen_notes_media_in_use_title">“%1$s” is used in notes</string>
+    <string name="screen_notes_media_in_use_message">It’s shown or linked in:\n%1$s\n\nDeleting it takes it out of these notes too (a link keeps its words). It’s deleted for everyone in this chat.</string>
+    <string name="screen_notes_media_remove_and_delete">Remove from notes and delete</string>
+    <string name="screen_notes_media_delete_unused_message">They take %1$s. Each one is checked again before it’s deleted; one that turns out to be used is kept, and you’re asked about it.</string>
+    <string name="screen_notes_media_offline">Deleting needs a connection, to be sure no note uses the file. Try again when you’re online.</string>
+    <string name="screen_notes_media_failed">Couldn’t delete it. Try again.</string>
+    <plurals name="screen_notes_media_used_in">
+        <item quantity="one">Used in %1$d note</item>
+        <item quantity="other">Used in %1$d notes</item>
+    </plurals>
+    <plurals name="screen_notes_media_delete_unused_title">
+        <item quantity="one">Delete %1$d unused file?</item>
+        <item quantity="other">Delete %1$d unused files?</item>
+    </plurals>
 </resources>

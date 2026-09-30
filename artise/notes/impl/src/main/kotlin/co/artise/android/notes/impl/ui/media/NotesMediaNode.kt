@@ -5,7 +5,7 @@
  * Please see LICENSE files in the repository root for full details.
  */
 
-package co.artise.android.notes.impl.ui.folder
+package co.artise.android.notes.impl.ui.media
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -26,44 +26,32 @@ import io.element.android.services.analytics.api.AnalyticsService
 
 @ContributesNode(SessionScope::class)
 @AssistedInject
-class NotesFolderNode(
+class NotesMediaNode(
     @Assisted buildContext: BuildContext,
     @Assisted plugins: List<Plugin>,
-    presenterFactory: NotesFolderPresenter.Factory,
+    presenterFactory: NotesMediaPresenter.Factory,
     analyticsService: AnalyticsService,
 ) : Node(buildContext, plugins = plugins) {
     init {
-        trackScreen(analyticsService, NotesScreen.NotesFolder)
+        trackScreen(analyticsService, NotesScreen.NotesMedia)
     }
 
-    data class Inputs(val roomId: RoomId, val folder: String) : NodeInputs
+    data class Inputs(val roomId: RoomId) : NodeInputs
 
     interface Callback : Plugin {
-        fun openFolder(roomId: RoomId, folder: String)
         fun openNote(roomId: RoomId, path: String)
-        fun openSearch(roomId: RoomId)
-        fun openEditor(roomId: RoomId, path: String)
-        fun openChoices(roomId: RoomId)
-        fun openMap(roomId: RoomId)
-
-        fun openMedia(roomId: RoomId)
     }
 
     private val inputs: Inputs = inputs()
     private val callback: Callback = callback()
-    private val presenter = presenterFactory.create(inputs.roomId, inputs.folder) { path -> callback.openEditor(inputs.roomId, path) }
+    private val presenter = presenterFactory.create(inputs.roomId)
 
     @Composable
     override fun View(modifier: Modifier) {
-        NotesFolderView(
+        NotesMediaView(
             state = presenter.present(),
             onBackClick = ::navigateUp,
-            onFolderClick = { callback.openFolder(inputs.roomId, it) },
             onNoteClick = { callback.openNote(inputs.roomId, it) },
-            onSearchClick = { callback.openSearch(inputs.roomId) },
-            onReviewChoicesClick = { callback.openChoices(inputs.roomId) },
-            onMapClick = { callback.openMap(inputs.roomId) },
-            onMediaClick = { callback.openMedia(inputs.roomId) },
             modifier = modifier,
         )
     }

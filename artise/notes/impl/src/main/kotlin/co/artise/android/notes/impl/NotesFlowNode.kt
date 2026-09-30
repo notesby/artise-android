@@ -21,6 +21,7 @@ import co.artise.android.notes.impl.ui.choices.NotesChoicesNode
 import co.artise.android.notes.impl.ui.editor.NoteEditorNode
 import co.artise.android.notes.impl.ui.folder.NotesFolderNode
 import co.artise.android.notes.impl.ui.graph.NotesGraphNode
+import co.artise.android.notes.impl.ui.media.NotesMediaNode
 import co.artise.android.notes.impl.ui.note.NoteNode
 import co.artise.android.notes.impl.ui.search.NotesSearchNode
 import com.bumble.appyx.core.modality.BuildContext
@@ -78,6 +79,10 @@ class NotesFlowNode(
 
         @Parcelize
         data class Map(val roomId: RoomId) : NavTarget
+
+        /** A chat's photos and files, and the notes that use them. */
+        @Parcelize
+        data class Media(val roomId: RoomId) : NavTarget
     }
 
     override fun onBuilt() {
@@ -99,7 +104,8 @@ class NotesFlowNode(
         NoteNode.Callback,
         NotesSearchNode.Callback,
         NotesChoicesNode.Callback,
-        NotesGraphNode.Callback {
+        NotesGraphNode.Callback,
+        NotesMediaNode.Callback {
         override fun openChat(roomId: RoomId) = backstack.push(NavTarget.Folder(roomId, folder = ""))
 
         override fun openFolder(roomId: RoomId, folder: String) = backstack.push(NavTarget.Folder(roomId, folder))
@@ -113,6 +119,8 @@ class NotesFlowNode(
         override fun openChoices(roomId: RoomId) = backstack.push(NavTarget.Choices(roomId))
 
         override fun openMap(roomId: RoomId) = backstack.push(NavTarget.Map(roomId))
+
+        override fun openMedia(roomId: RoomId) = backstack.push(NavTarget.Media(roomId))
 
         override fun combine(roomId: RoomId, path: String, editId: Long) = backstack.push(NavTarget.Editor(roomId, path, editId))
 
@@ -130,6 +138,7 @@ class NotesFlowNode(
         )
         is NavTarget.Choices -> createNode<NotesChoicesNode>(buildContext, listOf(NotesChoicesNode.Inputs(navTarget.roomId), navigation))
         is NavTarget.Map -> createNode<NotesGraphNode>(buildContext, listOf(NotesGraphNode.Inputs(navTarget.roomId), navigation))
+        is NavTarget.Media -> createNode<NotesMediaNode>(buildContext, listOf(NotesMediaNode.Inputs(navTarget.roomId), navigation))
     }
 
     @Composable
