@@ -35,6 +35,7 @@ import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.knockrequests.api.banner.KnockRequestsBannerRenderer
 import io.element.android.features.messages.impl.actionlist.ActionListPresenter
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemActionPostProcessor
+import io.element.android.features.messages.impl.artise.LocalOpenNotes
 import io.element.android.features.messages.impl.attachments.Attachment
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerEvent
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerPresenter
@@ -154,6 +155,9 @@ class MessagesNode(
         fun navigateToRoomCall(roomId: RoomId, isAudioCall: Boolean)
         fun navigateToThread(threadRootId: ThreadId, focusedEventId: EventId?)
         fun navigateToRoomDetails()
+
+        /** Artise: this chat's notes. */
+        fun navigateToNotes()
         fun navigateToPinnedMessagesList()
         fun navigateToKnockRequestsList()
         fun navigateToDeveloperSettings()
@@ -288,6 +292,7 @@ class MessagesNode(
             LocalTimelineItemPresenterFactories provides timelineItemPresenterFactories,
             LocalEventContentValidationState provides eventContentValidationCache,
             LocalStickerButton provides stickerButton,
+            LocalOpenNotes provides callback::navigateToNotes,
         ) {
             val state = presenter.present()
 
