@@ -200,6 +200,14 @@ private fun RowScope.RoomListMenuItems(
     canReportBug: Boolean,
     spaceFiltersState: SpaceFiltersState,
 ) {
+    if (RoomListConfig.SHOW_NOTES_BUTTON) {
+        IconButton(onClick = { onMenuActionClick(RoomListMenuAction.Notes) }) {
+            Icon(
+                imageVector = CompoundIcons.Document(),
+                contentDescription = stringResource(id = NotesR.string.notes_entry_title),
+            )
+        }
+    }
     IconButton(
         onClick = onToggleSearch,
     ) {
@@ -223,22 +231,6 @@ private fun RowScope.RoomListMenuItems(
             expanded = showMenu,
             onDismissRequest = { showMenu = false }
         ) {
-            if (RoomListConfig.SHOW_NOTES_MENU_ITEM) {
-                DropdownMenuItem(
-                    onClick = {
-                        showMenu = false
-                        onMenuActionClick(RoomListMenuAction.Notes)
-                    },
-                    text = { Text(stringResource(id = NotesR.string.notes_entry_title)) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = CompoundIcons.Document(),
-                            tint = ElementTheme.colors.iconSecondary,
-                            contentDescription = null,
-                        )
-                    }
-                )
-            }
             if (RoomListConfig.SHOW_INVITE_MENU_ITEM) {
                 DropdownMenuItem(
                     onClick = {
