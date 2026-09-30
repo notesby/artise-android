@@ -14,6 +14,7 @@ import android.os.Build
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import io.element.android.libraries.core.extensions.runCatchingExceptions
+import timber.log.Timber
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import kotlin.math.max
@@ -76,21 +77,44 @@ class DefaultPhotoConverter : PhotoConverter {
     /**
      * Decodes in memory the phone's graphics hardware doesn't hold, so HDR photos come out as a normal picture.
      * ImageDecoder (Android 9+) reads HEIC and turns the photo upright; older phones don't have HEIC photos.
+     * Some iPhone HEICs (HDR gain map, portrait mattes) trip ImageDecoder on some phones: BitmapFactory is tried next.
      */
-    private fun decode(bytes: ByteArray): Bitmap? = runCatchingExceptions {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            ImageDecoder.decodeBitmap(ImageDecoder.createSource(ByteBuffer.wrap(bytes))) { decoder, info, _ ->
-                decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
-                val side = max(info.size.width, info.size.height)
-                if (side > PhotoConverter.MAX_SIDE) {
-                    val ratio = PhotoConverter.MAX_SIDE.toFloat() / side
-                    decoder.setTargetSize((info.size.width * ratio).toInt(), (info.size.height * ratio).toInt())
+    private fun decode(bytes: ByteArray): Bitmap? {
+        val viaImageDecoder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            runCatchingExceptions {
+                ImageDecoder.decodeBitmap(ImageDecoder.createSource(ByteBuffer.wrap(bytes))) { decoder, info, _ ->
+                    decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+                    val side = max(info.size.width, info.size.height)
+                    if (side > PhotoConverter.MAX_SIDE) {
+                        val ratio = PhotoConverter.MAX_SIDE.toFloat() / side
+                        decoder.setTargetSize((info.size.width * ratio).toInt(), (info.size.height * ratio).toInt())
+                    }
                 }
-            }
+            }.onFailure { Timber.w(it, "Notes: ImageDecoder couldn't read a photo") }.getOrNull()
         } else {
-            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            null
         }
-    }.getOrNull()
+        viaImageDecoder?.let {
+            Timber.d("Notes: photo decoded by ImageDecoder, %dx%d %s", it.width, it.height, it.config)
+            return it
+        }
+        return runCatchingExceptions { decodeWithBitmapFactory(bytes) }
+            .onFailure { Timber.w(it, "Notes: BitmapFactory couldn't read a photo") }
+            .getOrNull()
+            ?.also { Timber.d("Notes: photo decoded by BitmapFactory, %dx%d %s", it.width, it.height, it.config) }
+    }
+
+    private fun decodeWithBitmapFactory(bytes: ByteArray): Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        var sample = 1
+        while (max(bounds.outWidth, bounds.outHeight) / (sample * 2) >= PhotoConverter.MAX_SIDE) sample *= 2
+        val options = BitmapFactory.Options().apply {
+            inSampleSize = sample
+            inPreferredConfig = Bitmap.Config.ARGB_8888
+        }
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+    }
 
     private fun scaleDown(bitmap: Bitmap): Bitmap {
         val side = max(bitmap.width, bitmap.height)
