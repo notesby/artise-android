@@ -62,4 +62,19 @@ class NotesGraphBuilderTest {
         val single = NotesGraphBuilder.build(listOf(aNote("Solo.md", "")))
         assertThat(single.nodes.single().x).isEqualTo(0.5f)
     }
+
+    /**
+     * A few linked notes plus several with no links (like the demo chat): the linked ones stay readable, spread out
+     * rather than piled in the middle while the loose ones sit at the edges.
+     */
+    @Test
+    fun `linked notes are spread out even with loose notes around`() {
+        // 0-6 linked around 0 and to each other; 7-11 have no links.
+        val edges = listOf(0 to 1, 0 to 2, 0 to 3, 0 to 4, 1 to 2, 3 to 4, 4 to 5, 5 to 6, 2 to 6)
+        val pos = ForceLayout.layout(12, edges)
+        fun distance(a: Int, b: Int) = kotlin.math.hypot(pos[2 * a] - pos[2 * b], pos[2 * a + 1] - pos[2 * b + 1])
+        val closest = (0 until 12).flatMap { a -> (a + 1 until 12).map { b -> distance(a, b) } }.min()
+        // Every pair of notes is at least 8% of the map apart: room for their names.
+        com.google.common.truth.Truth.assertThat(closest).isGreaterThan(0.08f)
+    }
 }
