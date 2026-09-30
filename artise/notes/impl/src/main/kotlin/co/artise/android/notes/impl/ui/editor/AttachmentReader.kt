@@ -10,6 +10,7 @@ package co.artise.android.notes.impl.ui.editor
 import android.content.Context
 import android.provider.OpenableColumns
 import androidx.core.net.toUri
+import co.artise.android.notes.impl.attachments.PhotoConverter
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
@@ -45,6 +46,7 @@ fun interface AttachmentReader {
 class DefaultAttachmentReader(
     @ApplicationContext private val context: Context,
     private val dispatchers: CoroutineDispatchers,
+    private val photoConverter: PhotoConverter,
 ) : AttachmentReader {
     override suspend fun read(uri: String): Result<PickedFile> = withContext(dispatchers.io) {
         runCatchingExceptions {
@@ -61,7 +63,11 @@ class DefaultAttachmentReader(
             if (size > AttachmentReader.MAX_BYTES) throw AttachmentTooBigException()
             val bytes = context.contentResolver.openInputStream(androidUri)?.use { it.readBytes() } ?: error("Couldn't read the file")
             if (bytes.size > AttachmentReader.MAX_BYTES) throw AttachmentTooBigException()
-            PickedFile(name, context.contentResolver.getType(androidUri) ?: "application/octet-stream", bytes)
+            val mimeType = context.contentResolver.getType(androidUri) ?: PhotoConverter.mimeTypeOf(name)
+            // HEIC and big photos become JPEGs every app can show.
+            photoConverter.toJpeg(bytes, mimeType)
+                ?.let { jpeg -> PickedFile(PhotoConverter.jpegName(name), "image/jpeg", jpeg) }
+                ?: PickedFile(name, mimeType, bytes)
         }
     }
 }

@@ -70,6 +70,7 @@ import co.artise.android.notes.impl.markdown.NoteMarkdownView
 import co.artise.android.notes.impl.ui.note.EmbedState
 import co.artise.android.notes.impl.ui.note.NoteEmbedView
 import co.artise.android.notes.impl.ui.note.openDownloadedFile
+import co.artise.android.notes.impl.ui.note.photoRequest
 import coil3.compose.AsyncImage
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
@@ -282,7 +283,7 @@ private fun PhotoStrip(embeds: ImmutableMap<String, EmbedState>, onOpen: (path: 
                 .background(ElementTheme.colors.bgSubtleSecondary, shape)
                 .clickable(onClickLabel = photo.name) { onOpen(photo.path) }
             if (photo.file != null) {
-                AsyncImage(model = File(photo.file), contentDescription = photo.name, contentScale = ContentScale.Crop, modifier = thumbnail)
+                AsyncImage(model = photoRequest(photo.file), contentDescription = photo.name, contentScale = ContentScale.Crop, modifier = thumbnail)
             } else {
                 Box(thumbnail, contentAlignment = Alignment.Center) {
                     Icon(imageVector = CompoundIcons.Image(), contentDescription = photo.name, tint = ElementTheme.colors.iconSecondary)

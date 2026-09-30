@@ -25,11 +25,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import co.artise.android.notes.impl.R
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.allowHardware
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.libraries.designsystem.theme.components.CircularProgressIndicator
@@ -52,7 +55,7 @@ internal fun NoteEmbedView(
     when {
         embed == null -> FileChip(name = target, isImage = true, onClick = null, modifier = modifier)
         embed.isImage && embed.file != null -> AsyncImage(
-            model = File(embed.file),
+            model = photoRequest(embed.file),
             contentDescription = embed.name,
             contentScale = ContentScale.FillWidth,
             modifier = modifier
@@ -74,6 +77,14 @@ internal fun NoteEmbedView(
         else -> FileChip(name = embed.name, isImage = embed.isImage, onClick = { onOpen(embed.path) }, modifier = modifier)
     }
 }
+
+/**
+ * A photo decoded in ordinary memory rather than on the graphics hardware: HDR photos (HEIC with a gain map, as many
+ * phones take) can otherwise draw black.
+ */
+@Composable
+internal fun photoRequest(file: String): ImageRequest =
+    ImageRequest.Builder(LocalContext.current).data(File(file)).allowHardware(false).build()
 
 @Composable
 private fun FileChip(name: String, isImage: Boolean, onClick: (() -> Unit)?, modifier: Modifier = Modifier) {

@@ -22,6 +22,7 @@ import co.artise.android.notes.api.NotesRepository
 import co.artise.android.notes.api.NotesSearchResult
 import co.artise.android.notes.api.PendingEdit
 import co.artise.android.notes.api.SyncReport
+import co.artise.android.notes.impl.attachments.PhotoConverter
 import co.artise.android.notes.impl.local.NotesLocalStore
 import co.artise.android.notes.impl.remote.NotesApiClient
 import co.artise.android.notes.impl.remote.TreeResponse
@@ -61,6 +62,8 @@ class NotesSyncEngine(
     private val attachmentsDir: File,
     /** Where attachments wait to upload: app storage, not the cache, which Android may clear. */
     private val pendingDir: File,
+    /** Turns queued HEIC or big photos into JPEGs before they upload (photos queued before that was done on attach). */
+    private val photoConverter: PhotoConverter,
 ) : NotesRepository {
     // One sync per chat at a time, so a chat's queue is never sent twice. Different chats don't wait for each other:
     // opening one chat's notes shouldn't wait behind the background check of all the others.
@@ -395,14 +398,32 @@ class NotesSyncEngine(
      * name and the unsent note edits that embed it are changed to match, so the note still shows it.
      */
     private suspend fun pushUpload(roomId: RoomId, edit: PendingEdit): PushOutcome {
-        val waiting = File(edit.content.orEmpty())
-        val bytes = io { if (waiting.exists()) waiting.readBytes() else null }
+        var waiting = File(edit.content.orEmpty())
+        var bytes = io { if (waiting.exists()) waiting.readBytes() else null }
             ?: return io {
                 store.markEdit(edit.id, EditState.REJECTED, error = "The file is no longer on this phone")
                 PushOutcome.NeedsChoice
             }
-        val contentType = io { store.contentType(edit.id) } ?: "application/octet-stream"
         var path = edit.path
+        // The name says what the file is now (a converted photo is renamed to .jpg), so it's never converted twice.
+        var contentType = PhotoConverter.mimeTypeOf(path).takeIf { it != "application/octet-stream" }
+            ?: io { store.contentType(edit.id) }
+            ?: "application/octet-stream"
+        io { photoConverter.toJpeg(bytes, contentType) }?.let { jpeg ->
+            val taken = io { store.files(roomId) }.map { it.path.lowercase() }.toSet()
+            val jpegPath = freeAttachmentPath(PhotoConverter.jpegName(path.substringAfterLast('/')), taken)
+            val jpegFile = File(pendingDir, UUID.randomUUID().toString() + ".jpg")
+            io {
+                jpegFile.writeBytes(jpeg)
+                store.setEditContent(edit.id, jpegFile.absolutePath)
+                waiting.delete()
+                renameUpload(roomId, edit.id, from = path, to = jpegPath)
+            }
+            waiting = jpegFile
+            bytes = jpeg
+            path = jpegPath
+            contentType = "image/jpeg"
+        }
         repeat(MAX_RENAME_TRIES) {
             val result = api.saveRaw(roomId, path, bytes, contentType, baseVersion = null)
             val version = result.getOrNull()
@@ -427,18 +448,26 @@ class NotesSyncEngine(
         return handleFailure(edit, NotesException.Exists("No free name for ${edit.path}", null))
     }
 
-    /** Moves a waiting upload to [to], and points unsent note edits that embed it at the new name. */
+    /**
+     * Moves a waiting upload to [to], and points the notes that embed it at the new name: unsent edits are changed,
+     * and a note already sent gets a new edit, so no note is left pointing at a name that won't exist.
+     */
     private fun renameUpload(roomId: RoomId, editId: Long, from: String, to: String) = store.transaction {
         store.renameFile(roomId, from, to)
         store.renameEdit(editId, to)
         val oldName = from.substringAfterLast('/')
         val newName = to.substringAfterLast('/')
-        for (save in store.pendingEdits(roomId).filter { it.kind == EditKind.SAVE }) {
-            val content = save.content ?: continue
-            val updated = content.replace("[[$oldName", "[[$newName").replace("[[$from", "[[$to")
-            if (updated != content) {
-                store.setEditContent(save.id, updated)
-                store.setContent(roomId, save.path, updated, clock.nowSeconds())
+        fun renamed(content: String) = content.replace("[[$oldName", "[[$newName").replace("[[$from", "[[$to")
+        for (note in store.files(roomId).filter { it.isNote && it.content != null }) {
+            val content = note.content.orEmpty()
+            val updated = renamed(content)
+            if (updated == content) continue
+            store.setContent(roomId, note.path, updated, clock.nowSeconds())
+            val pending = store.pendingSave(roomId, note.path)
+            if (pending != null) {
+                store.setEditContent(pending.id, renamed(pending.content.orEmpty()))
+            } else {
+                store.addEdit(roomId, EditKind.SAVE, note.path, updated, baseVersion = note.version.ifEmpty { null }, now = clock.epochMillis())
             }
         }
     }

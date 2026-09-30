@@ -16,6 +16,7 @@ import co.artise.android.notes.impl.A_ROOM
 import co.artise.android.notes.impl.A_ROOM_ENCODED
 import co.artise.android.notes.impl.FakeNotesTokenSource
 import co.artise.android.notes.impl.NotesMockServer
+import co.artise.android.notes.impl.attachments.PhotoConverter
 import co.artise.android.notes.impl.db.NotesDatabase
 import co.artise.android.notes.impl.error
 import co.artise.android.notes.impl.json
@@ -43,6 +44,9 @@ class NotesSyncEngineTest {
     private val tree = "GET /chats/$A_ROOM_ENCODED/tree"
     private val put = "PUT /chats/$A_ROOM_ENCODED/note"
 
+    // Stands in for Android's decoder: "converts" HEIC by returning fixed JPEG bytes, leaves everything else alone.
+    private val photoConverter = PhotoConverter { _, type -> if (type == "image/heic") byteArrayOf(7, 7) else null }
+
     @After
     fun tearDown() = server.shutdown()
 
@@ -57,6 +61,7 @@ class NotesSyncEngineTest {
             backgroundScope = backgroundScope,
             attachmentsDir = Files.createTempDirectory("attachments").toFile(),
             pendingDir = Files.createTempDirectory("pending").toFile(),
+            photoConverter = photoConverter,
         )
     }
 
@@ -388,6 +393,35 @@ class NotesSyncEngineTest {
         server.enqueue(uploadKey, json(201, """{"path": "attachments/luna.jpg", "version": "a1"}"""))
         server.enqueue(tree, MockResponse().setResponseCode(304))
         assertThat(engine.sync(room).getOrThrow().failed).isEqualTo(0)
+        assertThat(engine.edits(room)).isEmpty()
+    }
+
+    /**
+     * A HEIC photo queued before photos were converted on attach is converted before it uploads, as a .jpg, and a note
+     * already sent that embeds it gets an edit pointing at the new name.
+     */
+    @Test
+    fun `queued heic photos are converted and notes follow`() = runTest {
+        val engine = engine()
+        engine.firstSync()
+        engine.addAttachment(room, "luna.heic", byteArrayOf(1, 2), "image/heic").getOrThrow()
+        engine.editNote(room, "Mole.md", "![[luna.heic]]")
+        server.enqueue(put, json(body = """{"path": "Mole.md", "version": "m2", "merged": false}"""))
+        server.enqueue(
+            "PUT /chats/$A_ROOM_ENCODED/raw?path=attachments%2Fluna.jpg",
+            json(201, """{"path": "attachments/luna.jpg", "version": "a1"}"""),
+        )
+        server.enqueue(put, json(body = """{"path": "Mole.md", "version": "m3", "merged": false}"""))
+        server.enqueue(tree, MockResponse().setResponseCode(304))
+        engine.sync(room).getOrThrow()
+        server.enqueue(tree, MockResponse().setResponseCode(304))
+        engine.sync(room).getOrThrow()
+        val upload = server.requestsTo("PUT /chats/$A_ROOM_ENCODED/raw?path=attachments%2Fluna.jpg").single()
+        assertThat(upload.getHeader("Content-Type")).startsWith("image/jpeg")
+        assertThat(upload.body.readByteArray()).isEqualTo(byteArrayOf(7, 7))
+        assertThat(engine.file(room, "Mole.md")?.content).isEqualTo("![[luna.jpg]]")
+        val lastNote = Json.parseToJsonElement(server.requestsTo(put).last().body.readUtf8()).jsonObject
+        assertThat(lastNote["content"]?.jsonPrimitive?.content).isEqualTo("![[luna.jpg]]")
         assertThat(engine.edits(room)).isEmpty()
     }
 
