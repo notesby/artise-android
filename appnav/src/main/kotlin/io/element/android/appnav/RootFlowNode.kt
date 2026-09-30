@@ -15,6 +15,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
+import co.artise.android.accountdeletion.AccountDeletion
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.navigation.NavElements
 import com.bumble.appyx.core.navigation.NavKey
@@ -101,6 +102,7 @@ class RootFlowNode(
     private val analyticsService: AnalyticsService,
     private val analyticsColdStartWatcher: AnalyticsColdStartWatcher,
     @AppCoroutineScope private val appCoroutineScope: CoroutineScope,
+    private val accountDeletion: AccountDeletion,
 ) : BaseFlowNode<RootFlowNode.NavTarget>(
     backstack = BackStack(
         initialElement = NavTarget.SplashScreen,
@@ -154,6 +156,10 @@ class RootFlowNode(
                                     onFailure = { switchToNotLoggedInFlow(null) }
                                 )
                             }
+                        } else if (accountDeletion.consumeStarted()) {
+                            // Artise: the account was just deleted on Artise's page, which ended this session: no
+                            // "you were signed out" explanation, straight back to sign-in (as "Sign in again" does).
+                            sessionStore.removeSession(navState.loggedInState.sessionId)
                         } else {
                             switchToSignedOutFlow(SessionId(navState.loggedInState.sessionId))
                         }

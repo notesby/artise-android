@@ -127,15 +127,16 @@ class PreferencesAccountPresenterTest {
         }
     }
 
+    /** Artise: deleting the account is offered even when the server has no in-app deactivation (it's on Artise's page). */
     @Test
-    fun `present - can deactivate account is false if the Matrix client say so`() = runTest {
+    fun `present - delete account is offered even if the Matrix client can't deactivate`() = runTest {
         createPreferencesAccountPresenter(
             matrixClient = FakeMatrixClient(
                 canDeactivateAccountResult = { false },
                 accountManagementUrlResult = { Result.success(null) },
             ),
         ).test {
-            assertThat(awaitItem().canDeactivateAccount).isFalse()
+            assertThat(awaitItem().canDeactivateAccount).isTrue()
             cancelAndIgnoreRemainingEvents()
         }
     }

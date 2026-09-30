@@ -77,6 +77,7 @@ dependencies {
     implementation(projects.features.lockscreen.api)
     implementation(projects.features.analytics.api)
     implementation(projects.features.enterprise.api)
+    implementation(projects.artise.accountdeletion)
     implementation(projects.features.licenses.api)
     implementation(projects.features.logout.api)
     implementation(projects.features.deactivation.api)

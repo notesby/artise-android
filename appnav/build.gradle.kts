@@ -26,6 +26,7 @@ setupDependencyInjection()
 dependencies {
     allFeaturesApi(project)
 
+    implementation(projects.artise.accountdeletion)
     implementation(projects.libraries.core)
     implementation(projects.libraries.accountselect.api)
     implementation(projects.libraries.androidutils)
