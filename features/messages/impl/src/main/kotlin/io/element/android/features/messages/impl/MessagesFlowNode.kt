@@ -16,6 +16,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
+import co.artise.android.notes.api.NotesEntryPoint
 import com.bumble.appyx.core.lifecycle.subscribe
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.Node
@@ -135,6 +136,7 @@ class MessagesFlowNode(
     private val dateFormatter: DateFormatter,
     private val coroutineDispatchers: CoroutineDispatchers,
     private val hasVulkanSupport: DeviceHasVulkanSupport,
+    private val notesEntryPoint: NotesEntryPoint,
 ) : BaseFlowNode<MessagesFlowNode.NavTarget>(
     backstack = BackStack(
         initialElement = plugins.filterIsInstance<MessagesEntryPoint.Params>().first().initialTarget.toNavTarget(),
@@ -200,6 +202,10 @@ class MessagesFlowNode(
 
         @Parcelize
         data object PinnedMessagesList : NavTarget
+
+        /** Artise: this chat's notes, from the icon next to the call button. */
+        @Parcelize
+        data object Notes : NavTarget
 
         @Parcelize
         data object KnockRequestsList : NavTarget
@@ -350,6 +356,10 @@ class MessagesFlowNode(
 
                     override fun navigateToPinnedMessagesList() {
                         backstack.push(NavTarget.PinnedMessagesList)
+                    }
+
+                    override fun navigateToNotes() {
+                        backstack.push(NavTarget.Notes)
                     }
 
                     override fun navigateToKnockRequestsList() {
@@ -510,6 +520,14 @@ class MessagesFlowNode(
                         mode = CreatePollMode.EditPoll(eventId = navTarget.eventId)
                     ),
                 )
+            }
+            NavTarget.Notes -> {
+                val callback = object : NotesEntryPoint.Callback {
+                    override fun onDone() {
+                        backstack.pop()
+                    }
+                }
+                notesEntryPoint.createNode(this, buildContext, NotesEntryPoint.Params(room.roomId), callback)
             }
             NavTarget.PinnedMessagesList -> {
                 val callback = object : PinnedMessagesListNode.Callback {

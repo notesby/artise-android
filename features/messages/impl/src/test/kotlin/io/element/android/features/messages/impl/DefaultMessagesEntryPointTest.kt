@@ -87,7 +87,8 @@ class DefaultMessagesEntryPointTest {
                 knockRequestsListEntryPoint = FakeKnockRequestsListEntryPoint(),
                 dateFormatter = FakeDateFormatter(),
                 coroutineDispatchers = testCoroutineDispatchers(),
-                hasVulkanSupport = DeviceHasVulkanSupport(mockk(relaxed = true))
+                hasVulkanSupport = DeviceHasVulkanSupport(mockk(relaxed = true)),
+                notesEntryPoint = { _, _, _, _ -> lambdaError() },
             )
         }
         val callback = object : MessagesEntryPoint.Callback {
