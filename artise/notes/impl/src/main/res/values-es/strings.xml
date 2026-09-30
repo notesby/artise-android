@@ -87,4 +87,14 @@
     <string name="a11y_notes_redo">Rehacer</string>
     <string name="a11y_notes_format_web_link">Enlazar una página web</string>
     <string name="screen_notes_link_edit_open">Abrir en el navegador</string>
+    <string name="screen_notes_attachment_missing">no encontrado</string>
+    <string name="screen_notes_attachment_unavailable">No se pudo abrir el archivo. Conéctate a internet e inténtalo de nuevo.</string>
+    <string name="screen_notes_attachment_no_app">Ninguna app de este teléfono puede abrir este tipo de archivo.</string>
+    <string name="a11y_notes_attach">Adjuntar foto o archivo</string>
+    <string name="screen_notes_attach_photo">Foto</string>
+    <string name="screen_notes_attach_file">Archivo</string>
+    <string name="screen_notes_attach_uploading">Subiendo…</string>
+    <string name="screen_notes_attach_offline">Para adjuntar fotos y archivos necesitas conexión. Inténtalo cuando estés en línea.</string>
+    <string name="screen_notes_attach_too_big">Ese archivo pesa más de 50 MB.</string>
+    <string name="screen_notes_attach_failed">No se pudo adjuntar el archivo. Inténtalo de nuevo.</string>
 </resources>

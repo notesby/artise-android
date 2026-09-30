@@ -27,8 +27,11 @@ import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.matrix.api.core.RoomId
+import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.launch
 
 /** Where a note screen can send the person. */
@@ -69,6 +72,8 @@ class NotePresenter(
         var isLoading by remember { mutableStateOf(true) }
         var backlinks by remember { mutableStateOf<BacklinksState>(BacklinksState.Loading) }
         var dialog by remember { mutableStateOf<NoteDialog?>(null) }
+        var embeds by remember { mutableStateOf<ImmutableMap<String, EmbedState>>(persistentMapOf()) }
+        var openFile by remember { mutableStateOf<OpenFileRequest?>(null) }
 
         LaunchedEffect(Unit) {
             file = repository.file(roomId, path)
@@ -83,6 +88,20 @@ class NotePresenter(
             // An edit saved in the editor, a choice made, or someone else's change pulled by a sync.
             repository.changes(roomId).collect { file = repository.file(roomId, path) }
         }
+        LaunchedEffect(file?.content) {
+            val content = file?.content ?: return@LaunchedEffect
+            val found = NoteEmbeds.resolve(content, repository.files(roomId).map { it.path })
+            embeds = found.mapValues { (_, embedPath) ->
+                val known = embeds.values.firstOrNull { it.path == embedPath }
+                known ?: EmbedState(embedPath, NoteEmbeds.nameOf(embedPath), NoteEmbeds.isImage(embedPath), file = null, failed = false)
+            }.toImmutableMap()
+            // Photos show inside the note: download each one not on the phone yet.
+            for ((target, embed) in embeds) {
+                if (!embed.isImage || embed.file != null) continue
+                val result = repository.attachment(roomId, embed.path)
+                embeds = (embeds + (target to embed.copy(file = result.getOrNull()?.absolutePath, failed = result.isFailure))).toImmutableMap()
+            }
+        }
         LaunchedEffect(Unit) {
             backlinks = repository.links(roomId, path).fold(
                 onSuccess = { links -> BacklinksState.Loaded(links.backlinks.toImmutableList()) },
@@ -93,6 +112,13 @@ class NotePresenter(
             )
         }
 
+        suspend fun openAttachment(attachmentPath: String) {
+            repository.attachment(roomId, attachmentPath).fold(
+                onSuccess = { downloaded -> openFile = OpenFileRequest(downloaded.absolutePath, NoteEmbeds.nameOf(attachmentPath)) },
+                onFailure = { dialog = NoteDialog.AttachmentUnavailable },
+            )
+        }
+
         return NoteState(
             title = NotesFolderEntries.noteName(path),
             content = file?.content,
@@ -100,12 +126,19 @@ class NotePresenter(
             hasLocalEdits = file?.hasLocalEdits == true,
             backlinks = backlinks,
             dialog = dialog,
+            embeds = embeds,
+            openFile = openFile,
             eventSink = { event ->
                 when (event) {
                     is NoteEvent.OpenNoteLink -> scope.launch {
                         val paths = repository.files(roomId).map { it.path }
                         val target = NoteLinkResolver.resolve(event.target, paths)
-                        if (target != null) navigator.openNote(target) else dialog = NoteDialog.MissingNote(event.target)
+                        when {
+                            target == null -> dialog = NoteDialog.MissingNote(event.target)
+                            // A link to a photo or file ("[[factura.pdf]]") opens it rather than a note screen.
+                            !target.endsWith(".md") -> openAttachment(target)
+                            else -> navigator.openNote(target)
+                        }
                     }
                     is NoteEvent.ToggleTask -> scope.launch {
                         val content = file?.content ?: return@launch
@@ -160,6 +193,11 @@ class NotePresenter(
                         repository.deleteFile(roomId, path)
                         repository.syncInBackground(roomId)
                         navigator.onDeleted()
+                    }
+                    is NoteEvent.OpenAttachment -> scope.launch { openAttachment(event.path) }
+                    is NoteEvent.FileOpenHandled -> {
+                        openFile = null
+                        if (!event.opened) dialog = NoteDialog.NoAppForFile
                     }
                     NoteEvent.DismissDialog -> dialog = null
                 }

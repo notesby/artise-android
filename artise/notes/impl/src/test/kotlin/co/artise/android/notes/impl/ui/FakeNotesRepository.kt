@@ -22,6 +22,7 @@ import co.artise.android.notes.api.SyncReport
 import io.element.android.libraries.matrix.api.core.RoomId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import java.io.File
 
 /** In-memory [NotesRepository] for presenter tests: files per chat, and scripted results for server calls. */
 class FakeNotesRepository(
@@ -90,6 +91,15 @@ class FakeNotesRepository(
     }
 
     override suspend fun moveNote(roomId: RoomId, from: String, to: String) = moveResult(from, to)
+
+    val attachments = mutableListOf<Pair<String, ByteArray>>()
+    var addAttachmentResult: (String) -> Result<String> = { name -> Result.success("attachments/$name") }
+    var attachmentResult: (String) -> Result<File> = { Result.failure(NotesException.Network(IllegalStateException())) }
+
+    override suspend fun addAttachment(roomId: RoomId, fileName: String, bytes: ByteArray, contentType: String): Result<String> =
+        addAttachmentResult(fileName).onSuccess { attachments += it to bytes }
+
+    override suspend fun attachment(roomId: RoomId, path: String): Result<File> = attachmentResult(path)
 
     override suspend fun edits(roomId: RoomId) = edits[roomId].orEmpty()
 

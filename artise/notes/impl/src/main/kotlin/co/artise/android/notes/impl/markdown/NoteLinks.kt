@@ -102,7 +102,15 @@ object WikiLinkRewriter {
 
     // Backticks split a line into text (even parts) and code spans (odd parts); only text gets rewritten.
     private fun rewriteOutsideInlineCode(line: String): String = line.split('`').mapIndexed { index, part ->
-        if (index % 2 == 1) part else WIKI_LINK.replace(part) { match -> toMarkdownLink(WikiLink.parse(match.groupValues[1])) }
+        if (index % 2 == 1) {
+            part
+        } else {
+            WIKI_LINK.replace(part) { match ->
+                // "![[photo.jpg]]" embeds: it becomes an image, so the note shows the photo itself.
+                val embed = if (match.value.startsWith("!")) "!" else ""
+                embed + toMarkdownLink(WikiLink.parse(match.groupValues[1]))
+            }
+        }
     }.joinToString("`")
 
     private fun toMarkdownLink(link: WikiLink): String {

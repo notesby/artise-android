@@ -77,6 +77,12 @@ class NoteLinksTest {
         assertThat(lines[4]).startsWith("[Nota](<")
     }
 
+    /** An embed stays an embed: "![[luna.jpg]]" becomes an image the reading view can show. */
+    @Test
+    fun `embeds become images`() {
+        assertThat(WikiLinkRewriter.rewrite("![[luna.jpg]]")).isEqualTo("![luna.jpg](<${WikiLinkRewriter.destination("luna.jpg")}>)")
+    }
+
     /** Ordinary web links are not note links. */
     @Test
     fun `web links are not note targets`() {

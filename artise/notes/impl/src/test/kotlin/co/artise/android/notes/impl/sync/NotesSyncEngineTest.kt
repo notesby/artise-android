@@ -32,8 +32,10 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
+import okio.Buffer
 import org.junit.After
 import org.junit.Test
+import java.nio.file.Files
 
 class NotesSyncEngineTest {
     private val server = NotesMockServer()
@@ -53,6 +55,7 @@ class NotesSyncEngineTest {
             clock = FakeSystemClock(),
             dispatchers = dispatchers,
             backgroundScope = backgroundScope,
+            attachmentsDir = Files.createTempDirectory("attachments").toFile(),
         )
     }
 
@@ -299,6 +302,45 @@ class NotesSyncEngineTest {
             awaitItem()
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    /** An attachment is uploaded under a free name in attachments/, listed on the phone, and kept for showing. */
+    @Test
+    fun `attachments are uploaded under a free name`() = runTest {
+        val engine = engine()
+        engine.firstSync()
+        server.enqueue(
+            "PUT /chats/$A_ROOM_ENCODED/raw?path=attachments%2Fluna.jpg",
+            json(201, """{"path": "attachments/luna.jpg", "version": "a1"}"""),
+        )
+        val path = engine.addAttachment(room, "luna.jpg", byteArrayOf(1, 2, 3), "image/jpeg").getOrThrow()
+        assertThat(path).isEqualTo("attachments/luna.jpg")
+        val request = server.requests.last()
+        assertThat(request.getHeader("Content-Type")).startsWith("image/jpeg")
+        assertThat(request.body.readByteArray()).isEqualTo(byteArrayOf(1, 2, 3))
+        assertThat(engine.file(room, path)?.isNote).isFalse()
+        // Shown straight from the phone: no download.
+        assertThat(engine.attachment(room, path).getOrThrow().readBytes()).isEqualTo(byteArrayOf(1, 2, 3))
+        assertThat(server.requests.last()).isSameInstanceAs(request)
+    }
+
+    /** An attachment is downloaded once; opening it again uses the copy on the phone. */
+    @Test
+    fun `attachments are downloaded once`() = runTest {
+        val engine = engine()
+        engine.firstSync()
+        server.enqueue("GET /chats/$A_ROOM_ENCODED/raw?path=luna.jpg", MockResponse().setBody(Buffer().write(byteArrayOf(9, 9))))
+        assertThat(engine.attachment(room, "luna.jpg").getOrThrow().readBytes()).isEqualTo(byteArrayOf(9, 9))
+        assertThat(engine.attachment(room, "luna.jpg").getOrThrow().readBytes()).isEqualTo(byteArrayOf(9, 9))
+        assertThat(server.requestsTo("GET /chats/$A_ROOM_ENCODED/raw?path=luna.jpg")).hasSize(1)
+    }
+
+    /** Attachment names: taken ones get a number, folders and hidden names are cleaned. */
+    @Test
+    fun `free attachment names`() {
+        assertThat(NotesSyncEngine.freeAttachmentPath("foto.jpg", setOf("attachments/foto.jpg"))).isEqualTo("attachments/foto (2).jpg")
+        assertThat(NotesSyncEngine.freeAttachmentPath("../.secreto", emptySet())).isEqualTo("attachments/secreto")
+        assertThat(NotesSyncEngine.freeAttachmentPath("  ", emptySet())).isEqualTo("attachments/archivo")
     }
 
     /** A live state event with the tree we already have triggers no request at all. */

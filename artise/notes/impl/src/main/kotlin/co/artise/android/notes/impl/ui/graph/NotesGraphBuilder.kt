@@ -11,6 +11,7 @@ import co.artise.android.notes.api.LocalFile
 import co.artise.android.notes.impl.markdown.NoteLinkResolver
 import co.artise.android.notes.impl.markdown.NoteMarkdownParser
 import co.artise.android.notes.impl.markdown.WikiLinkRewriter
+import org.commonmark.node.Image
 import org.commonmark.node.Link
 import org.commonmark.node.Node
 import java.net.URLDecoder
@@ -78,8 +79,9 @@ object NotesGraphBuilder {
     internal fun linkTargets(markdown: String): List<String> {
         val targets = mutableListOf<String>()
         fun visit(node: Node) {
-            if (node is Link) {
-                val destination = node.destination
+            // Embedded notes (![[Note]]) count as links; photos don't resolve to notes, so they drop out.
+            val destination = (node as? Link)?.destination ?: (node as? Image)?.destination
+            if (destination != null) {
                 val wiki = WikiLinkRewriter.targetOf(destination)
                 when {
                     wiki != null -> targets += wiki

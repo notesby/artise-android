@@ -68,6 +68,7 @@ import org.commonmark.node.Paragraph
 import org.commonmark.node.SoftLineBreak
 import org.commonmark.node.StrongEmphasis
 import org.commonmark.node.ThematicBreak
+import java.net.URLDecoder
 import org.commonmark.node.Text as TextNode
 
 /**
@@ -80,9 +81,10 @@ fun NoteMarkdownView(
     onLinkClick: (NoteLink) -> Unit,
     modifier: Modifier = Modifier,
     onTaskToggle: ((lineIndex: Int) -> Unit)? = null,
+    embed: (@Composable (target: String) -> Unit)? = null,
 ) {
     val document = remember(markdown) { NoteMarkdownParser.parse(markdown) }
-    val actions = NoteActions(onLinkClick, onTaskToggle)
+    val actions = NoteActions(onLinkClick, onTaskToggle, embed)
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Blocks(parent = document, actions = actions)
     }
@@ -92,7 +94,14 @@ fun NoteMarkdownView(
 private data class NoteActions(
     val onLinkClick: (NoteLink) -> Unit,
     val onTaskToggle: ((Int) -> Unit)?,
+    /** Draws an embedded photo or file (`![[photo.jpg]]` on its own line); `null` shows embeds as links. */
+    val embed: (@Composable (target: String) -> Unit)?,
 )
+
+/** The photo or file an image destination points to: a `[[wiki]]` embed target, or a relative path. `null` for web images. */
+internal fun embedTarget(destination: String): String? =
+    WikiLinkRewriter.targetOf(destination)
+        ?: destination.takeIf { "://" !in it }?.let { URLDecoder.decode(it, Charsets.UTF_8.name()).removePrefix("./") }
 
 @Composable
 private fun Blocks(parent: Node, actions: NoteActions) {
@@ -104,7 +113,17 @@ private fun Block(node: Node, actions: NoteActions) {
     val onLinkClick = actions.onLinkClick
     when (node) {
         is Heading -> InlineText(node, headingStyle(node.level), onLinkClick)
-        is Paragraph -> InlineText(node, bodyStyle(), onLinkClick)
+        is Paragraph -> {
+            // A paragraph of only embeds ("![[photo.jpg]]" on its own line) shows the photos and files themselves.
+            val parts = node.children().filterNot { it is SoftLineBreak || it is HardLineBreak || it is TextNode && it.literal.isBlank() }.toList()
+            val embed = actions.embed
+            val targets = parts.mapNotNull { (it as? Image)?.destination?.let(::embedTarget) }
+            if (embed != null && parts.isNotEmpty() && targets.size == parts.size) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { targets.forEach { embed(it) } }
+            } else {
+                InlineText(node, bodyStyle(), onLinkClick)
+            }
+        }
         is BulletList -> ListBlock(node, ordered = false, start = 1, actions = actions)
         is OrderedList -> ListBlock(node, ordered = true, start = node.markerStartNumber ?: 1, actions = actions)
         is BlockQuote -> Row(Modifier.height(IntrinsicSize.Min)) {
@@ -260,7 +279,10 @@ private fun AnnotatedString.Builder.appendLink(
     linkColor: androidx.compose.ui.graphics.Color,
     content: AnnotatedString.Builder.() -> Unit,
 ) {
-    val link = WikiLinkRewriter.targetOf(destination)?.let { NoteLink.Note(it) } ?: NoteLink.Web(destination)
+    val link = WikiLinkRewriter.targetOf(destination)?.let { NoteLink.Note(it) }
+        // A relative path ("Fotos/luna.jpg") is a file in the chat, not a web address.
+        ?: embedTarget(destination)?.takeIf { !destination.startsWith("www.") && !destination.startsWith("mailto:") }?.let { NoteLink.Note(it) }
+        ?: NoteLink.Web(destination)
     val styles = TextLinkStyles(style = SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline))
     withLink(LinkAnnotation.Clickable(tag = destination, styles = styles) { onLinkClick(link) }) { content() }
 }

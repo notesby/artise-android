@@ -25,5 +25,11 @@ sealed interface NoteEvent {
 
     data object ConfirmDelete : NoteEvent
 
+    /** Open an attached photo or file in another app. */
+    data class OpenAttachment(val path: String) : NoteEvent
+
+    /** The file was handed to another app ([opened]), or no app could take it. */
+    data class FileOpenHandled(val opened: Boolean) : NoteEvent
+
     data object DismissDialog : NoteEvent
 }

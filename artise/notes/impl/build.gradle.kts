@@ -49,6 +49,7 @@ dependencies {
     implementation("org.commonmark:commonmark-ext-task-list-items:0.30.0")
     implementation("org.commonmark:commonmark-ext-autolink:0.30.0")
     implementation(libs.androidx.compose.material.icons)
+    implementation(libs.coil.compose)
 
     testCommonDependencies(libs)
     testImplementation(projects.libraries.matrix.test)

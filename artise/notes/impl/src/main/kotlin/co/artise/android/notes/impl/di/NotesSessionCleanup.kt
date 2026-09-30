@@ -40,5 +40,7 @@ class NotesSessionCleanup(
             .forEach { file ->
                 if (!file.delete()) Timber.w("Couldn't delete a notes file after sign-out")
             }
+        // Downloaded photos and files too.
+        NotesBindingContainer.attachmentsDir(context, userId).deleteRecursively()
     }
 }

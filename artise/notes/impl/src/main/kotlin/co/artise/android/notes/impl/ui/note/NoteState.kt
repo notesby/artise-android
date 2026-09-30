@@ -11,6 +11,7 @@ import androidx.compose.runtime.Immutable
 import co.artise.android.notes.api.Backlink
 import co.artise.android.notes.impl.ui.common.NoteNameProblem
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableMap
 
 data class NoteState(
     val title: String,
@@ -20,6 +21,10 @@ data class NoteState(
     val hasLocalEdits: Boolean,
     val backlinks: BacklinksState,
     val dialog: NoteDialog?,
+    /** Photos and files embedded in the note (`![[...]]`), by the target written in the note. */
+    val embeds: ImmutableMap<String, EmbedState>,
+    /** A downloaded file to hand to another app, once. */
+    val openFile: OpenFileRequest?,
     val eventSink: (NoteEvent) -> Unit,
 ) {
     /** Only a note whose text is on the phone can be edited. */
@@ -36,6 +41,18 @@ sealed interface BacklinksState {
     data object Offline : BacklinksState
 }
 
+/** An embedded photo or file: [file] is its copy on the phone once downloaded (photos download by themselves). */
+data class EmbedState(
+    val path: String,
+    val name: String,
+    val isImage: Boolean,
+    val file: String?,
+    val failed: Boolean,
+)
+
+/** Open [file] (on the phone) in the app the person uses for that kind of file. */
+data class OpenFileRequest(val file: String, val name: String)
+
 @Immutable
 sealed interface NoteDialog {
     /** A tapped `[[link]]` to a note that doesn't exist yet: offer to create it. */
@@ -47,6 +64,12 @@ sealed interface NoteDialog {
     data object ConfirmDelete : NoteDialog
 
     data class RenameFailed(val reason: RenameFailure) : NoteDialog
+
+    /** A photo or file couldn't be downloaded (usually no connection). */
+    data object AttachmentUnavailable : NoteDialog
+
+    /** No app on the phone opens this kind of file. */
+    data object NoAppForFile : NoteDialog
 }
 
 enum class RenameFailure {

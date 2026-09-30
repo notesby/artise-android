@@ -26,6 +26,11 @@ sealed interface NoteEditorEvent {
 
     data object DismissLinkEdit : NoteEditorEvent
 
+    /** The person picked a photo or file ([uri] from the Android picker) to add at the cursor. */
+    data class Attach(val uri: String) : NoteEditorEvent
+
+    data object DismissAttachError : NoteEditorEvent
+
     data object Undo : NoteEditorEvent
 
     data object Redo : NoteEditorEvent

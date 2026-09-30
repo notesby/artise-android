@@ -17,12 +17,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -64,6 +66,10 @@ fun NoteView(
     modifier: Modifier = Modifier,
 ) {
     val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
+    state.openFile?.let { request ->
+        LaunchedEffect(request) { state.eventSink(NoteEvent.FileOpenHandled(opened = context.openDownloadedFile(request))) }
+    }
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -100,6 +106,9 @@ fun NoteView(
                     },
                     modifier = Modifier.padding(16.dp),
                     onTaskToggle = { line -> state.eventSink(NoteEvent.ToggleTask(line)) },
+                    embed = { target ->
+                        NoteEmbedView(target, state.embeds[target], onOpen = { path -> state.eventSink(NoteEvent.OpenAttachment(path)) })
+                    },
                 )
                 state.isLoading -> Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
@@ -173,6 +182,16 @@ private fun NoteDialogs(state: NoteState) {
             destructiveSubmit = true,
             onSubmitClick = { state.eventSink(NoteEvent.ConfirmDelete) },
             onDismiss = dismiss,
+        )
+        NoteDialog.AttachmentUnavailable -> ErrorDialog(
+            content = stringResource(R.string.screen_notes_attachment_unavailable),
+            title = null,
+            onSubmit = dismiss,
+        )
+        NoteDialog.NoAppForFile -> ErrorDialog(
+            content = stringResource(R.string.screen_notes_attachment_no_app),
+            title = null,
+            onSubmit = dismiss,
         )
         is NoteDialog.RenameFailed -> ErrorDialog(
             content = when (dialog.reason) {

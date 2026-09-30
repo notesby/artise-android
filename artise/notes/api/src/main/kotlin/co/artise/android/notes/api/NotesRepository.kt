@@ -9,6 +9,7 @@ package co.artise.android.notes.api
 
 import io.element.android.libraries.matrix.api.core.RoomId
 import kotlinx.coroutines.flow.Flow
+import java.io.File
 
 /**
  * A signed-in person's notes, offline-first: reads come from the phone's copy, edits are saved on the
@@ -53,6 +54,15 @@ interface NotesRepository {
 
     /** Renames right away on the server; needs a connection and no unsent edits to that note. */
     suspend fun moveNote(roomId: RoomId, from: String, to: String): Result<MovedNote>
+
+    /**
+     * Uploads a photo or file to the chat's `attachments/` folder, where Ari keeps files too, under a name not taken
+     * yet. Needs a connection. Returns the attachment's path.
+     */
+    suspend fun addAttachment(roomId: RoomId, fileName: String, bytes: ByteArray, contentType: String): Result<String>
+
+    /** The photo or file at [path] as a file on the phone, downloaded once and kept for as long as it doesn't change. */
+    suspend fun attachment(roomId: RoomId, path: String): Result<File>
 
     /** Unsent edits, including those waiting for the person to choose. */
     suspend fun edits(roomId: RoomId): List<PendingEdit>

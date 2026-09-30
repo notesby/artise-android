@@ -19,10 +19,14 @@ import co.artise.android.notes.api.ServerCopy
 import co.artise.android.notes.impl.ui.choices.NotesChoicesEvent
 import co.artise.android.notes.impl.ui.choices.NotesChoicesPresenter
 import co.artise.android.notes.impl.ui.common.NoteNameProblem
+import co.artise.android.notes.impl.ui.editor.AttachError
+import co.artise.android.notes.impl.ui.editor.AttachmentReader
+import co.artise.android.notes.impl.ui.editor.AttachmentTooBigException
 import co.artise.android.notes.impl.ui.editor.EditableLink
 import co.artise.android.notes.impl.ui.editor.FormatAction
 import co.artise.android.notes.impl.ui.editor.NoteEditorEvent
 import co.artise.android.notes.impl.ui.editor.NoteEditorPresenter
+import co.artise.android.notes.impl.ui.editor.PickedFile
 import co.artise.android.notes.impl.ui.folder.NewNoteDialog
 import co.artise.android.notes.impl.ui.folder.NotesFolderEvent
 import co.artise.android.notes.impl.ui.folder.NotesFolderPresenter
@@ -30,6 +34,7 @@ import co.artise.android.notes.impl.ui.note.NoteDialog
 import co.artise.android.notes.impl.ui.note.NoteEvent
 import co.artise.android.notes.impl.ui.note.NoteNavigator
 import co.artise.android.notes.impl.ui.note.NotePresenter
+import co.artise.android.notes.impl.ui.note.OpenFileRequest
 import co.artise.android.notes.impl.ui.note.RenameFailure
 import com.google.common.truth.Truth.assertThat
 import io.element.android.libraries.matrix.api.core.RoomId
@@ -68,6 +73,7 @@ class RecordingNoteNavigator : NoteNavigator {
 class NotesEditingPresentersTest {
     private val room = RoomId("!familia:artise.co")
     private val clock = FakeSystemClock(epochMillisResult = 1_000_000)
+    private var reader = AttachmentReader { Result.success(PickedFile("luna.jpg", "image/jpeg", byteArrayOf(1))) }
 
     // Editor
 
@@ -76,7 +82,7 @@ class NotesEditingPresentersTest {
     fun `editor saves and sends in the background`() = runTest {
         var done = false
         val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md", "- leche"))))
-        NoteEditorPresenter(room, "Súper.md", null, { done = true }, repository, clock).test {
+        NoteEditorPresenter(room, "Súper.md", null, { done = true }, repository, clock, reader).test {
             val state = consumeItemsUntilPredicate { !it.isLoading }.last()
             assertThat(state.value.text).isEqualTo("- leche")
             state.eventSink(NoteEditorEvent.ValueChanged(typed("- leche\n- pan")))
@@ -93,7 +99,7 @@ class NotesEditingPresentersTest {
     fun `editor asks before discarding changes`() = runTest {
         var done = false
         val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md", "- leche"))))
-        NoteEditorPresenter(room, "Súper.md", null, { done = true }, repository, clock).test {
+        NoteEditorPresenter(room, "Súper.md", null, { done = true }, repository, clock, reader).test {
             val state = consumeItemsUntilPredicate { !it.isLoading }.last()
             state.eventSink(NoteEditorEvent.ValueChanged(typed("- leche\n- pan")))
             consumeItemsUntilPredicate { it.hasUnsavedChanges }.last().eventSink(NoteEditorEvent.Back)
@@ -110,7 +116,7 @@ class NotesEditingPresentersTest {
     @Test
     fun `editor suggests and completes links`() = runTest {
         val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md", ""), aNote("Recetas/Mole.md"))))
-        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock).test {
+        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock, reader).test {
             val state = consumeItemsUntilPredicate { !it.isLoading }.last()
             state.eventSink(NoteEditorEvent.ValueChanged(typed("Para el [[mo")))
             val suggesting = consumeItemsUntilPredicate { it.suggestions.isNotEmpty() }.last()
@@ -126,7 +132,7 @@ class NotesEditingPresentersTest {
     @Test
     fun `enter continues a list`() = runTest {
         val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md", "- leche"))))
-        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock).test {
+        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock, reader).test {
             val state = consumeItemsUntilPredicate { !it.isLoading }.last()
             state.eventSink(NoteEditorEvent.ValueChanged(typed("- leche\n")))
             assertThat(consumeItemsUntilPredicate { it.value.text != "- leche" }.last().value).isEqualTo(typed("- leche\n- "))
@@ -139,7 +145,7 @@ class NotesEditingPresentersTest {
     fun `tapping a checkbox on a formatted line ticks it`() = runTest {
         val text = "Lista\n- [ ] leche"
         val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md", text))))
-        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock).test {
+        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock, reader).test {
             val state = consumeItemsUntilPredicate { !it.isLoading }.last()
             state.eventSink(NoteEditorEvent.ValueChanged(state.value.copy(selection = TextRange(2))))
             val onFirstLine = consumeItemsUntilPredicate { it.value.selection == TextRange(2) }.last()
@@ -157,7 +163,7 @@ class NotesEditingPresentersTest {
     fun `tapping the text next to a checkbox places the cursor`() = runTest {
         val text = "Lista\n- [ ] leche"
         val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md", text))))
-        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock).test {
+        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock, reader).test {
             val state = consumeItemsUntilPredicate { !it.isLoading }.last()
             state.eventSink(NoteEditorEvent.ValueChanged(state.value.copy(selection = TextRange(2))))
             val onFirstLine = consumeItemsUntilPredicate { it.value.selection == TextRange(2) }.last()
@@ -174,7 +180,7 @@ class NotesEditingPresentersTest {
     fun `tapping a link edits it`() = runTest {
         val text = "Ver [[Mole]] hoy\nfin"
         val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md", text))))
-        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock).test {
+        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock, reader).test {
             val state = consumeItemsUntilPredicate { !it.isLoading }.last()
             // The cursor starts at the end, on "fin"; the first line shows formatted.
             state.eventSink(NoteEditorEvent.ValueChanged(state.value.copy(selection = TextRange(text.indexOf("Mole") + 1))))
@@ -198,7 +204,7 @@ class NotesEditingPresentersTest {
     @Test
     fun `undo and redo`() = runTest {
         val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md", ""))))
-        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock).test {
+        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock, reader).test {
             val state = consumeItemsUntilPredicate { !it.isLoading }.last()
             state.eventSink(NoteEditorEvent.ValueChanged(typed("l")))
             clock.epochMillisResult += 200
@@ -229,7 +235,7 @@ class NotesEditingPresentersTest {
     @Test
     fun `web link from the toolbar`() = runTest {
         val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md", "ver la tienda"))))
-        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock).test {
+        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock, reader).test {
             val state = consumeItemsUntilPredicate { !it.isLoading }.last()
             state.eventSink(NoteEditorEvent.ValueChanged(state.value.copy(selection = TextRange(7, 13))))
             consumeItemsUntilPredicate { it.value.selection == TextRange(7, 13) }.last().eventSink(NoteEditorEvent.Format(FormatAction.WEB_LINK))
@@ -244,11 +250,56 @@ class NotesEditingPresentersTest {
         }
     }
 
+    /** A photo is uploaded and embedded on a line of its own at the cursor; a file becomes a link. */
+    @Test
+    fun `attachments are uploaded and embedded`() = runTest {
+        val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md", "Hoy"))))
+        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock, reader).test {
+            val state = consumeItemsUntilPredicate { !it.isLoading }.last()
+            state.eventSink(NoteEditorEvent.Attach("content://photo"))
+            val withPhoto = consumeItemsUntilPredicate { it.value.text.contains("luna") }.last()
+            assertThat(withPhoto.value.text).isEqualTo("Hoy\n![[luna.jpg]]\n")
+            assertThat(repository.attachments.single().first).isEqualTo("attachments/luna.jpg")
+            reader = AttachmentReader { Result.success(PickedFile("factura.pdf", "application/pdf", byteArrayOf(2))) }
+            cancelAndIgnoreRemainingEvents()
+        }
+        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock, reader).test {
+            val state = consumeItemsUntilPredicate { !it.isLoading }.last()
+            state.eventSink(NoteEditorEvent.Attach("content://file"))
+            assertThat(consumeItemsUntilPredicate { it.value.text.contains("factura") }.last().value.text).isEqualTo("Hoy[[factura.pdf]]")
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    /** Offline or too big, attaching explains why instead of failing silently; the note is unchanged. */
+    @Test
+    fun `attachment problems are explained`() = runTest {
+        val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md", "Hoy"))))
+        repository.addAttachmentResult = { Result.failure(NotesException.Network(IllegalStateException())) }
+        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock, reader).test {
+            val state = consumeItemsUntilPredicate { !it.isLoading }.last()
+            state.eventSink(NoteEditorEvent.Attach("content://photo"))
+            val offline = consumeItemsUntilPredicate { it.attachError != null }.last()
+            assertThat(offline.attachError).isEqualTo(AttachError.OFFLINE)
+            assertThat(offline.value.text).isEqualTo("Hoy")
+            offline.eventSink(NoteEditorEvent.DismissAttachError)
+            consumeItemsUntilPredicate { it.attachError == null }
+            reader = AttachmentReader { Result.failure(AttachmentTooBigException()) }
+            cancelAndIgnoreRemainingEvents()
+        }
+        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock, reader).test {
+            val state = consumeItemsUntilPredicate { !it.isLoading }.last()
+            state.eventSink(NoteEditorEvent.Attach("content://video"))
+            assertThat(consumeItemsUntilPredicate { it.attachError != null }.last().attachError).isEqualTo(AttachError.TOO_BIG)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     /** A toolbar button formats the selection in the editor's text, keeping it selected. */
     @Test
     fun `toolbar formats the selection`() = runTest {
         val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md", "comprar pan"))))
-        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock).test {
+        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock, reader).test {
             val state = consumeItemsUntilPredicate { !it.isLoading }.last()
             state.eventSink(NoteEditorEvent.ValueChanged(state.value.copy(selection = TextRange(8, 11))))
             state.eventSink(NoteEditorEvent.Format(FormatAction.BOLD))
@@ -264,7 +315,7 @@ class NotesEditingPresentersTest {
     fun `editor combines a conflict`() = runTest {
         val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md"))))
         repository.edits[room] = listOf(aConflict(id = 7))
-        NoteEditorPresenter(room, "Súper.md", 7, {}, repository, clock).test {
+        NoteEditorPresenter(room, "Súper.md", 7, {}, repository, clock, reader).test {
             val state = consumeItemsUntilPredicate { !it.isLoading }.last()
             assertThat(state.isResolvingConflict).isTrue()
             assertThat(state.value.text).isEqualTo("- huevos" + NoteEditorPresenter.CONFLICT_SEPARATOR + "- pan")
@@ -365,6 +416,39 @@ class NotesEditingPresentersTest {
             awaitUntil { navigator.edited.isNotEmpty() }
             assertThat(repository.createdNotes.single().first).isEqualTo("Recetas/Salsa.md")
             assertThat(navigator.edited).containsExactly("Recetas/Salsa.md")
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    /** A photo embedded in a note downloads by itself; tapping a file hands it to another app; a failed download explains. */
+    @Test
+    fun `embedded photos and files`() = runTest {
+        val photo = java.nio.file.Files.createTempFile("luna", ".jpg").toFile()
+        val repository = FakeNotesRepository(
+            files = mutableMapOf(
+                room to listOf(
+                    aNote("Súper.md", "![[luna.jpg]]\nVer [[factura.pdf]]"),
+                    aNote("attachments/luna.jpg").copy(isNote = false),
+                    aNote("attachments/factura.pdf").copy(isNote = false),
+                ),
+            ),
+        )
+        repository.attachmentResult =
+            { path -> if (path.endsWith(".jpg")) Result.success(photo) else Result.failure(NotesException.Network(IllegalStateException())) }
+        NotePresenter(room, "Súper.md", RecordingNoteNavigator(), repository).test {
+            val shown = consumeItemsUntilPredicate { it.embeds["luna.jpg"]?.file != null }.last()
+            assertThat(shown.embeds["luna.jpg"]?.path).isEqualTo("attachments/luna.jpg")
+            assertThat(shown.embeds["luna.jpg"]?.isImage).isTrue()
+
+            shown.eventSink(NoteEvent.OpenAttachment("attachments/luna.jpg"))
+            val opening = consumeItemsUntilPredicate { it.openFile != null }.last()
+            assertThat(opening.openFile).isEqualTo(OpenFileRequest(photo.absolutePath, "luna.jpg"))
+            opening.eventSink(NoteEvent.FileOpenHandled(opened = true))
+            consumeItemsUntilPredicate { it.openFile == null }
+
+            // "[[factura.pdf]]" is a file, not a note: tapping it opens it, here without a connection.
+            shown.eventSink(NoteEvent.OpenNoteLink("factura.pdf"))
+            assertThat(consumeItemsUntilPredicate { it.dialog != null }.last().dialog).isEqualTo(NoteDialog.AttachmentUnavailable)
             cancelAndIgnoreRemainingEvents()
         }
     }

@@ -11,6 +11,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import co.artise.android.notes.api.Backlink
 import co.artise.android.notes.impl.ui.common.NoteNameProblem
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
 
 open class NoteStatePreviewParam : PreviewParameterProvider<NoteState> {
     override val values: Sequence<NoteState>
@@ -39,5 +40,7 @@ fun aNoteState(
     hasLocalEdits = hasLocalEdits,
     backlinks = backlinks,
     dialog = dialog,
+    embeds = persistentMapOf(),
+    openFile = null,
     eventSink = {},
 )

@@ -29,6 +29,7 @@ import io.element.encrypteddb.SqlCipherDriverFactory
 import io.element.encrypteddb.passphrase.RandomDatabaseSecretProvider
 import kotlinx.coroutines.CoroutineScope
 import okhttp3.OkHttpClient
+import java.io.File
 import java.security.MessageDigest
 
 @BindingContainer
@@ -55,6 +56,8 @@ object NotesBindingContainer {
     @Provides
     @SingleIn(SessionScope::class)
     fun providesNotesRepository(
+        @ApplicationContext context: Context,
+        matrixClient: MatrixClient,
         okHttpClient: OkHttpClient,
         tokenSource: NotesTokenSource,
         database: NotesDatabase,
@@ -67,7 +70,11 @@ object NotesBindingContainer {
         clock = systemClock,
         dispatchers = dispatchers,
         backgroundScope = sessionScope,
+        attachmentsDir = attachmentsDir(context, matrixClient.sessionId.value),
     )
+
+    /** Downloaded photos and files, in the app's private cache (shared with other apps only one file at a time, when opened). */
+    fun attachmentsDir(context: Context, userId: String): File = File(context.cacheDir, "notes_attachments/" + databaseName(userId))
 
     /**
      * The app's client logs whole requests and answers when debug logging is on. For notes that would mean

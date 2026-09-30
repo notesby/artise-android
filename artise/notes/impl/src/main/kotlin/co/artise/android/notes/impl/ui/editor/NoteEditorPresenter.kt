@@ -18,13 +18,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import co.artise.android.notes.api.NotesException
 import co.artise.android.notes.api.NotesRepository
 import co.artise.android.notes.impl.markdown.ChecklistToggle
 import co.artise.android.notes.impl.ui.folder.NotesFolderEntries
+import co.artise.android.notes.impl.ui.note.NoteEmbeds
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import io.element.android.libraries.architecture.Presenter
+import io.element.android.libraries.core.extensions.mapCatchingExceptions
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.services.toolbox.api.systemclock.SystemClock
 import kotlinx.collections.immutable.ImmutableList
@@ -51,6 +54,7 @@ class NoteEditorPresenter(
     @Assisted private val navigator: NoteEditorNavigator,
     private val repository: NotesRepository,
     private val clock: SystemClock,
+    private val attachmentReader: AttachmentReader,
 ) : Presenter<NoteEditorState> {
     @AssistedFactory
     fun interface Factory {
@@ -70,6 +74,8 @@ class NoteEditorPresenter(
         val undoStack = remember { mutableStateListOf<TextFieldValue>() }
         val redoStack = remember { mutableStateListOf<TextFieldValue>() }
         var lastTypingAt by remember { mutableLongStateOf(0L) }
+        var isAttaching by remember { mutableStateOf(false) }
+        var attachError by remember { mutableStateOf<AttachError?>(null) }
 
         LaunchedEffect(Unit) {
             val initial = if (resolveEditId != null) {
@@ -176,6 +182,8 @@ class NoteEditorPresenter(
             suggestions = suggestions,
             notePaths = notePaths,
             linkEdit = linkEdit,
+            isAttaching = isAttaching,
+            attachError = attachError,
             canUndo = undoStack.isNotEmpty(),
             canRedo = redoStack.isNotEmpty(),
             showSaveChangesDialog = showSaveChangesDialog,
@@ -198,6 +206,29 @@ class NoteEditorPresenter(
                         val edited = MarkdownFormatting.apply(event.action, value.text, value.selection.start, value.selection.end)
                         commit(TextFieldValue(edited.text, TextRange(edited.start, edited.end)), isTyping = false)
                     }
+                    is NoteEditorEvent.Attach -> if (!isAttaching) {
+                        isAttaching = true
+                        scope.launch {
+                            val uploaded = attachmentReader.read(event.uri).mapCatchingExceptions { picked ->
+                                repository.addAttachment(roomId, picked.name, picked.bytes, picked.mimeType).getOrThrow()
+                            }
+                            isAttaching = false
+                            uploaded.fold(
+                                onSuccess = { attachmentPath ->
+                                    val inserted = insertEmbed(value, attachmentPath)
+                                    commit(inserted, isTyping = false)
+                                },
+                                onFailure = { error ->
+                                    attachError = when (error) {
+                                        is NotesException.Network -> AttachError.OFFLINE
+                                        is AttachmentTooBigException, is NotesException.TooBig -> AttachError.TOO_BIG
+                                        else -> AttachError.OTHER
+                                    }
+                                },
+                            )
+                        }
+                    }
+                    NoteEditorEvent.DismissAttachError -> attachError = null
                     NoteEditorEvent.Undo -> undoStack.removeLastOrNull()?.let { previous ->
                         redoStack += value
                         value = previous
@@ -221,6 +252,24 @@ class NoteEditorPresenter(
                 }
             },
         )
+    }
+
+    /**
+     * Writes the attachment at the cursor: a photo as `![[name]]` on a line of its own, so it shows in the note;
+     * other files as a `[[name]]` link. Obsidian finds both by name.
+     */
+    private fun insertEmbed(current: TextFieldValue, attachmentPath: String): TextFieldValue {
+        val text = current.text
+        val at = maxOf(current.selection.start, current.selection.end)
+        val name = attachmentPath.substringAfterLast('/')
+        val embed = if (NoteEmbeds.isImage(attachmentPath)) {
+            val before = if (at == 0 || text[at - 1] == '\n') "" else "\n"
+            val after = if (at < text.length && text[at] == '\n') "" else "\n"
+            "$before![[$name]]$after"
+        } else {
+            "[[$name]]"
+        }
+        return TextFieldValue(text.substring(0, at) + embed + text.substring(at), TextRange(at + embed.length))
     }
 
     /** [new] is [old] plus one typed newline: apply list continuation, or `null` to keep [new] as it is. */

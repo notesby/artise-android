@@ -37,6 +37,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.security.MessageDigest
 
 /**
  * [NotesRepository] over the [NotesApiClient] and the phone's [NotesLocalStore], following the contract's
@@ -52,6 +54,8 @@ class NotesSyncEngine(
     private val clock: SystemClock,
     private val dispatchers: CoroutineDispatchers,
     private val backgroundScope: CoroutineScope,
+    /** Where downloaded attachments are kept: inside the app's own cache, one folder per account. */
+    private val attachmentsDir: File,
 ) : NotesRepository {
     // One sync at a time, so the queue is never sent twice.
     private val syncMutex = Mutex()
@@ -168,6 +172,40 @@ class NotesSyncEngine(
             if (moved.linksUpdated.isNotEmpty()) pullTree(roomId)
             notifyChanged(roomId)
         }
+    }
+
+    override suspend fun addAttachment(roomId: RoomId, fileName: String, bytes: ByteArray, contentType: String): Result<String> {
+        val taken = io { store.files(roomId) }.map { it.path.lowercase() }.toSet()
+        val path = freeAttachmentPath(fileName, taken)
+        return api.saveRaw(roomId, path, bytes, contentType, baseVersion = null).map { version ->
+            io {
+                store.putFile(roomId, NotesFile(path, version, bytes.size.toLong(), clock.nowSeconds(), isNote = false), null)
+                // Keep it, so the note shows it right away without downloading it back.
+                cacheFileFor(roomId, path, version).writeBytes(bytes)
+            }
+            notifyChanged(roomId)
+            path
+        }
+    }
+
+    override suspend fun attachment(roomId: RoomId, path: String): Result<File> {
+        val version = io { store.file(roomId, path) }?.version.orEmpty()
+        val cached = cacheFileFor(roomId, path, version)
+        if (version.isNotEmpty() && io { cached.exists() }) return Result.success(cached)
+        return api.raw(roomId, path).map { bytes ->
+            io {
+                cached.parentFile?.mkdirs()
+                cached.writeBytes(bytes)
+            }
+            cached
+        }
+    }
+
+    /** One file per attachment and version: a changed photo is downloaded again, an unchanged one never. */
+    private fun cacheFileFor(roomId: RoomId, path: String, version: String): File {
+        val key = sha256("${roomId.value}/$path").take(24) + "-" + version.take(12)
+        val extension = path.substringAfterLast('.', "").takeIf { it.length in 1..5 }?.let { ".$it" }.orEmpty()
+        return File(attachmentsDir, key + extension).also { it.parentFile?.mkdirs() }
     }
 
     override suspend fun edits(roomId: RoomId): List<PendingEdit> = io { store.edits(roomId) }
@@ -411,8 +449,22 @@ class NotesSyncEngine(
 
     private suspend fun <T> io(block: () -> T): T = withContext(dispatchers.io) { block() }
 
-    private companion object {
-        const val FLAG_PRIVACY_NOTICE = "privacy_notice_seen"
+    companion object {
+        private const val FLAG_PRIVACY_NOTICE = "privacy_notice_seen"
+        const val ATTACHMENTS_FOLDER = "attachments"
+
+        /** "attachments/foto.jpg", or "attachments/foto (2).jpg" if that's taken. Folders and hidden names are refused. */
+        fun freeAttachmentPath(fileName: String, taken: Set<String>): String {
+            val clean = fileName.substringAfterLast('/').trim().trimStart('.').ifBlank { "archivo" }
+            val base = clean.substringBeforeLast('.', clean)
+            val extension = clean.substringAfterLast('.', "").let { if (it.isEmpty() || it == clean) "" else ".$it" }
+            return generateSequence(1) { it + 1 }
+                .map { n -> "$ATTACHMENTS_FOLDER/" + (if (n == 1) base else "$base ($n)") + extension }
+                .first { it.lowercase() !in taken }
+        }
+
+        private fun sha256(value: String): String =
+            MessageDigest.getInstance("SHA-256").digest(value.toByteArray()).joinToString("") { "%02x".format(it) }
     }
 
     private fun SystemClock.nowSeconds() = epochMillis() / 1000

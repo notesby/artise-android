@@ -85,4 +85,14 @@
     <string name="a11y_notes_redo">Redo</string>
     <string name="a11y_notes_format_web_link">Link to a website</string>
     <string name="screen_notes_link_edit_open">Open in the browser</string>
+    <string name="screen_notes_attachment_missing">not found</string>
+    <string name="screen_notes_attachment_unavailable">Couldn’t open the file. Connect to the internet and try again.</string>
+    <string name="screen_notes_attachment_no_app">No app on this phone can open this kind of file.</string>
+    <string name="a11y_notes_attach">Attach a photo or file</string>
+    <string name="screen_notes_attach_photo">Photo</string>
+    <string name="screen_notes_attach_file">File</string>
+    <string name="screen_notes_attach_uploading">Uploading…</string>
+    <string name="screen_notes_attach_offline">Adding photos and files needs a connection. Try again when you’re online.</string>
+    <string name="screen_notes_attach_too_big">That file is over 50 MB.</string>
+    <string name="screen_notes_attach_failed">Couldn’t add the file. Try again.</string>
 </resources>

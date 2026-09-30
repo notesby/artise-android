@@ -8,7 +8,11 @@
 package co.artise.android.notes.impl.ui.editor
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -25,6 +29,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -41,14 +49,18 @@ import co.artise.android.notes.impl.R
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.libraries.designsystem.components.button.BackButton
+import io.element.android.libraries.designsystem.components.dialogs.ErrorDialog
 import io.element.android.libraries.designsystem.components.dialogs.SaveChangesDialog
 import io.element.android.libraries.designsystem.components.list.ListItemContent
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
+import io.element.android.libraries.designsystem.theme.components.DropdownMenu
+import io.element.android.libraries.designsystem.theme.components.DropdownMenuItem
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.IconSource
+import io.element.android.libraries.designsystem.theme.components.LinearProgressIndicator
 import io.element.android.libraries.designsystem.theme.components.ListItem
 import io.element.android.libraries.designsystem.theme.components.Scaffold
 import io.element.android.libraries.designsystem.theme.components.Text
@@ -112,9 +124,23 @@ fun NoteEditorView(
                     .fillMaxWidth()
                     .padding(16.dp),
             )
+            if (state.isAttaching) {
+                LinearProgressIndicator(Modifier.fillMaxWidth())
+                Text(
+                    text = stringResource(R.string.screen_notes_attach_uploading),
+                    style = ElementTheme.typography.fontBodySmRegular,
+                    color = ElementTheme.colors.textSecondary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+            }
             HorizontalDivider()
             if (state.suggestions.isEmpty()) {
-                FormattingToolbar(enabled = !state.isLoading, onAction = { state.eventSink(NoteEditorEvent.Format(it)) })
+                FormattingToolbar(
+                    enabled = !state.isLoading,
+                    canAttach = !state.isLoading && !state.isAttaching,
+                    onAction = { state.eventSink(NoteEditorEvent.Format(it)) },
+                    onAttach = { state.eventSink(NoteEditorEvent.Attach(it)) },
+                )
             } else {
                 LazyColumn(Modifier.heightIn(max = 240.dp)) {
                     items(state.suggestions, key = { it.path }) { suggestion ->
@@ -141,6 +167,19 @@ fun NoteEditorView(
             onSave = { state.eventSink(NoteEditorEvent.SaveLink(it)) },
             onRemove = { state.eventSink(NoteEditorEvent.RemoveLink) },
             onDismiss = { state.eventSink(NoteEditorEvent.DismissLinkEdit) },
+        )
+    }
+    state.attachError?.let { error ->
+        ErrorDialog(
+            content = stringResource(
+                when (error) {
+                    AttachError.OFFLINE -> R.string.screen_notes_attach_offline
+                    AttachError.TOO_BIG -> R.string.screen_notes_attach_too_big
+                    AttachError.OTHER -> R.string.screen_notes_attach_failed
+                }
+            ),
+            title = null,
+            onSubmit = { state.eventSink(NoteEditorEvent.DismissAttachError) },
         )
     }
     if (state.showSaveChangesDialog) {
@@ -171,19 +210,51 @@ private fun livePreviewStyles(): LivePreviewStyles {
     )
 }
 
-/** The formatting buttons above the keyboard, scrolling sideways on narrow phones. */
+/** The formatting buttons above the keyboard, scrolling sideways on narrow phones, after the attach button. */
 @Composable
-private fun FormattingToolbar(enabled: Boolean, onAction: (FormatAction) -> Unit) {
+private fun FormattingToolbar(enabled: Boolean, canAttach: Boolean, onAction: (FormatAction) -> Unit, onAttach: (uri: String) -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
             .padding(horizontal = 4.dp),
     ) {
+        AttachButton(enabled = canAttach, onPick = onAttach)
         FormatAction.entries.forEach { action ->
             IconButton(onClick = { onAction(action) }, enabled = enabled) {
                 Icon(imageVector = action.icon(), contentDescription = stringResource(action.label()))
             }
+        }
+    }
+}
+
+/** 📎: a photo from the gallery (Android's photo picker, no permission needed) or any file. */
+@Composable
+private fun AttachButton(enabled: Boolean, onPick: (uri: String) -> Unit) {
+    var showMenu by remember { mutableStateOf(false) }
+    val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> uri?.let { onPick(it.toString()) } }
+    val pickFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { onPick(it.toString()) } }
+    Box {
+        IconButton(onClick = { showMenu = true }, enabled = enabled) {
+            Icon(imageVector = CompoundIcons.Attachment(), contentDescription = stringResource(R.string.a11y_notes_attach))
+        }
+        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.screen_notes_attach_photo)) },
+                leadingIcon = { Icon(imageVector = CompoundIcons.Image(), contentDescription = null) },
+                onClick = {
+                    showMenu = false
+                    pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.screen_notes_attach_file)) },
+                leadingIcon = { Icon(imageVector = CompoundIcons.Document(), contentDescription = null) },
+                onClick = {
+                    showMenu = false
+                    pickFile.launch(arrayOf("*/*"))
+                },
+            )
         }
     }
 }

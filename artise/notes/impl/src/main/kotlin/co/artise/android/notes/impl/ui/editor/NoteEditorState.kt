@@ -26,11 +26,23 @@ data class NoteEditorState(
     val notePaths: ImmutableList<String>,
     /** The link dialog, after tapping a link on a formatted line. */
     val linkEdit: LinkEditState?,
+    /** A photo or file is being uploaded. */
+    val isAttaching: Boolean,
+    val attachError: AttachError?,
     val canUndo: Boolean,
     val canRedo: Boolean,
     val showSaveChangesDialog: Boolean,
     val eventSink: (NoteEditorEvent) -> Unit,
 )
+
+enum class AttachError {
+    /** Uploading needs a connection. */
+    OFFLINE,
+
+    /** Over the 50 MB limit. */
+    TOO_BIG,
+    OTHER,
+}
 
 /** A link being edited: where it is in the Markdown, and what it says now. */
 data class LinkEditState(
