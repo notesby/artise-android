@@ -113,6 +113,8 @@ class NotePresenter(
                     file = null,
                     failed = false,
                     size = files[embedPath]?.size?.takeIf { it > 0 },
+                    isDownloading = false,
+                    upload = null,
                 )
             }.toImmutableMap()
             // Photos show inside the note: download each one not on the phone yet.

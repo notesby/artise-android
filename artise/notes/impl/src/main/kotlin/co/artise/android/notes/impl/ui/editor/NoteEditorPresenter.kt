@@ -133,6 +133,8 @@ class NoteEditorPresenter(
                         file = null,
                         failed = false,
                         size = sizes[embedPath]?.takeIf { it > 0 },
+                        isDownloading = false,
+                        upload = null,
                     )
             }.toImmutableMap()
             // Photos show in the strip and the preview: load each one not loaded yet.
@@ -188,7 +190,7 @@ class NoteEditorPresenter(
                         return
                     }
                     is LivePreviewHit.Link -> {
-                        linkEdit = LinkEditState(hit.start, hit.end, hit.link)
+                        linkEdit = LinkEditState(hit.start, hit.end, hit.link, isNew = false)
                         return
                     }
                     null -> Unit
