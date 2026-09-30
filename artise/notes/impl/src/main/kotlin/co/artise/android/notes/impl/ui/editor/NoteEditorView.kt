@@ -69,6 +69,8 @@ import co.artise.android.notes.impl.markdown.NoteLink
 import co.artise.android.notes.impl.markdown.NoteMarkdownView
 import co.artise.android.notes.impl.ui.note.EmbedState
 import co.artise.android.notes.impl.ui.note.NoteEmbedView
+import co.artise.android.notes.impl.ui.note.UploadActionsDialog
+import co.artise.android.notes.impl.ui.note.UploadBadge
 import co.artise.android.notes.impl.ui.note.openDownloadedFile
 import co.artise.android.notes.impl.ui.note.photoRequest
 import coil3.compose.AsyncImage
@@ -173,7 +175,12 @@ fun NoteEditorView(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                 )
             }
-            PhotoStrip(state.embeds, onOpen = { state.eventSink(NoteEditorEvent.OpenAttachment(it)) })
+            PhotoStrip(
+                embeds = state.embeds,
+                onOpen = { state.eventSink(NoteEditorEvent.OpenAttachment(it)) },
+                onRetryUpload = { state.eventSink(NoteEditorEvent.RetryUpload(it)) },
+                onCancelUpload = { state.eventSink(NoteEditorEvent.CancelUpload(it)) },
+            )
             HorizontalDivider()
             if (state.suggestions.isEmpty()) {
                 FormattingToolbar(
@@ -259,7 +266,13 @@ private fun NotePreview(state: NoteEditorState, modifier: Modifier = Modifier) {
             },
             onTaskToggle = { line -> state.eventSink(NoteEditorEvent.ToggleTask(line)) },
             embed = { target ->
-                NoteEmbedView(target, state.embeds[target], onOpen = { path -> state.eventSink(NoteEditorEvent.OpenAttachment(path)) })
+                NoteEmbedView(
+                    target = target,
+                    embed = state.embeds[target],
+                    onOpen = { path -> state.eventSink(NoteEditorEvent.OpenAttachment(path)) },
+                    onRetryUpload = { path -> state.eventSink(NoteEditorEvent.RetryUpload(path)) },
+                    onCancelUpload = { path -> state.eventSink(NoteEditorEvent.CancelUpload(path)) },
+                )
             },
             modifier = Modifier.padding(16.dp),
         )
@@ -268,23 +281,40 @@ private fun NotePreview(state: NoteEditorState, modifier: Modifier = Modifier) {
 
 /**
  * The note's photos and documents as thumbnails under the text while editing, since the text itself can't show
- * them: photos first, then documents with their kind of file.
+ * them: photos first, then documents with their kind of file. One not on the server yet has a badge saying where its
+ * upload is; tapping it shows the upload, with Retry, Cancel and Open.
  */
 @Composable
-private fun PhotoStrip(embeds: ImmutableMap<String, EmbedState>, onOpen: (path: String) -> Unit) {
+private fun PhotoStrip(
+    embeds: ImmutableMap<String, EmbedState>,
+    onOpen: (path: String) -> Unit,
+    onRetryUpload: (path: String) -> Unit,
+    onCancelUpload: (path: String) -> Unit,
+) {
     val photos = embeds.values.distinctBy { it.path }.sortedBy { !it.isImage }
     if (photos.isEmpty()) return
+    var actionsFor by rememberSaveable { mutableStateOf<String?>(null) }
+    photos.firstOrNull { it.path == actionsFor && it.upload != null }?.let { photo ->
+        UploadActionsDialog(
+            embed = photo,
+            onRetry = onRetryUpload,
+            onCancel = onCancelUpload,
+            onOpen = onOpen,
+            onDismiss = { actionsFor = null },
+        )
+    }
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(photos, key = { it.path }) { photo ->
+            Box {
             val shape = RoundedCornerShape(8.dp)
             val thumbnail = Modifier
                 .size(72.dp)
                 .clip(shape)
                 .background(ElementTheme.colors.bgSubtleSecondary, shape)
-                .clickable(onClickLabel = photo.name) { onOpen(photo.path) }
+                .clickable(onClickLabel = photo.name) { if (photo.upload != null) actionsFor = photo.path else onOpen(photo.path) }
             when {
                 photo.isImage && photo.file != null ->
                     AsyncImage(model = photoRequest(photo.file), contentDescription = photo.name, contentScale = ContentScale.Crop, modifier = thumbnail)
@@ -306,6 +336,8 @@ private fun PhotoStrip(embeds: ImmutableMap<String, EmbedState>, onOpen: (path: 
                     }
                 }
             }
+            photo.upload?.let { status -> UploadBadge(status, Modifier.align(Alignment.TopEnd).padding(4.dp)) }
+        }
         }
     }
 }

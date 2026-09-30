@@ -40,6 +40,12 @@ sealed interface NoteEditorEvent {
     /** A photo in the strip or the preview was tapped: open it in another app. */
     data class OpenAttachment(val path: String) : NoteEditorEvent
 
+    /** Try a waiting or failed upload of a photo or file again now. */
+    data class RetryUpload(val path: String) : NoteEditorEvent
+
+    /** Drop a photo or file not uploaded yet (already confirmed), and take it out of the text. */
+    data class CancelUpload(val path: String) : NoteEditorEvent
+
     data class FileOpenHandled(val opened: Boolean) : NoteEditorEvent
 
     data object DismissOpenFileProblem : NoteEditorEvent

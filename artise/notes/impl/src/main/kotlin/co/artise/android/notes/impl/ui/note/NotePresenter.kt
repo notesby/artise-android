@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import co.artise.android.notes.api.LocalFile
 import co.artise.android.notes.api.NotesException
 import co.artise.android.notes.api.NotesRepository
+import co.artise.android.notes.api.UploadStatus
 import co.artise.android.notes.impl.markdown.ChecklistToggle
 import co.artise.android.notes.impl.markdown.NoteLinkResolver
 import co.artise.android.notes.impl.ui.common.NoteNameProblem
@@ -33,6 +34,7 @@ import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.launch
+import java.io.File
 
 /** Where a note screen can send the person. */
 interface NoteNavigator {
@@ -74,6 +76,7 @@ class NotePresenter(
         var dialog by remember { mutableStateOf<NoteDialog?>(null) }
         var embeds by remember { mutableStateOf<ImmutableMap<String, EmbedState>>(persistentMapOf()) }
         var openFile by remember { mutableStateOf<OpenFileRequest?>(null) }
+        var uploads by remember { mutableStateOf<Map<String, UploadStatus>>(emptyMap()) }
 
         LaunchedEffect(Unit) {
             file = repository.file(roomId, path)
@@ -87,6 +90,15 @@ class NotePresenter(
         LaunchedEffect(Unit) {
             // An edit saved in the editor, a choice made, or someone else's change pulled by a sync.
             repository.changes(roomId).collect { file = repository.file(roomId, path) }
+        }
+        LaunchedEffect(Unit) {
+            // Photos and files added on this phone: waiting, uploading, retrying or refused.
+            uploads = repository.uploads(roomId)
+            repository.changes(roomId).collect { uploads = repository.uploads(roomId) }
+        }
+        LaunchedEffect(uploads) {
+            // Once uploaded, a photo's waiting copy is gone: show the downloaded one instead.
+            reloadMissingPhotos(embeds) { embeds = it }
         }
         LaunchedEffect(file?.content) {
             val content = file?.content ?: return@LaunchedEffect
@@ -142,7 +154,7 @@ class NotePresenter(
             hasLocalEdits = file?.hasLocalEdits == true,
             backlinks = backlinks,
             dialog = dialog,
-            embeds = embeds,
+            embeds = remember(embeds, uploads) { embeds.withUploads(uploads) },
             openFile = openFile,
             eventSink = { event ->
                 when (event) {
@@ -211,6 +223,9 @@ class NotePresenter(
                         navigator.onDeleted()
                     }
                     is NoteEvent.OpenAttachment -> scope.launch { openAttachment(event.path) }
+                    is NoteEvent.RetryUpload -> scope.launch { repository.retryUpload(roomId, event.path) }
+                    // The note's text loses the embed through the repository; the change arrives like any other.
+                    is NoteEvent.CancelUpload -> scope.launch { repository.cancelUpload(roomId, event.path) }
                     is NoteEvent.FileOpenHandled -> {
                         openFile = null
                         if (!event.opened) dialog = NoteDialog.NoAppForFile
@@ -219,6 +234,15 @@ class NotePresenter(
                 }
             },
         )
+    }
+
+    private suspend fun reloadMissingPhotos(embeds: ImmutableMap<String, EmbedState>, update: (ImmutableMap<String, EmbedState>) -> Unit) {
+        var current = embeds
+        for ((target, embed) in embeds.filterValues { it.file != null && !File(it.file).exists() }) {
+            val result = repository.attachment(roomId, embed.path)
+            current = (current + (target to embed.copy(file = result.getOrNull()?.absolutePath, failed = result.isFailure))).toImmutableMap()
+            update(current)
+        }
     }
 
     private fun Throwable.toRenameFailure() = when (this) {

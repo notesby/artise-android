@@ -19,11 +19,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import co.artise.android.notes.api.NotesRepository
+import co.artise.android.notes.api.UploadStatus
 import co.artise.android.notes.impl.markdown.ChecklistToggle
 import co.artise.android.notes.impl.ui.folder.NotesFolderEntries
 import co.artise.android.notes.impl.ui.note.EmbedState
+import co.artise.android.notes.impl.ui.note.NoteEmbedRemover
 import co.artise.android.notes.impl.ui.note.NoteEmbeds
 import co.artise.android.notes.impl.ui.note.OpenFileRequest
+import co.artise.android.notes.impl.ui.note.withUploads
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
@@ -38,6 +41,7 @@ import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.launch
+import java.io.File
 
 fun interface NoteEditorNavigator {
     /** The editor is done: saved, discarded, or left without changes. */
@@ -82,6 +86,7 @@ class NoteEditorPresenter(
         var isPreviewing by remember { mutableStateOf(false) }
         var allPaths by remember { mutableStateOf(emptyList<String>()) }
         var sizes by remember { mutableStateOf(emptyMap<String, Long>()) }
+        var uploads by remember { mutableStateOf<Map<String, UploadStatus>>(emptyMap()) }
         var embeds by remember { mutableStateOf<ImmutableMap<String, EmbedState>>(persistentMapOf()) }
         var openFile by remember { mutableStateOf<OpenFileRequest?>(null) }
         var openFileProblem by remember { mutableStateOf(false) }
@@ -101,6 +106,19 @@ class NoteEditorPresenter(
             allPaths = files.map { it.path }
             sizes = files.associate { it.path to it.size }
             isLoaded = true
+        }
+
+        LaunchedEffect(Unit) {
+            // Photos and files added on this phone: waiting, uploading, retrying or refused.
+            uploads = repository.uploads(roomId)
+            repository.changes(roomId).collect { uploads = repository.uploads(roomId) }
+        }
+        LaunchedEffect(uploads) {
+            // Once uploaded, a photo's waiting copy is gone: show the downloaded one instead.
+            for ((target, embed) in embeds.filterValues { it.file != null && !File(it.file).exists() }) {
+                val result = repository.attachment(roomId, embed.path)
+                embeds = (embeds + (target to embed.copy(file = result.getOrNull()?.absolutePath, failed = result.isFailure))).toImmutableMap()
+            }
         }
 
         // The photos and files the text embeds right now; looked up as the text changes (a quick scan).
@@ -219,7 +237,7 @@ class NoteEditorPresenter(
             linkEdit = linkEdit,
             isAttaching = isAttaching,
             isPreviewing = isPreviewing,
-            embeds = embeds,
+            embeds = remember(embeds, uploads) { embeds.withUploads(uploads) },
             openFile = openFile,
             openFileProblem = openFileProblem,
             attachError = attachError,
@@ -286,6 +304,14 @@ class NoteEditorPresenter(
                             onSuccess = { openFile = OpenFileRequest(it.absolutePath, NoteEmbeds.nameOf(event.path)) },
                             onFailure = { openFileProblem = true },
                         )
+                    }
+                    is NoteEditorEvent.RetryUpload -> scope.launch { repository.retryUpload(roomId, event.path) }
+                    is NoteEditorEvent.CancelUpload -> {
+                        // Out of the text being edited too, or saving would put the embed back.
+                        val cursor = value.selection.start
+                        val newText = NoteEmbedRemover.remove(value.text, event.path)
+                        if (newText != value.text) commit(TextFieldValue(newText, TextRange(minOf(cursor, newText.length))), isTyping = false)
+                        scope.launch { repository.cancelUpload(roomId, event.path) }
                     }
                     is NoteEditorEvent.FileOpenHandled -> {
                         openFile = null

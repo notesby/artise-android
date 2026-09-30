@@ -46,6 +46,21 @@ enum class EditState {
     REJECTED,
 }
 
+/** Where a photo or file added on this phone is on its way to the server. No status: it's on the server. */
+enum class UploadStatus {
+    /** Queued: it goes up with the next sync that has a connection. */
+    WAITING,
+
+    /** Being sent right now. */
+    UPLOADING,
+
+    /** The last try failed on the server's side; it's tried again with the next sync. */
+    RETRYING,
+
+    /** The server refused it for good (too big, a bad name): it won't be sent. */
+    FAILED,
+}
+
 /** An edit made on this phone that hasn't reached the server. */
 data class PendingEdit(
     val id: Long,

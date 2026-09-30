@@ -22,11 +22,13 @@ import co.artise.android.notes.api.NotesRepository
 import co.artise.android.notes.api.NotesSearchResult
 import co.artise.android.notes.api.PendingEdit
 import co.artise.android.notes.api.SyncReport
+import co.artise.android.notes.api.UploadStatus
 import co.artise.android.notes.impl.attachments.PhotoConverter
 import co.artise.android.notes.impl.attachments.PrefetchPolicy
 import co.artise.android.notes.impl.local.NotesLocalStore
 import co.artise.android.notes.impl.remote.NotesApiClient
 import co.artise.android.notes.impl.remote.TreeResponse
+import co.artise.android.notes.impl.ui.note.NoteEmbedRemover
 import co.artise.android.notes.impl.ui.note.NoteEmbeds
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.matrix.api.core.RoomId
@@ -72,6 +74,10 @@ class NotesSyncEngine(
     // One sync per chat at a time, so a chat's queue is never sent twice. Different chats don't wait for each other:
     // opening one chat's notes shouldn't wait behind the background check of all the others.
     private val roomLocks = ConcurrentHashMap<RoomId, Mutex>()
+
+    /** Uploads being sent right now, and those whose last try failed on the server's side, by edit id. */
+    private val uploadingEdits: MutableSet<Long> = ConcurrentHashMap.newKeySet()
+    private val retryingEdits: MutableSet<Long> = ConcurrentHashMap.newKeySet()
 
     private fun lockFor(roomId: RoomId): Mutex = roomLocks.getOrPut(roomId) { Mutex() }
     private val changed = MutableSharedFlow<RoomId>(extraBufferCapacity = 16)
@@ -278,6 +284,44 @@ class NotesSyncEngine(
 
     override suspend fun edits(roomId: RoomId): List<PendingEdit> = io { store.edits(roomId) }
 
+    override suspend fun uploads(roomId: RoomId): Map<String, UploadStatus> = edits(roomId)
+        .filter { it.kind == EditKind.UPLOAD }
+        .associate { edit ->
+            edit.path to when {
+                edit.state != EditState.PENDING -> UploadStatus.FAILED
+                edit.id in uploadingEdits -> UploadStatus.UPLOADING
+                edit.id in retryingEdits -> UploadStatus.RETRYING
+                else -> UploadStatus.WAITING
+            }
+        }
+
+    override suspend fun retryUpload(roomId: RoomId, path: String) {
+        io {
+            val edit = store.edits(roomId).firstOrNull { it.kind == EditKind.UPLOAD && it.path == path } ?: return@io
+            if (edit.state != EditState.PENDING) store.markEdit(edit.id, EditState.PENDING)
+            retryingEdits -= edit.id
+        }
+        notifyChanged(roomId)
+        syncInBackground(roomId)
+    }
+
+    override suspend fun cancelUpload(roomId: RoomId, path: String) {
+        // Waits for a push in progress: an upload is never dropped halfway through.
+        lockFor(roomId).withLock {
+            io {
+                store.transaction {
+                    val edit = store.edits(roomId).firstOrNull { it.kind == EditKind.UPLOAD && it.path == path } ?: return@transaction
+                    edit.content?.let { File(it).delete() }
+                    store.deleteEdit(edit.id)
+                    store.deleteFile(roomId, path)
+                    retryingEdits -= edit.id
+                    rewriteNotes(roomId) { NoteEmbedRemover.remove(it, path) }
+                }
+            }
+        }
+        notifyChanged(roomId)
+    }
+
     override suspend fun resolveConflict(editId: Long, content: String) {
         val changedRoom = io {
             store.transaction<RoomId?> {
@@ -444,6 +488,19 @@ class NotesSyncEngine(
      * name and the unsent note edits that embed it are changed to match, so the note still shows it.
      */
     private suspend fun pushUpload(roomId: RoomId, edit: PendingEdit): PushOutcome {
+        uploadingEdits += edit.id
+        notifyChanged(roomId)
+        return try {
+            sendUpload(roomId, edit).also { outcome ->
+                if (outcome == PushOutcome.Retry) retryingEdits += edit.id else retryingEdits -= edit.id
+            }
+        } finally {
+            uploadingEdits -= edit.id
+            notifyChanged(roomId)
+        }
+    }
+
+    private suspend fun sendUpload(roomId: RoomId, edit: PendingEdit): PushOutcome {
         var waiting = File(edit.content.orEmpty())
         var bytes = io { if (waiting.exists()) waiting.readBytes() else null }
             ?: return io {
@@ -503,15 +560,19 @@ class NotesSyncEngine(
         store.renameEdit(editId, to)
         val oldName = from.substringAfterLast('/')
         val newName = to.substringAfterLast('/')
-        fun renamed(content: String) = content.replace("[[$oldName", "[[$newName").replace("[[$from", "[[$to")
+        rewriteNotes(roomId) { it.replace("[[$oldName", "[[$newName").replace("[[$from", "[[$to") }
+    }
+
+    /** Changes every note [change] applies to, and queues the change to be sent (inside a store transaction). */
+    private fun rewriteNotes(roomId: RoomId, change: (String) -> String) {
         for (note in store.files(roomId).filter { it.isNote && it.content != null }) {
             val content = note.content.orEmpty()
-            val updated = renamed(content)
+            val updated = change(content)
             if (updated == content) continue
             store.setContent(roomId, note.path, updated, clock.nowSeconds())
             val pending = store.pendingSave(roomId, note.path)
             if (pending != null) {
-                store.setEditContent(pending.id, renamed(pending.content.orEmpty()))
+                store.setEditContent(pending.id, change(pending.content.orEmpty()))
             } else {
                 store.addEdit(roomId, EditKind.SAVE, note.path, updated, baseVersion = note.version.ifEmpty { null }, now = clock.epochMillis())
             }

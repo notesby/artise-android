@@ -28,6 +28,12 @@ sealed interface NoteEvent {
     /** Open an attached photo or file in another app. */
     data class OpenAttachment(val path: String) : NoteEvent
 
+    /** Try a waiting or failed upload of a photo or file again now. */
+    data class RetryUpload(val path: String) : NoteEvent
+
+    /** Drop a photo or file not uploaded yet (already confirmed), and take it out of the note. */
+    data class CancelUpload(val path: String) : NoteEvent
+
     /** The file was handed to another app ([opened]), or no app could take it. */
     data class FileOpenHandled(val opened: Boolean) : NoteEvent
 

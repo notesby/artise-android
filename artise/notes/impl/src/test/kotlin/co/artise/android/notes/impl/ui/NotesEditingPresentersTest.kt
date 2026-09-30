@@ -5,6 +5,8 @@
  * Please see LICENSE files in the repository root for full details.
  */
 
+@file:OptIn(ExperimentalCoroutinesApi::class)
+
 package co.artise.android.notes.impl.ui
 
 import androidx.compose.ui.text.TextRange
@@ -16,6 +18,7 @@ import co.artise.android.notes.api.MovedNote
 import co.artise.android.notes.api.NotesException
 import co.artise.android.notes.api.PendingEdit
 import co.artise.android.notes.api.ServerCopy
+import co.artise.android.notes.api.UploadStatus
 import co.artise.android.notes.impl.ui.choices.NotesChoicesEvent
 import co.artise.android.notes.impl.ui.choices.NotesChoicesPresenter
 import co.artise.android.notes.impl.ui.common.NoteNameProblem
@@ -42,6 +45,8 @@ import io.element.android.services.toolbox.test.systemclock.FakeSystemClock
 import io.element.android.tests.testutils.consumeItemsUntilPredicate
 import io.element.android.tests.testutils.consumeItemsUntilTimeout
 import io.element.android.tests.testutils.test
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import kotlin.time.Duration.Companion.milliseconds
@@ -473,6 +478,48 @@ class NotesEditingPresentersTest {
             // "[[factura.pdf]]" is a file, not a note: tapping it opens it, here without a connection.
             shown.eventSink(NoteEvent.OpenNoteLink("factura.pdf"))
             assertThat(consumeItemsUntilPredicate { it.dialog != null }.last().dialog).isEqualTo(NoteDialog.AttachmentUnavailable)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    /** A photo not on the server yet shows where its upload is; Retry and Cancel go to the repository. */
+    @Test
+    fun `note shows uploads with retry and cancel`() = runTest {
+        val repository = FakeNotesRepository(
+            files = mutableMapOf(
+                room to listOf(aNote("Súper.md", "![[luna.jpg]]"), aNote("attachments/luna.jpg").copy(isNote = false)),
+            ),
+        )
+        repository.uploads["attachments/luna.jpg"] = UploadStatus.RETRYING
+        NotePresenter(room, "Súper.md", RecordingNoteNavigator(), repository).test {
+            val shown = consumeItemsUntilPredicate { it.embeds["luna.jpg"]?.upload != null }.last()
+            assertThat(shown.embeds["luna.jpg"]?.upload).isEqualTo(UploadStatus.RETRYING)
+            shown.eventSink(NoteEvent.RetryUpload("attachments/luna.jpg"))
+            shown.eventSink(NoteEvent.CancelUpload("attachments/luna.jpg"))
+            runCurrent()
+            assertThat(repository.retriedUploads).containsExactly("attachments/luna.jpg")
+            assertThat(repository.cancelledUploads).containsExactly("attachments/luna.jpg")
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    /** Cancelling an upload in the editor takes the photo out of the text being edited too, so saving won't bring it back. */
+    @Test
+    fun `editor cancels an upload`() = runTest {
+        val repository = FakeNotesRepository(
+            files = mutableMapOf(
+                room to listOf(aNote("Súper.md", "Hoy\n\n![[luna.jpg]]\n\nfin"), aNote("attachments/luna.jpg").copy(isNote = false)),
+            ),
+        )
+        repository.uploads["attachments/luna.jpg"] = UploadStatus.WAITING
+        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock, reader).test {
+            val loaded = consumeItemsUntilPredicate { it.embeds["luna.jpg"]?.upload == UploadStatus.WAITING }.last()
+            loaded.eventSink(NoteEditorEvent.CancelUpload("attachments/luna.jpg"))
+            val cancelled = consumeItemsUntilPredicate { !it.value.text.contains("luna") }.last()
+            assertThat(cancelled.value.text).isEqualTo("Hoy\n\nfin")
+            assertThat(cancelled.canUndo).isTrue()
+            runCurrent()
+            assertThat(repository.cancelledUploads).containsExactly("attachments/luna.jpg")
             cancelAndIgnoreRemainingEvents()
         }
     }

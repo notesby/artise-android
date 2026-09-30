@@ -68,6 +68,15 @@ interface NotesRepository {
     /** Unsent edits, including those waiting for the person to choose. */
     suspend fun edits(roomId: RoomId): List<PendingEdit>
 
+    /** Photos and files added on this phone and not on the server yet, by path. [changes] tells when this changes. */
+    suspend fun uploads(roomId: RoomId): Map<String, UploadStatus>
+
+    /** Tries a waiting, failing or refused upload again now. */
+    suspend fun retryUpload(roomId: RoomId, path: String)
+
+    /** Drops an upload not sent yet, and takes it out of the notes that embed it. */
+    suspend fun cancelUpload(roomId: RoomId, path: String)
+
     /** For a [EditState.CONFLICT]: saves [content] (the person's choice or combination) over the server's version. */
     suspend fun resolveConflict(editId: Long, content: String)
 

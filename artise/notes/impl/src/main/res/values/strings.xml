@@ -100,4 +100,14 @@
     <string name="screen_notes_sync_partial">Some of your changes couldn’t be sent yet. They’ll be sent on the next update.</string>
     <string name="a11y_notes_preview">Preview</string>
     <string name="a11y_notes_back_to_editing">Back to editing</string>
+    <string name="screen_notes_upload_waiting">Waiting to upload</string>
+    <string name="screen_notes_upload_uploading">Uploading…</string>
+    <string name="screen_notes_upload_retrying">Couldn’t upload yet. It’ll try again.</string>
+    <string name="screen_notes_upload_failed">Couldn’t upload this file.</string>
+    <string name="screen_notes_upload_retry">Retry</string>
+    <string name="screen_notes_upload_open">Open</string>
+    <string name="screen_notes_upload_cancel">Cancel upload</string>
+    <string name="screen_notes_upload_keep">Keep</string>
+    <string name="screen_notes_upload_cancel_title">Cancel this upload?</string>
+    <string name="screen_notes_upload_cancel_message">“%1$s” isn’t on the server yet. It will be removed from this phone and from the note.</string>
 </resources>

@@ -19,6 +19,7 @@ import co.artise.android.notes.api.NotesRepository
 import co.artise.android.notes.api.NotesSearchResult
 import co.artise.android.notes.api.PendingEdit
 import co.artise.android.notes.api.SyncReport
+import co.artise.android.notes.api.UploadStatus
 import io.element.android.libraries.matrix.api.core.RoomId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -102,6 +103,21 @@ class FakeNotesRepository(
     override suspend fun attachment(roomId: RoomId, path: String): Result<File> = attachmentResult(path)
 
     override suspend fun edits(roomId: RoomId) = edits[roomId].orEmpty()
+
+    val uploads = mutableMapOf<String, UploadStatus>()
+    val retriedUploads = mutableListOf<String>()
+    val cancelledUploads = mutableListOf<String>()
+
+    override suspend fun uploads(roomId: RoomId): Map<String, UploadStatus> = uploads.toMap()
+
+    override suspend fun retryUpload(roomId: RoomId, path: String) {
+        retriedUploads += path
+    }
+
+    override suspend fun cancelUpload(roomId: RoomId, path: String) {
+        cancelledUploads += path
+        uploads -= path
+    }
 
     override suspend fun resolveConflict(editId: Long, content: String) {
         resolved += editId to content

@@ -102,4 +102,14 @@
     <string name="screen_notes_sync_partial">Algunos de tus cambios aún no se pudieron enviar. Se enviarán en la próxima actualización.</string>
     <string name="a11y_notes_preview">Vista previa</string>
     <string name="a11y_notes_back_to_editing">Volver a editar</string>
+    <string name="screen_notes_upload_waiting">Esperando para subir</string>
+    <string name="screen_notes_upload_uploading">Subiendo…</string>
+    <string name="screen_notes_upload_retrying">Aún no se pudo subir. Se volverá a intentar.</string>
+    <string name="screen_notes_upload_failed">No se pudo subir este archivo.</string>
+    <string name="screen_notes_upload_retry">Reintentar</string>
+    <string name="screen_notes_upload_open">Abrir</string>
+    <string name="screen_notes_upload_cancel">Cancelar subida</string>
+    <string name="screen_notes_upload_keep">Conservar</string>
+    <string name="screen_notes_upload_cancel_title">¿Cancelar esta subida?</string>
+    <string name="screen_notes_upload_cancel_message">“%1$s” todavía no está en el servidor. Se quitará de este teléfono y de la nota.</string>
 </resources>

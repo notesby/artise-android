@@ -5,6 +5,8 @@
  * Please see LICENSE files in the repository root for full details.
  */
 
+@file:OptIn(ExperimentalCoroutinesApi::class)
+
 package co.artise.android.notes.impl.sync
 
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
@@ -12,6 +14,7 @@ import app.cash.turbine.test
 import co.artise.android.notes.api.EditKind
 import co.artise.android.notes.api.EditState
 import co.artise.android.notes.api.NotesException
+import co.artise.android.notes.api.UploadStatus
 import co.artise.android.notes.impl.A_ROOM
 import co.artise.android.notes.impl.A_ROOM_ENCODED
 import co.artise.android.notes.impl.FakeNotesTokenSource
@@ -26,6 +29,7 @@ import com.google.common.truth.Truth.assertThat
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.services.toolbox.test.systemclock.FakeSystemClock
 import io.element.android.tests.testutils.testCoroutineDispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -444,6 +448,57 @@ class NotesSyncEngineTest {
         engine.discardEdit(refused.id)
         assertThat(engine.edits(room)).isEmpty()
         assertThat(engine.file(room, "attachments/luna.jpg")).isNull()
+    }
+
+    /**
+     * Each photo not on the server yet says where it is: waiting, then retrying after a server-side failure, then
+     * refused for good; Retry puts a refused one back in the queue and tries at once.
+     */
+    @Test
+    fun `uploads say where each photo is`() = runTest {
+        val engine = engine()
+        engine.firstSync()
+        engine.addAttachment(room, "luna.jpg", byteArrayOf(1), "image/jpeg").getOrThrow()
+        assertThat(engine.uploads(room)).containsExactly("attachments/luna.jpg", UploadStatus.WAITING)
+
+        server.enqueue(uploadKey, MockResponse().setResponseCode(413).setBody("Request Entity Too Large"))
+        server.enqueue(tree, MockResponse().setResponseCode(304))
+        engine.sync(room).getOrThrow()
+        assertThat(engine.uploads(room)).containsExactly("attachments/luna.jpg", UploadStatus.RETRYING)
+
+        server.enqueue(uploadKey, error(413, "too_big"))
+        server.enqueue(tree, MockResponse().setResponseCode(304))
+        engine.sync(room).getOrThrow()
+        assertThat(engine.uploads(room)).containsExactly("attachments/luna.jpg", UploadStatus.FAILED)
+
+        server.enqueue(uploadKey, json(201, """{"path": "attachments/luna.jpg", "version": "a1"}"""))
+        server.enqueue(tree, MockResponse().setResponseCode(304))
+        engine.retryUpload(room, "attachments/luna.jpg")
+        runCurrent()
+        assertThat(server.requestsTo(uploadKey)).hasSize(3)
+        assertThat(engine.uploads(room)).isEmpty()
+        assertThat(engine.file(room, "attachments/luna.jpg")?.version).isEqualTo("a1")
+    }
+
+    /** Cancelling a photo not uploaded yet removes it from the phone and from the note, and nothing is sent for it. */
+    @Test
+    fun `cancelled uploads leave the phone and the note`() = runTest {
+        val engine = engine()
+        engine.firstSync()
+        engine.addAttachment(room, "luna.jpg", byteArrayOf(1), "image/jpeg").getOrThrow()
+        engine.editNote(room, "Mole.md", "# Mole\n\n![[luna.jpg]]\n\nfin")
+        engine.cancelUpload(room, "attachments/luna.jpg")
+        assertThat(engine.uploads(room)).isEmpty()
+        assertThat(engine.file(room, "attachments/luna.jpg")).isNull()
+        assertThat(engine.file(room, "Mole.md")?.content).isEqualTo("# Mole\n\nfin")
+        val edit = engine.edits(room).single()
+        assertThat(edit.kind).isEqualTo(EditKind.SAVE)
+        assertThat(edit.content).isEqualTo("# Mole\n\nfin")
+        server.requests.clear()
+        server.enqueue(put, json(body = """{"path": "Mole.md", "version": "m2", "merged": false}"""))
+        server.enqueue(tree, MockResponse().setResponseCode(304))
+        engine.sync(room).getOrThrow()
+        assertThat(server.requests.none { it.path.orEmpty().contains("/raw") }).isTrue()
     }
 
     /** On Wi-Fi, photos embedded in notes download after a sync, so they show offline; documents wait to be opened. */

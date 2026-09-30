@@ -46,10 +46,26 @@ import java.io.File
 
 /**
  * An embedded photo or file in a note. Photos show at full width once downloaded; files show as a chip.
- * Tapping either opens it in the app the person uses for that kind of file.
+ * Tapping either opens it in the app the person uses for that kind of file. One added on this phone and not on the
+ * server yet says where its upload is, with Retry and Cancel.
  */
 @Composable
 internal fun NoteEmbedView(
+    target: String,
+    embed: EmbedState?,
+    onOpen: (path: String) -> Unit,
+    onRetryUpload: (path: String) -> Unit,
+    onCancelUpload: (path: String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier) {
+        EmbedContent(target, embed, onOpen)
+        if (embed != null) UploadStatusRow(embed, onRetry = onRetryUpload, onCancel = onCancelUpload)
+    }
+}
+
+@Composable
+private fun EmbedContent(
     target: String,
     embed: EmbedState?,
     onOpen: (path: String) -> Unit,

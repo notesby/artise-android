@@ -107,7 +107,13 @@ fun NoteView(
                     modifier = Modifier.padding(16.dp),
                     onTaskToggle = { line -> state.eventSink(NoteEvent.ToggleTask(line)) },
                     embed = { target ->
-                        NoteEmbedView(target, state.embeds[target], onOpen = { path -> state.eventSink(NoteEvent.OpenAttachment(path)) })
+                        NoteEmbedView(
+                            target = target,
+                            embed = state.embeds[target],
+                            onOpen = { path -> state.eventSink(NoteEvent.OpenAttachment(path)) },
+                            onRetryUpload = { path -> state.eventSink(NoteEvent.RetryUpload(path)) },
+                            onCancelUpload = { path -> state.eventSink(NoteEvent.CancelUpload(path)) },
+                        )
                     },
                 )
                 state.isLoading -> Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {

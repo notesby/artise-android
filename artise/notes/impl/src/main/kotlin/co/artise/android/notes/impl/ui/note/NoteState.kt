@@ -9,9 +9,11 @@ package co.artise.android.notes.impl.ui.note
 
 import androidx.compose.runtime.Immutable
 import co.artise.android.notes.api.Backlink
+import co.artise.android.notes.api.UploadStatus
 import co.artise.android.notes.impl.ui.common.NoteNameProblem
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableMap
+import kotlinx.collections.immutable.toImmutableMap
 
 data class NoteState(
     val title: String,
@@ -52,7 +54,13 @@ data class EmbedState(
     val size: Long? = null,
     /** Being downloaded to open it. */
     val isDownloading: Boolean = false,
+    /** Added on this phone and not on the server yet; `null` once it's there. */
+    val upload: UploadStatus? = null,
 )
+
+/** [this] with each embed's upload status; one not in [uploads] is on the server. */
+internal fun ImmutableMap<String, EmbedState>.withUploads(uploads: Map<String, UploadStatus>): ImmutableMap<String, EmbedState> =
+    if (uploads.isEmpty() && values.none { it.upload != null }) this else mapValues { (_, embed) -> embed.copy(upload = uploads[embed.path]) }.toImmutableMap()
 
 /** Open [file] (on the phone) in the app the person uses for that kind of file. */
 data class OpenFileRequest(val file: String, val name: String)
