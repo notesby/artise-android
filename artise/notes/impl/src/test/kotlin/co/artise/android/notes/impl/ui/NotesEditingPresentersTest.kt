@@ -260,6 +260,8 @@ class NotesEditingPresentersTest {
             val withPhoto = consumeItemsUntilPredicate { it.value.text.contains("luna") }.last()
             assertThat(withPhoto.value.text).isEqualTo("Hoy\n![[luna.jpg]]\n")
             assertThat(repository.attachments.single().first).isEqualTo("attachments/luna.jpg")
+            // The upload starts at once, or waits in the queue when offline.
+            assertThat(repository.backgroundSyncs).containsExactly(room)
             reader = AttachmentReader { Result.success(PickedFile("factura.pdf", "application/pdf", byteArrayOf(2))) }
             cancelAndIgnoreRemainingEvents()
         }
@@ -271,28 +273,20 @@ class NotesEditingPresentersTest {
         }
     }
 
-    /** Offline or too big, attaching explains why instead of failing silently; the note is unchanged. */
+    /** A file over 50 MB is refused with a reason, and the note is unchanged; any other failure says so too. */
     @Test
     fun `attachment problems are explained`() = runTest {
         val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md", "Hoy"))))
-        repository.addAttachmentResult = { Result.failure(NotesException.Network(IllegalStateException())) }
-        NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock, reader).test {
-            val state = consumeItemsUntilPredicate { !it.isLoading }.last()
-            state.eventSink(NoteEditorEvent.Attach("content://photo"))
-            val offline = consumeItemsUntilPredicate { it.attachError != null }.last()
-            assertThat(offline.attachError).isEqualTo(AttachError.OFFLINE)
-            assertThat(offline.value.text).isEqualTo("Hoy")
-            offline.eventSink(NoteEditorEvent.DismissAttachError)
-            consumeItemsUntilPredicate { it.attachError == null }
-            reader = AttachmentReader { Result.failure(AttachmentTooBigException()) }
-            cancelAndIgnoreRemainingEvents()
-        }
+        reader = AttachmentReader { Result.failure(AttachmentTooBigException()) }
         NoteEditorPresenter(room, "Súper.md", null, {}, repository, clock, reader).test {
             val state = consumeItemsUntilPredicate { !it.isLoading }.last()
             state.eventSink(NoteEditorEvent.Attach("content://video"))
-            assertThat(consumeItemsUntilPredicate { it.attachError != null }.last().attachError).isEqualTo(AttachError.TOO_BIG)
+            val tooBig = consumeItemsUntilPredicate { it.attachError != null }.last()
+            assertThat(tooBig.attachError).isEqualTo(AttachError.TOO_BIG)
+            assertThat(tooBig.value.text).isEqualTo("Hoy")
             cancelAndIgnoreRemainingEvents()
         }
+        assertThat(repository.backgroundSyncs).isEmpty()
     }
 
     /** A toolbar button formats the selection in the editor's text, keeping it selected. */

@@ -92,7 +92,9 @@
     <string name="screen_notes_attach_photo">Photo</string>
     <string name="screen_notes_attach_file">File</string>
     <string name="screen_notes_attach_uploading">Uploading…</string>
-    <string name="screen_notes_attach_offline">Adding photos and files needs a connection. Try again when you’re online.</string>
     <string name="screen_notes_attach_too_big">That file is over 50 MB.</string>
     <string name="screen_notes_attach_failed">Couldn’t add the file. Try again.</string>
+    <string name="screen_notes_attach_take_photo">Take a photo</string>
+    <string name="screen_notes_attach_camera_denied">To take photos here, allow Artise to use the camera in your phone’s settings.</string>
+    <string name="screen_notes_attach_no_camera">There’s no camera app on this phone.</string>
 </resources>

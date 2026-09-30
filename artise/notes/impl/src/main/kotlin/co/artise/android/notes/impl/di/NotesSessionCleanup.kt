@@ -42,5 +42,6 @@ class NotesSessionCleanup(
             }
         // Downloaded photos and files too.
         NotesBindingContainer.attachmentsDir(context, userId).deleteRecursively()
+        NotesBindingContainer.pendingUploadsDir(context, userId).deleteRecursively()
     }
 }

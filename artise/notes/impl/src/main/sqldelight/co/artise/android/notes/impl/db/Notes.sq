@@ -23,7 +23,8 @@ CREATE TABLE NotesFileEntity (
 );
 
 -- Edits waiting to reach the server, pushed in id order.
--- kind: save | delete. Moves are online-only in v1, so they never wait here.
+-- kind: save | delete | upload. Moves are online-only, so they never wait here.
+-- For uploads, content is the path of the file waiting on the phone and content_type its type.
 -- state: pending (to send), conflict / deleted / exists (waiting for the person to choose),
 -- rejected (the server refused it for good, e.g. too big; error holds its message).
 -- server_version/server_content: the server's copy sent with a conflict or exists answer.
@@ -38,7 +39,8 @@ CREATE TABLE NotesEditEntity (
     server_version TEXT,
     server_content TEXT,
     error TEXT,
-    created_at INTEGER NOT NULL
+    created_at INTEGER NOT NULL,
+    content_type TEXT
 );
 
 CREATE INDEX NotesEditRoom ON NotesEditEntity(room_id, state);
@@ -144,3 +146,13 @@ SELECT COUNT(*) FROM NotesFlagEntity WHERE name = ?;
 
 setFlag:
 INSERT OR IGNORE INTO NotesFlagEntity(name) VALUES (?);
+
+insertUpload:
+INSERT INTO NotesEditEntity(room_id, kind, path, content, base_version, state, created_at, content_type)
+VALUES (?, 'upload', ?, ?, NULL, 'pending', ?, ?);
+
+contentType:
+SELECT content_type FROM NotesEditEntity WHERE id = ?;
+
+renameEdit:
+UPDATE NotesEditEntity SET path = ? WHERE id = ?;

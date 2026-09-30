@@ -56,6 +56,7 @@ class NotesSyncEngineTest {
             dispatchers = dispatchers,
             backgroundScope = backgroundScope,
             attachmentsDir = Files.createTempDirectory("attachments").toFile(),
+            pendingDir = Files.createTempDirectory("pending").toFile(),
         )
     }
 
@@ -304,24 +305,79 @@ class NotesSyncEngineTest {
         }
     }
 
-    /** An attachment is uploaded under a free name in attachments/, listed on the phone, and kept for showing. */
+    private val uploadKey = "PUT /chats/$A_ROOM_ENCODED/raw?path=attachments%2Fluna.jpg"
+
+    /** Offline, an attachment is kept on the phone and queued: it's listed and shows at once, with no request made. */
     @Test
-    fun `attachments are uploaded under a free name`() = runTest {
+    fun `attachments queue offline`() = runTest {
         val engine = engine()
         engine.firstSync()
-        server.enqueue(
-            "PUT /chats/$A_ROOM_ENCODED/raw?path=attachments%2Fluna.jpg",
-            json(201, """{"path": "attachments/luna.jpg", "version": "a1"}"""),
-        )
+        server.requests.clear()
         val path = engine.addAttachment(room, "luna.jpg", byteArrayOf(1, 2, 3), "image/jpeg").getOrThrow()
         assertThat(path).isEqualTo("attachments/luna.jpg")
-        val request = server.requests.last()
-        assertThat(request.getHeader("Content-Type")).startsWith("image/jpeg")
-        assertThat(request.body.readByteArray()).isEqualTo(byteArrayOf(1, 2, 3))
+        assertThat(server.requests).isEmpty()
         assertThat(engine.file(room, path)?.isNote).isFalse()
-        // Shown straight from the phone: no download.
         assertThat(engine.attachment(room, path).getOrThrow().readBytes()).isEqualTo(byteArrayOf(1, 2, 3))
-        assertThat(server.requests.last()).isSameInstanceAs(request)
+        assertThat(engine.edits(room).single().kind).isEqualTo(EditKind.UPLOAD)
+    }
+
+    /** On sync the photo uploads before the note that embeds it, then shows from the phone without downloading. */
+    @Test
+    fun `uploads go before the note that embeds them`() = runTest {
+        val engine = engine()
+        engine.firstSync()
+        val path = engine.addAttachment(room, "luna.jpg", byteArrayOf(1, 2, 3), "image/jpeg").getOrThrow()
+        engine.editNote(room, "Mole.md", "# Mole\n![[luna.jpg]]")
+        server.requests.clear()
+        server.enqueue(uploadKey, json(201, """{"path": "attachments/luna.jpg", "version": "a1"}"""))
+        server.enqueue(put, json(body = """{"path": "Mole.md", "version": "m2", "merged": false}"""))
+        server.enqueue(tree, MockResponse().setResponseCode(304))
+        engine.sync(room).getOrThrow()
+        assertThat(server.requests.map { it.method + " " + it.path.orEmpty().substringBefore('?') }.take(2))
+            .containsExactly("PUT /api/notes/v1/chats/$A_ROOM_ENCODED/raw", "PUT /api/notes/v1/chats/$A_ROOM_ENCODED/note")
+            .inOrder()
+        assertThat(server.requestsTo(uploadKey).single().body.readByteArray()).isEqualTo(byteArrayOf(1, 2, 3))
+        assertThat(engine.edits(room)).isEmpty()
+        assertThat(engine.file(room, path)?.version).isEqualTo("a1")
+        server.requests.clear()
+        assertThat(engine.attachment(room, path).getOrThrow().readBytes()).isEqualTo(byteArrayOf(1, 2, 3))
+        assertThat(server.requests).isEmpty()
+    }
+
+    /** Someone uploaded the same name meanwhile: the photo takes the next free name and the unsent note follows it. */
+    @Test
+    fun `upload name clash renames and fixes the note`() = runTest {
+        val engine = engine()
+        engine.firstSync()
+        engine.addAttachment(room, "luna.jpg", byteArrayOf(1), "image/jpeg").getOrThrow()
+        engine.editNote(room, "Mole.md", "![[luna.jpg]]")
+        server.enqueue(uploadKey, error(409, "exists", """"current": {"path": "attachments/luna.jpg", "version": "x"}"""))
+        server.enqueue(
+            "PUT /chats/$A_ROOM_ENCODED/raw?path=attachments%2Fluna%20%282%29.jpg",
+            json(201, """{"path": "attachments/luna (2).jpg", "version": "a2"}"""),
+        )
+        server.enqueue(put, json(body = """{"path": "Mole.md", "version": "m2", "merged": false}"""))
+        server.enqueue(tree, MockResponse().setResponseCode(304))
+        engine.sync(room).getOrThrow()
+        val sentNote = Json.parseToJsonElement(server.requestsTo(put).single().body.readUtf8()).jsonObject
+        assertThat(sentNote["content"]?.jsonPrimitive?.content).isEqualTo("![[luna (2).jpg]]")
+        assertThat(engine.file(room, "attachments/luna (2).jpg")?.version).isEqualTo("a2")
+    }
+
+    /** An upload the server refuses (too big) waits for a choice; discarding it removes the attachment. */
+    @Test
+    fun `refused uploads can be discarded`() = runTest {
+        val engine = engine()
+        engine.firstSync()
+        engine.addAttachment(room, "luna.jpg", byteArrayOf(1), "image/jpeg").getOrThrow()
+        server.enqueue(uploadKey, error(413, "too_big"))
+        server.enqueue(tree, MockResponse().setResponseCode(304))
+        engine.sync(room).getOrThrow()
+        val refused = engine.edits(room).single()
+        assertThat(refused.state).isEqualTo(EditState.REJECTED)
+        engine.discardEdit(refused.id)
+        assertThat(engine.edits(room)).isEmpty()
+        assertThat(engine.file(room, "attachments/luna.jpg")).isNull()
     }
 
     /** An attachment is downloaded once; opening it again uses the copy on the phone. */

@@ -100,6 +100,10 @@ private fun ChoiceCard(item: NotesChoiceItem, eventSink: (NotesChoicesEvent) -> 
                 Choice(stringResource(R.string.screen_notes_choice_keep_both), primary = true) { eventSink(NotesChoicesEvent.KeepBoth(item.editId)) }
                 Choice(stringResource(R.string.screen_notes_choice_discard)) { eventSink(NotesChoicesEvent.Discard(item.editId)) }
             }
+            // A photo or file the server refused: drop it.
+            item.kind == EditKind.UPLOAD -> Choice(stringResource(R.string.screen_notes_choice_discard), primary = true) {
+                eventSink(NotesChoicesEvent.Discard(item.editId))
+            }
             // A deletion someone overtook with an edit, or a refused change: the server's copy stays.
             else -> Choice(stringResource(R.string.screen_notes_choice_keep_theirs), primary = true) { eventSink(NotesChoicesEvent.Discard(item.editId)) }
         }

@@ -18,7 +18,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
-import co.artise.android.notes.api.NotesException
 import co.artise.android.notes.api.NotesRepository
 import co.artise.android.notes.impl.markdown.ChecklistToggle
 import co.artise.android.notes.impl.ui.folder.NotesFolderEntries
@@ -215,15 +214,12 @@ class NoteEditorPresenter(
                             isAttaching = false
                             uploaded.fold(
                                 onSuccess = { attachmentPath ->
-                                    val inserted = insertEmbed(value, attachmentPath)
-                                    commit(inserted, isTyping = false)
+                                    commit(insertEmbed(value, attachmentPath), isTyping = false)
+                                    // Upload now if there's a connection; otherwise it waits in the queue.
+                                    repository.syncInBackground(roomId)
                                 },
                                 onFailure = { error ->
-                                    attachError = when (error) {
-                                        is NotesException.Network -> AttachError.OFFLINE
-                                        is AttachmentTooBigException, is NotesException.TooBig -> AttachError.TOO_BIG
-                                        else -> AttachError.OTHER
-                                    }
+                                    attachError = if (error is AttachmentTooBigException) AttachError.TOO_BIG else AttachError.OTHER
                                 },
                             )
                         }

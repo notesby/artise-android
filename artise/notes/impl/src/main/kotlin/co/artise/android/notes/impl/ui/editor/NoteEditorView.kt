@@ -7,6 +7,9 @@
 
 package co.artise.android.notes.impl.ui.editor
 
+import android.Manifest
+import android.content.ActivityNotFoundException
+import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -32,10 +35,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -45,6 +50,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
+import androidx.core.content.ContextCompat
 import co.artise.android.notes.impl.R
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
@@ -173,7 +179,6 @@ fun NoteEditorView(
         ErrorDialog(
             content = stringResource(
                 when (error) {
-                    AttachError.OFFLINE -> R.string.screen_notes_attach_offline
                     AttachError.TOO_BIG -> R.string.screen_notes_attach_too_big
                     AttachError.OTHER -> R.string.screen_notes_attach_failed
                 }
@@ -228,17 +233,50 @@ private fun FormattingToolbar(enabled: Boolean, canAttach: Boolean, onAction: (F
     }
 }
 
-/** 📎: a photo from the gallery (Android's photo picker, no permission needed) or any file. */
+/** 📎: take a photo, a photo from the gallery (Android's photo picker, no permission needed), or any file. */
 @Composable
 private fun AttachButton(enabled: Boolean, onPick: (uri: String) -> Unit) {
+    val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
+    var cameraProblem by remember { mutableStateOf<Int?>(null) }
+    // Where the camera app writes the photo; kept across the trip to the camera app.
+    var cameraUri by rememberSaveable { mutableStateOf<String?>(null) }
     val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> uri?.let { onPick(it.toString()) } }
     val pickFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { onPick(it.toString()) } }
+    val takePhoto = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { saved -> if (saved) cameraUri?.let(onPick) }
+    fun openCamera() {
+        val uri = CameraFiles.newPhotoUri(context)
+        cameraUri = uri.toString()
+        try {
+            takePhoto.launch(uri)
+        } catch (e: ActivityNotFoundException) {
+            cameraProblem = R.string.screen_notes_attach_no_camera
+        }
+    }
+    // The app declares the camera (for calls), so Android wants permission before opening the camera app.
+    val askCamera = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) openCamera() else cameraProblem = R.string.screen_notes_attach_camera_denied
+    }
+    cameraProblem?.let { message ->
+        ErrorDialog(content = stringResource(message), title = null, onSubmit = { cameraProblem = null })
+    }
     Box {
         IconButton(onClick = { showMenu = true }, enabled = enabled) {
             Icon(imageVector = CompoundIcons.Attachment(), contentDescription = stringResource(R.string.a11y_notes_attach))
         }
         DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.screen_notes_attach_take_photo)) },
+                leadingIcon = { Icon(imageVector = CompoundIcons.TakePhoto(), contentDescription = null) },
+                onClick = {
+                    showMenu = false
+                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                        openCamera()
+                    } else {
+                        askCamera.launch(Manifest.permission.CAMERA)
+                    }
+                },
+            )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.screen_notes_attach_photo)) },
                 leadingIcon = { Icon(imageVector = CompoundIcons.Image(), contentDescription = null) },

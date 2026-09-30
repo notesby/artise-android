@@ -71,7 +71,11 @@ object NotesBindingContainer {
         dispatchers = dispatchers,
         backgroundScope = sessionScope,
         attachmentsDir = attachmentsDir(context, matrixClient.sessionId.value),
+        pendingDir = pendingUploadsDir(context, matrixClient.sessionId.value),
     )
+
+    /** Photos and files waiting to upload: app storage, so Android doesn't clear them like the cache. */
+    fun pendingUploadsDir(context: Context, userId: String): File = File(context.filesDir, "notes_pending/" + databaseName(userId))
 
     /** Downloaded photos and files, in the app's private cache (shared with other apps only one file at a time, when opened). */
     fun attachmentsDir(context: Context, userId: String): File = File(context.cacheDir, "notes_attachments/" + databaseName(userId))

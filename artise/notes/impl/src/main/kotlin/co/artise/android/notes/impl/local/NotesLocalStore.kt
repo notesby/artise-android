@@ -114,6 +114,15 @@ class NotesLocalStore(private val database: NotesDatabase) {
         queries.lastInsertedId().executeAsOne()
     }
 
+    fun addUpload(roomId: RoomId, path: String, localFile: String, contentType: String, now: Long): Long = transaction {
+        queries.insertUpload(roomId.value, path, localFile, now, contentType)
+        queries.lastInsertedId().executeAsOne()
+    }
+
+    fun contentType(id: Long): String? = queries.contentType(id).executeAsOneOrNull()?.content_type
+
+    fun renameEdit(id: Long, path: String) = queries.renameEdit(path, id)
+
     fun setEditContent(id: Long, content: String) = queries.updateEditContent(content, id)
 
     fun markEdit(id: Long, state: EditState, serverCopy: ServerCopy? = null, error: String? = null) =

@@ -21,7 +21,13 @@ data class LocalFile(
     val hasLocalEdits: Boolean,
 )
 
-enum class EditKind { SAVE, DELETE }
+enum class EditKind {
+    SAVE,
+    DELETE,
+
+    /** A photo or file added on this phone, waiting to be uploaded. */
+    UPLOAD,
+}
 
 enum class EditState {
     /** Waiting to be sent. */

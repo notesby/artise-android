@@ -56,8 +56,9 @@ interface NotesRepository {
     suspend fun moveNote(roomId: RoomId, from: String, to: String): Result<MovedNote>
 
     /**
-     * Uploads a photo or file to the chat's `attachments/` folder, where Ari keeps files too, under a name not taken
-     * yet. Needs a connection. Returns the attachment's path.
+     * Adds a photo or file to the chat's `attachments/` folder, where Ari keeps files too, under a name not taken yet.
+     * It's kept on the phone at once (so it shows offline) and uploaded with the next sync, before the note edits that
+     * embed it. Returns the attachment's path.
      */
     suspend fun addAttachment(roomId: RoomId, fileName: String, bytes: ByteArray, contentType: String): Result<String>
 

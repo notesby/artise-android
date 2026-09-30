@@ -36,9 +36,6 @@ data class NoteEditorState(
 )
 
 enum class AttachError {
-    /** Uploading needs a connection. */
-    OFFLINE,
-
     /** Over the 50 MB limit. */
     TOO_BIG,
     OTHER,

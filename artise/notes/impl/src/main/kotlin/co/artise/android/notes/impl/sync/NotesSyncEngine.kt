@@ -39,6 +39,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.security.MessageDigest
+import java.util.UUID
 
 /**
  * [NotesRepository] over the [NotesApiClient] and the phone's [NotesLocalStore], following the contract's
@@ -56,6 +57,8 @@ class NotesSyncEngine(
     private val backgroundScope: CoroutineScope,
     /** Where downloaded attachments are kept: inside the app's own cache, one folder per account. */
     private val attachmentsDir: File,
+    /** Where attachments wait to upload: app storage, not the cache, which Android may clear. */
+    private val pendingDir: File,
 ) : NotesRepository {
     // One sync at a time, so the queue is never sent twice.
     private val syncMutex = Mutex()
@@ -144,8 +147,11 @@ class NotesSyncEngine(
         io {
             store.transaction {
                 val file = store.file(roomId, path) ?: return@transaction
-                // Unsent saves to this file no longer matter.
-                store.edits(roomId).filter { it.path == path }.forEach { store.deleteEdit(it.id) }
+                // Unsent saves (and a waiting upload) of this file no longer matter.
+                store.edits(roomId).filter { it.path == path }.forEach {
+                    if (it.kind == EditKind.UPLOAD) it.content?.let { waiting -> File(waiting).delete() }
+                    store.deleteEdit(it.id)
+                }
                 store.deleteFile(roomId, path)
                 // A note created offline never reached the server: nothing to delete there.
                 if (file.version.isNotEmpty()) {
@@ -175,20 +181,28 @@ class NotesSyncEngine(
     }
 
     override suspend fun addAttachment(roomId: RoomId, fileName: String, bytes: ByteArray, contentType: String): Result<String> {
-        val taken = io { store.files(roomId) }.map { it.path.lowercase() }.toSet()
-        val path = freeAttachmentPath(fileName, taken)
-        return api.saveRaw(roomId, path, bytes, contentType, baseVersion = null).map { version ->
-            io {
-                store.putFile(roomId, NotesFile(path, version, bytes.size.toLong(), clock.nowSeconds(), isNote = false), null)
-                // Keep it, so the note shows it right away without downloading it back.
-                cacheFileFor(roomId, path, version).writeBytes(bytes)
+        val path = io {
+            store.transaction {
+                val taken = store.files(roomId).map { it.path.lowercase() }.toSet()
+                val path = freeAttachmentPath(fileName, taken)
+                val waiting = File(pendingDir, UUID.randomUUID().toString() + path.extensionWithDot())
+                waiting.parentFile?.mkdirs()
+                waiting.writeBytes(bytes)
+                // Listed at once without a version: it shows from the phone until it's uploaded.
+                store.putFile(roomId, NotesFile(path, "", bytes.size.toLong(), clock.nowSeconds(), isNote = false), null)
+                store.addUpload(roomId, path, waiting.absolutePath, contentType, clock.epochMillis())
+                path
             }
-            notifyChanged(roomId)
-            path
         }
+        notifyChanged(roomId)
+        return Result.success(path)
     }
 
     override suspend fun attachment(roomId: RoomId, path: String): Result<File> {
+        // Still waiting to upload: the phone's copy is the only one.
+        io { store.pendingEdits(roomId) }.firstOrNull { it.kind == EditKind.UPLOAD && it.path == path }?.content?.let { waiting ->
+            return Result.success(File(waiting))
+        }
         val version = io { store.file(roomId, path) }?.version.orEmpty()
         val cached = cacheFileFor(roomId, path, version)
         if (version.isNotEmpty() && io { cached.exists() }) return Result.success(cached)
@@ -260,6 +274,13 @@ class NotesSyncEngine(
         val changedRoom = io {
             store.transaction<RoomId?> {
                 val (roomId, edit) = store.edit(editId) ?: return@transaction null
+                if (edit.kind == EditKind.UPLOAD) {
+                    // A refused upload: drop the waiting file and the attachment it would have become.
+                    edit.content?.let { File(it).delete() }
+                    store.deleteEdit(editId)
+                    store.deleteFile(roomId, edit.path)
+                    return@transaction roomId
+                }
                 // Read before deleting the edit: afterwards its base version is gone.
                 val baseVersion = store.baseVersion(editId)
                 store.deleteEdit(editId)
@@ -309,6 +330,7 @@ class NotesSyncEngine(
             val outcome = when (edit.kind) {
                 EditKind.SAVE -> pushSave(roomId, edit)
                 EditKind.DELETE -> pushDelete(roomId, edit)
+                EditKind.UPLOAD -> pushUpload(roomId, edit)
             }
             when (outcome) {
                 PushOutcome.Sent -> sent++
@@ -331,7 +353,9 @@ class NotesSyncEngine(
     }
 
     private suspend fun pushSave(roomId: RoomId, edit: PendingEdit): PushOutcome {
-        val content = edit.content.orEmpty()
+        // Read now, not from the list taken when the push started: an upload renamed earlier in this push may have
+        // changed the embed in this very edit.
+        val content = io { store.edit(edit.id)?.second?.content } ?: edit.content.orEmpty()
         val base = io { store.baseVersion(edit.id) }
         return api.saveNote(roomId, edit.path, content, base).fold(
             onSuccess = { saved ->
@@ -347,6 +371,59 @@ class NotesSyncEngine(
             },
             onFailure = { handleFailure(edit, it) },
         )
+    }
+
+    /**
+     * Uploads a waiting attachment. If someone uploaded a file with the same name meanwhile, it takes the next free
+     * name and the unsent note edits that embed it are changed to match, so the note still shows it.
+     */
+    private suspend fun pushUpload(roomId: RoomId, edit: PendingEdit): PushOutcome {
+        val waiting = File(edit.content.orEmpty())
+        val bytes = io { if (waiting.exists()) waiting.readBytes() else null }
+            ?: return io {
+                store.markEdit(edit.id, EditState.REJECTED, error = "The file is no longer on this phone")
+                PushOutcome.NeedsChoice
+            }
+        val contentType = io { store.contentType(edit.id) } ?: "application/octet-stream"
+        var path = edit.path
+        repeat(MAX_RENAME_TRIES) {
+            val result = api.saveRaw(roomId, path, bytes, contentType, baseVersion = null)
+            val version = result.getOrNull()
+            if (version != null) {
+                io {
+                    store.transaction {
+                        store.setVersion(roomId, path, version)
+                        store.deleteEdit(edit.id)
+                    }
+                    cacheFileFor(roomId, path, version).writeBytes(bytes)
+                    waiting.delete()
+                }
+                return PushOutcome.Sent
+            }
+            val error = result.exceptionOrNull()
+            if (error !is NotesException.Exists) return handleFailure(edit, error ?: IllegalStateException("Upload failed"))
+            val taken = io { store.files(roomId) }.map { it.path.lowercase() }.toSet() + path.lowercase()
+            val newPath = freeAttachmentPath(path.substringAfterLast('/'), taken)
+            io { renameUpload(roomId, edit.id, from = path, to = newPath) }
+            path = newPath
+        }
+        return handleFailure(edit, NotesException.Exists("No free name for ${edit.path}", null))
+    }
+
+    /** Moves a waiting upload to [to], and points unsent note edits that embed it at the new name. */
+    private fun renameUpload(roomId: RoomId, editId: Long, from: String, to: String) = store.transaction {
+        store.renameFile(roomId, from, to)
+        store.renameEdit(editId, to)
+        val oldName = from.substringAfterLast('/')
+        val newName = to.substringAfterLast('/')
+        for (save in store.pendingEdits(roomId).filter { it.kind == EditKind.SAVE }) {
+            val content = save.content ?: continue
+            val updated = content.replace("[[$oldName", "[[$newName").replace("[[$from", "[[$to")
+            if (updated != content) {
+                store.setEditContent(save.id, updated)
+                store.setContent(roomId, save.path, updated, clock.nowSeconds())
+            }
+        }
     }
 
     private suspend fun pushDelete(roomId: RoomId, edit: PendingEdit): PushOutcome {
@@ -452,6 +529,9 @@ class NotesSyncEngine(
     companion object {
         private const val FLAG_PRIVACY_NOTICE = "privacy_notice_seen"
         const val ATTACHMENTS_FOLDER = "attachments"
+        private const val MAX_RENAME_TRIES = 5
+
+        private fun String.extensionWithDot() = substringAfterLast('.', "").takeIf { it.length in 1..5 }?.let { ".$it" }.orEmpty()
 
         /** "attachments/foto.jpg", or "attachments/foto (2).jpg" if that's taken. Folders and hidden names are refused. */
         fun freeAttachmentPath(fileName: String, taken: Set<String>): String {

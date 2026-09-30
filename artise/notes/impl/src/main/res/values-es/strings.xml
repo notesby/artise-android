@@ -94,7 +94,9 @@
     <string name="screen_notes_attach_photo">Foto</string>
     <string name="screen_notes_attach_file">Archivo</string>
     <string name="screen_notes_attach_uploading">Subiendo…</string>
-    <string name="screen_notes_attach_offline">Para adjuntar fotos y archivos necesitas conexión. Inténtalo cuando estés en línea.</string>
     <string name="screen_notes_attach_too_big">Ese archivo pesa más de 50 MB.</string>
     <string name="screen_notes_attach_failed">No se pudo adjuntar el archivo. Inténtalo de nuevo.</string>
+    <string name="screen_notes_attach_take_photo">Tomar foto</string>
+    <string name="screen_notes_attach_camera_denied">Para tomar fotos aquí, permite que Artise use la cámara en los ajustes del teléfono.</string>
+    <string name="screen_notes_attach_no_camera">No hay una app de cámara en este teléfono.</string>
 </resources>
