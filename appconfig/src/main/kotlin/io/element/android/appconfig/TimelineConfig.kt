@@ -30,5 +30,7 @@ object TimelineConfig {
         StateEventType.PolicyRuleRoom,
         StateEventType.PolicyRuleServer,
         StateEventType.PolicyRuleUser,
+        // Artise: "the notes changed" (it keeps the notes screens up to date); not something to read in the chat.
+        StateEventType.Custom("co.artise.notes"),
     )
 }
