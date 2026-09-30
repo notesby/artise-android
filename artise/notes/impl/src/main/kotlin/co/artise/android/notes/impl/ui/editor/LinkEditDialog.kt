@@ -116,8 +116,8 @@ fun LinkEditDialog(
 internal class LinkEditStatePreviewParam : PreviewParameterProvider<LinkEditState> {
     override val values: Sequence<LinkEditState>
         get() = sequenceOf(
-            LinkEditState(0, 24, EditableLink(isNote = true, target = "Mo", shownText = "el mole")),
-            LinkEditState(0, 30, EditableLink(isNote = false, target = "https://artise.co", shownText = "Artise")),
+            LinkEditState(0, 24, EditableLink(isNote = true, target = "Mo", shownText = "el mole"), isNew = false),
+            LinkEditState(0, 30, EditableLink(isNote = false, target = "https://artise.co", shownText = "Artise"), isNew = true),
         )
 }
 
