@@ -11,6 +11,7 @@ package io.element.android.libraries.matrix.impl.auth
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.SingleIn
+import io.element.android.appconfig.ApplicationConfig
 import io.element.android.features.enterprise.api.ClientEnterpriseHook
 import io.element.android.features.enterprise.api.EnterpriseService
 import io.element.android.libraries.androidutils.crypto.ClientSecret
@@ -156,7 +157,8 @@ class RustMatrixAuthenticationService(
                 client.login(
                     username = username,
                     password = password,
-                    initialDeviceName = "Element X Android",
+                    // Artise: the name this phone gets in the account's list of sessions ("Artise Android").
+                    initialDeviceName = "${ApplicationConfig.PRODUCTION_APPLICATION_NAME} Android",
                     deviceId = null,
                 )
                 // Ensure that the user is not already logged in with the same account

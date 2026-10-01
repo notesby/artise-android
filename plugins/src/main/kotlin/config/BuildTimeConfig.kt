@@ -14,9 +14,10 @@ object BuildTimeConfig {
     val METADATA_HOST_REVERSED: String? = null
     val OAUTH_CLIENT_URL_PATH: String? = "apps/android"
     val URL_WEBSITE: String? = "https://artise.co"
-    val URL_LOGO: String? = null
-    val URL_COPYRIGHT: String? = null
-    val URL_ACCEPTABLE_USE: String? = null
+    val URL_LOGO: String? = "https://artise.co/icon.png"
+    // The app's source code and licence (AGPL), crediting Element X, which Artise is built on.
+    val URL_COPYRIGHT: String? = "https://github.com/notesby/artise-android"
+    val URL_ACCEPTABLE_USE: String? = "https://artise.co/terms.html"
     val URL_PRIVACY: String? = "https://artise.co/privacy.html"
     val URL_POLICY: String? = "https://artise.co/privacy.html"
     val SERVICES_MAPTILER_BASE_URL: String? = null

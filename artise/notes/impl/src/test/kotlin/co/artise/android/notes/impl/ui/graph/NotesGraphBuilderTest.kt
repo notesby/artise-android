@@ -75,6 +75,6 @@ class NotesGraphBuilderTest {
         fun distance(a: Int, b: Int) = kotlin.math.hypot(pos[2 * a] - pos[2 * b], pos[2 * a + 1] - pos[2 * b + 1])
         val closest = (0 until 12).flatMap { a -> (a + 1 until 12).map { b -> distance(a, b) } }.min()
         // Every pair of notes is at least 8% of the map apart: room for their names.
-        com.google.common.truth.Truth.assertThat(closest).isGreaterThan(0.08f)
+        assertThat(closest).isGreaterThan(0.08f)
     }
 }
