@@ -9,19 +9,24 @@
 package io.element.android.features.messages.impl.timeline.components.event
 
 import android.text.SpannedString
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.unit.dp
+import co.artise.android.linkpreview.api.LinkPreviewView
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.messages.impl.timeline.TimelineEvent
 import io.element.android.features.messages.impl.timeline.di.LocalTimelineItemPresenterFactories
@@ -41,6 +46,7 @@ import io.element.android.features.messages.impl.timeline.model.event.TimelineIt
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemStateContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemStickerContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextBasedContent
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemUnknownContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemVideoContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemVoiceContent
@@ -139,12 +145,31 @@ fun TimelineItemEventContentView(
                     content = content,
                     onContentLayoutChange = calculatedOnContentLayoutChange,
                 )
-                is TimelineItemTextBasedContent -> TimelineItemTextView(
-                    content = content,
-                    onLinkClick = onLinkClick,
-                    onLinkLongClick = onLinkLongClick,
-                    onContentLayoutChange = calculatedOnContentLayoutChange,
-                )
+                is TimelineItemTextBasedContent -> {
+                    val linkPreview = (content as? TimelineItemTextContent)?.linkPreview
+                    if (linkPreview == null) {
+                        TimelineItemTextView(
+                            content = content,
+                            onLinkClick = onLinkClick,
+                            onLinkLongClick = onLinkLongClick,
+                            onContentLayoutChange = calculatedOnContentLayoutChange,
+                        )
+                    } else {
+                        // Artise: the link's preview under the text; the time goes below the card, never over it.
+                        SideEffect { calculatedOnContentLayoutChange(ContentAvoidingLayoutData.NotOverlapping) }
+                        Column {
+                            TimelineItemTextView(content = content, onLinkClick = onLinkClick, onLinkLongClick = onLinkLongClick)
+                            LinkPreviewView(
+                                preview = linkPreview,
+                                onClick = { url -> onLinkClick(Link(url = url, text = url)) },
+                                modifier = Modifier
+                                    .padding(top = 6.dp)
+                                    .widthIn(max = 320.dp)
+                                    .fillMaxWidth(),
+                            )
+                        }
+                    }
+                }
                 is TimelineItemUnknownContent -> TimelineItemUnknownView(
                     content = content,
                     onContentLayoutChange = calculatedOnContentLayoutChange,

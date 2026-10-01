@@ -8,6 +8,7 @@
 
 package io.element.android.features.messages.impl.timeline.factories.event
 
+import co.artise.android.linkpreview.api.LinkPreviewReader
 import dev.zacsweers.metro.Inject
 import io.element.android.features.location.api.Location
 import io.element.android.features.messages.impl.timeline.model.event.RtcNotificationState
@@ -15,6 +16,7 @@ import io.element.android.features.messages.impl.timeline.model.event.TimelineIt
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemLegacyCallInviteContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemLocationContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemRtcNotificationContent
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemUnknownContent
 import io.element.android.libraries.dateformatter.api.DateFormatter
 import io.element.android.libraries.dateformatter.api.DateFormatterMode
@@ -60,9 +62,10 @@ class TimelineItemContentFactory(
     private val sessionId: SessionId,
     private val dateFormatter: DateFormatter,
     private val stringProvider: StringProvider,
+    private val linkPreviewReader: LinkPreviewReader,
 ) {
     suspend fun create(eventTimelineItem: EventTimelineItem, roomMembers: List<RoomMember>): TimelineItemEventContent {
-        return create(
+        val content = create(
             itemContent = eventTimelineItem.content,
             eventId = eventTimelineItem.eventId,
             isEditable = eventTimelineItem.isEditable,
@@ -70,6 +73,18 @@ class TimelineItemContentFactory(
             senderProfile = eventTimelineItem.senderProfile,
             roomMembers = roomMembers,
         )
+        return content.withLinkPreview(eventTimelineItem)
+    }
+
+    /**
+     * Artise: a link preview travels inside the message's content, which the SDK doesn't map, so it's read from the
+     * (decrypted) event's JSON: only for text messages that have a link.
+     */
+    private fun TimelineItemEventContent.withLinkPreview(eventTimelineItem: EventTimelineItem): TimelineItemEventContent {
+        if (this !is TimelineItemTextContent) return this
+        if (!body.contains("http", ignoreCase = true) && !body.contains("www.", ignoreCase = true)) return this
+        val json = eventTimelineItem.timelineItemDebugInfoProvider().originalJson ?: return this
+        return linkPreviewReader.read(json)?.let { copy(linkPreview = it) } ?: this
     }
 
     suspend fun create(

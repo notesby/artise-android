@@ -129,6 +129,17 @@ interface Timeline : AutoCloseable {
     ): Result<Unit>
 
     /**
+     * Artise: sends a text message like [sendMessage], with [extraContent] (a JSON object) added to its content, such
+     * as a link preview built on this phone.
+     */
+    suspend fun sendMessageWithExtraContent(
+        body: String,
+        htmlBody: String?,
+        intentionalMentions: List<IntentionalMention>,
+        extraContent: String,
+    ): Result<Unit>
+
+    /**
      * Replaces the content of a message, whether it has already been sent or is still local in the send queue.
      *
      * @param eventOrTransactionId the event to edit, identified by its event id once sent or by its transaction id while still local.

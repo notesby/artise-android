@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import co.artise.android.linkpreview.api.ComposerLinkPreviewView
 import io.element.android.features.messages.api.timeline.voicemessages.composer.VoiceMessageComposerEvent
 import io.element.android.features.messages.api.timeline.voicemessages.composer.VoiceMessageComposerState
 import io.element.android.features.messages.api.timeline.voicemessages.composer.VoiceMessageComposerStatePreviewParam
@@ -33,6 +34,21 @@ import kotlinx.coroutines.launch
 
 @Composable
 internal fun MessageComposerView(
+    state: MessageComposerState,
+    voiceMessageState: VoiceMessageComposerState,
+    modifier: Modifier = Modifier,
+) {
+    // Artise: the link's preview above the composer, with an X to send the link without it.
+    Column(modifier) {
+        state.linkPreview?.let {
+            ComposerLinkPreviewView(state = it, onDismiss = { state.eventSink(MessageComposerEvent.DismissLinkPreview) })
+        }
+        MessageTextComposer(state, voiceMessageState)
+    }
+}
+
+@Composable
+private fun MessageTextComposer(
     state: MessageComposerState,
     voiceMessageState: VoiceMessageComposerState,
     modifier: Modifier = Modifier,

@@ -325,6 +325,7 @@ class MessageComposerPresenterSlashCommandTest {
         contentScannerService = { _, _ -> },
         contentValidationCache = InMemoryEventContentValidationCache(),
         keyboardStickerSender = { _, _ -> false },
+        linkPreviewService = FakeLinkPreviewService(),
     ).apply {
         isTesting = true
         showTextFormatting = isRichTextEditorEnabled
