@@ -7,12 +7,19 @@
 
 package co.artise.android.notes.impl.ui.folder
 
+import android.text.format.Formatter
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -28,11 +35,13 @@ import io.element.android.libraries.designsystem.components.dialogs.TextFieldDia
 import io.element.android.libraries.designsystem.components.list.ListItemContent
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
+import io.element.android.libraries.designsystem.theme.components.CircularProgressIndicator
 import io.element.android.libraries.designsystem.theme.components.FloatingActionButton
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.IconSource
 import io.element.android.libraries.designsystem.theme.components.ListItem
+import io.element.android.libraries.designsystem.theme.components.OutlinedButton
 import io.element.android.libraries.designsystem.theme.components.Text
 
 @Composable
@@ -66,8 +75,8 @@ fun NotesFolderView(
             }
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { state.eventSink(NotesFolderEvent.StartNewNote) }) {
-                Icon(imageVector = CompoundIcons.Plus(), contentDescription = stringResource(R.string.screen_notes_new_note))
+            FloatingActionButton(onClick = { state.eventSink(NotesFolderEvent.ShowNewMenu) }) {
+                Icon(imageVector = CompoundIcons.Plus(), contentDescription = stringResource(R.string.screen_notes_new))
             }
         },
     ) {
@@ -103,30 +112,65 @@ fun NotesFolderView(
             if (state.entries.isEmpty() && !state.isRefreshing) {
                 item {
                     Text(
-                        text = stringResource(R.string.screen_notes_folder_empty),
+                        text = stringResource(if (state.canDeleteFolder) R.string.screen_notes_folder_is_empty else R.string.screen_notes_folder_empty),
                         style = ElementTheme.typography.fontBodyLgRegular,
                         color = ElementTheme.colors.textSecondary,
                         modifier = Modifier.padding(24.dp),
                     )
                 }
             }
+            if (state.canDeleteFolder) {
+                item {
+                    // A folder emptied by moving everything out stays on the server until someone deletes it.
+                    OutlinedButton(
+                        text = stringResource(R.string.screen_notes_folder_delete_this),
+                        onClick = { state.eventSink(NotesFolderEvent.DeleteThisFolder) },
+                        showProgress = state.busyPath != null,
+                        destructive = true,
+                        leadingIcon = IconSource.Vector(CompoundIcons.Delete()),
+                        modifier = Modifier.padding(horizontal = 24.dp),
+                    )
+                }
+            }
             items(state.entries, key = { it.key() }) { entry ->
+                val isBusy = state.busyPath == entry.path
+                val actionsLabel = stringResource(R.string.screen_notes_file_actions)
+
+                // A tap opens; a long press shows rename, move and delete.
+                fun Modifier.clicks(onClick: () -> Unit) = combinedClickable(
+                    onClick = onClick,
+                    onLongClick = { state.eventSink(NotesFolderEvent.ShowActions(entry)) },
+                    onLongClickLabel = actionsLabel,
+                )
                 when (entry) {
                     is NotesFolderEntry.Folder -> ListItem(
+                        modifier = Modifier.clicks { onFolderClick(entry.path) },
                         leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Folder())),
-                        trailingContent = ListItemContent.Text(pluralStringResource(R.plurals.screen_notes_folder_count, entry.noteCount, entry.noteCount)),
-                        onClick = { onFolderClick(entry.path) },
+                        trailingContent = if (isBusy) {
+                            ListItemContent.Custom { CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) }
+                        } else {
+                            ListItemContent.Text(folderCount(entry))
+                        },
                     ) {
                         Text(entry.name)
                     }
                     is NotesFolderEntry.Note -> ListItem(
+                        modifier = Modifier.clicks { onNoteClick(entry.path) },
                         leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Document())),
+                        trailingContent = if (isBusy) ListItemContent.Custom { CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) } else null,
                         supportingContent = if (entry.hasLocalEdits) {
                             { Text(stringResource(R.string.screen_notes_unsent)) }
                         } else {
                             null
                         },
-                        onClick = { onNoteClick(entry.path) },
+                    ) {
+                        Text(entry.name)
+                    }
+                    is NotesFolderEntry.File -> ListItem(
+                        modifier = Modifier.clicks { state.eventSink(NotesFolderEvent.OpenFile(entry)) },
+                        leadingContent = ListItemContent.Icon(IconSource.Vector(if (entry.isImage) CompoundIcons.Image() else CompoundIcons.Attachment())),
+                        trailingContent = if (isBusy) ListItemContent.Custom { CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) } else null,
+                        supportingContent = { Text(Formatter.formatShortFileSize(LocalContext.current, entry.size)) },
                     ) {
                         Text(entry.name)
                     }
@@ -147,6 +191,11 @@ fun NotesFolderView(
             submitText = stringResource(R.string.screen_notes_create),
         )
     }
+    FolderActionsAndDialogs(state)
+    if (state.isGone) {
+        val leave by rememberUpdatedState(onBackClick)
+        LaunchedEffect(Unit) { leave() }
+    }
 }
 
 @Composable
@@ -155,9 +204,16 @@ internal fun nameProblemText(problem: NoteNameProblem): String = when (problem) 
     NoteNameProblem.EXISTS -> stringResource(R.string.screen_notes_name_exists)
 }
 
+@Composable
+private fun folderCount(entry: NotesFolderEntry.Folder): String {
+    val notes = pluralStringResource(R.plurals.screen_notes_folder_count, entry.noteCount, entry.noteCount)
+    return if (entry.fileCount == 0) notes else notes + " · " + pluralStringResource(R.plurals.screen_notes_folder_file_count, entry.fileCount, entry.fileCount)
+}
+
 private fun NotesFolderEntry.key() = when (this) {
     is NotesFolderEntry.Folder -> "folder:" + path
     is NotesFolderEntry.Note -> "note:" + path
+    is NotesFolderEntry.File -> "file:" + path
 }
 
 @PreviewsDayNight

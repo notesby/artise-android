@@ -68,6 +68,7 @@ class NotesLocalStore(private val database: NotesDatabase) {
     private fun forgetChat(roomId: RoomId) {
         queries.deleteChatEdits(roomId.value)
         queries.deleteChatFiles(roomId.value)
+        queries.deleteChatFolders(roomId.value)
         queries.deleteChat(roomId.value)
     }
 
@@ -92,6 +93,27 @@ class NotesLocalStore(private val database: NotesDatabase) {
     fun renameFile(roomId: RoomId, from: String, to: String) = queries.renameFile(to_path = to, room_id = roomId.value, from_path = from)
 
     fun deleteFile(roomId: RoomId, path: String) = queries.deleteFile(roomId.value, path)
+
+    /** The server's folders, empty ones included, as of the last sync. */
+    fun folders(roomId: RoomId): List<String> = queries.selectFolders(roomId.value).executeAsList()
+
+    /** Replaces the chat's folders with the server's list. */
+    fun setFolders(roomId: RoomId, folders: List<String>) = transaction {
+        queries.deleteChatFolders(roomId.value)
+        folders.forEach { queries.insertFolder(roomId.value, it) }
+    }
+
+    fun addFolder(roomId: RoomId, path: String) = queries.insertFolder(roomId.value, path)
+
+    /** Forgets [path] and every folder inside it. */
+    fun removeFolderTree(roomId: RoomId, path: String) = queries.deleteFolderTree(roomId.value, path)
+
+    /** [from] and every folder inside it, now under [to]. */
+    fun renameFolderTree(roomId: RoomId, from: String, to: String) = transaction {
+        val moved = folders(roomId).filter { it == from || it.startsWith("$from/") }
+        queries.deleteFolderTree(roomId.value, from)
+        moved.forEach { queries.insertFolder(roomId.value, to + it.removePrefix(from)) }
+    }
 
     // Edits
 

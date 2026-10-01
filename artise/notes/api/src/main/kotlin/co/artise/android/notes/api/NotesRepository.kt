@@ -71,6 +71,21 @@ interface NotesRepository {
     /** Photos and files added on this phone and not on the server yet, by path. [changes] tells when this changes. */
     suspend fun uploads(roomId: RoomId): Map<String, UploadStatus>
 
+    /** Every folder in the chat's notes, empty ones included, parents before children. */
+    suspend fun folders(roomId: RoomId): List<String>
+
+    /** Creates a folder (and any missing parents) on the server; needs a connection. */
+    suspend fun createFolder(roomId: RoomId, path: String): Result<Unit>
+
+    /** Moves or renames a folder with everything inside (the server updates the links); needs a connection. */
+    suspend fun moveFolder(roomId: RoomId, from: String, to: String): Result<MovedFolder>
+
+    /**
+     * Deletes a folder; needs a connection. One that isn't empty fails with `NotesException.NotEmpty` unless
+     * [recursive]: then its notes are deleted (their history keeps them) and its photos and files go to the trash.
+     */
+    suspend fun deleteFolder(roomId: RoomId, path: String, recursive: Boolean): Result<DeletedFolder>
+
     /** Every photo and file in the chat's notes, with the notes that use each one (from the notes on the phone). */
     suspend fun media(roomId: RoomId): List<MediaFile>
 

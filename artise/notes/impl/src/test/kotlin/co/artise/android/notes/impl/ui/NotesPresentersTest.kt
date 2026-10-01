@@ -80,7 +80,8 @@ class NotesPresentersTest {
             val state = consumeItemsUntilPredicate { !it.isRefreshing && it.title.isNotEmpty() }.last()
             assertThat(state.title).isEqualTo("Familia")
             assertThat(state.entries).containsExactly(
-                NotesFolderEntry.Folder("Recetas", "Recetas", 2),
+                NotesFolderEntry.Folder("Fotos", "Fotos", 0, 1),
+                NotesFolderEntry.Folder("Recetas", "Recetas", 2, 0),
                 NotesFolderEntry.Note("Súper", "Súper.md", hasLocalEdits = true),
             ).inOrder()
             assertThat(state.showPrivacyNotice).isFalse()
@@ -96,7 +97,7 @@ class NotesPresentersTest {
             val state = consumeItemsUntilPredicate { !it.isRefreshing }.last()
             assertThat(state.title).isEqualTo("Recetas")
             assertThat(state.entries).containsExactly(
-                NotesFolderEntry.Folder("Postres", "Recetas/Postres", 1),
+                NotesFolderEntry.Folder("Postres", "Recetas/Postres", 1, 0),
                 NotesFolderEntry.Note("Mole", "Recetas/Mole.md", hasLocalEdits = false),
             ).inOrder()
         }
