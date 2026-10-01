@@ -180,7 +180,7 @@ compiled into it. Network traffic on a phone wasn't captured. Re-check after mer
 |---|---|---|
 | Google Firebase Cloud Messaging and Installations | Always, for notifications | A push token and installation ID for the phone. Pushes carry only an event ID. |
 | Google Analytics for Firebase | Only after the person says yes on "Help improve Artise" | Usage events (above), an app instance ID, the phone model, the Android and app version, and the approximate region from the IP address. |
-| MapTiler (`api.maptiler.com`) | Opening a map to share, view or follow a location | The phone's IP address. No key is set, so MapTiler refuses and **the map stays blank** (see below). Location previews in chats make no request without a key. |
+| MapTiler (`api.maptiler.com`) | Opening a map to share, view or follow a location | The phone's IP address and the map area being viewed (map tiles). The key is set at build time from `local.properties`, never committed. Previews inside chat messages need MapTiler's static maps, which the current plan doesn't include. |
 | Google Cloud Storage and jsDelivr | Only if someone turns on background blur during a call | The phone's IP address, while downloading the blur model. |
 | Google ML Kit (through Google Play services) | When someone makes a sticker from a photo | **Not the photo** (the cut-out runs on the phone). ML Kit's own diagnostics: device and app information, a per-installation ID, performance numbers and image size/format ([ML Kit data disclosure](https://developers.google.com/ml-kit/android-data-disclosure)). Not behind the analytics consent. Kept (user decision, 2026-09-30) and disclosed below. |
 | A UnifiedPush distributor and gateway | Only if the person installs one and picks it in the notification settings | Pushes, instead of Firebase. |
@@ -189,10 +189,7 @@ The copyright and acceptable-use links in Settings → About still open element.
 element.io. That only happens when tapped.
 
 **Decisions to make before the privacy page and forms are final:**
-- **Maps** (live location sharing stays):
-  - (a) Get a MapTiler key. MapTiler then receives the IP address and the map area viewed.
-  - (b) Point maps at a tile server Artise runs.
-  - Either way, the privacy text changes to match.
+- **Maps:** decided. A MapTiler key is used (2026-09-30), and the privacy text below says so.
 - **Background blur:** keep it and disclose it, or turn it off in the Play build.
 - **UnifiedPush:** keep it, or turn it off in the Play build so notifications always go through Artise's own path.
 
@@ -205,7 +202,8 @@ Add a section about the phone app to `https://artise.co/privacy.html`, in both l
 > - **Google Firebase Cloud Messaging**, to deliver notifications. Your server sends it only an event ID, never the
 >   message itself. The app then fetches the message from your server and decrypts it on the phone. Google receives
 >   a push token and an installation ID for your phone to route notifications.
-> - **[Maps: fill in after the maps decision in section 5b.]**
+> - **MapTiler**, only when you open a map to share or see a location. It receives your phone's IP address and the
+>   area of the map you're looking at, to send the map images. Your location itself goes only to the chat.
 > - **Google ML Kit**, only when you make a sticker from a photo. The background is removed on your phone and the
 >   photo is never sent; ML Kit sends Google its own diagnostics (phone model and Android version, app version, an ID
 >   for this installation, timing, and the image size and format).
