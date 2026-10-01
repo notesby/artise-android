@@ -11,6 +11,8 @@
 package io.element.android.features.messages.impl
 
 import androidx.lifecycle.Lifecycle
+import co.artise.android.stickers.api.ReceivedSticker
+import co.artise.android.stickers.api.ReceivedStickerSaver
 import com.google.common.truth.Truth.assertThat
 import im.vector.app.features.analytics.plan.PinUnpinAction
 import io.element.android.features.location.test.FakeActiveLiveLocationShareManager
@@ -34,6 +36,7 @@ import io.element.android.features.messages.impl.timeline.aTimelineState
 import io.element.android.features.messages.impl.timeline.model.TimelineItemThreadInfo
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemFileContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemImageContent
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemStickerContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemVideoContent
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemImageContent
@@ -301,6 +304,40 @@ class MessagesPresenterTest {
             assertThat(awaitItem().actionListState.target).isEqualTo(ActionListState.Target.None)
             onForwardEventClickLambda.assertions().isCalledOnce().with(value(AN_EVENT_ID), any())
         }
+    }
+
+    /** Artise: "Save to my stickers" keeps a sticker someone sent, reusing its picture on the server. */
+    @Test
+    fun `present - handle action save sticker`() = runTest {
+        val saved = mutableListOf<ReceivedSticker>()
+        val presenter = createMessagesPresenter(
+            receivedStickerSaver = { sticker ->
+                saved += sticker
+                Result.success(Unit)
+            },
+        )
+        val sticker = TimelineItemStickerContent(
+            filename = "cat.webp",
+            fileSize = 1000,
+            caption = null,
+            formattedCaption = null,
+            isEdited = false,
+            mediaSource = MediaSource("mxc://artise.co/cat"),
+            thumbnailSource = null,
+            formattedFileSize = "1 kB",
+            fileExtension = "webp",
+            mimeType = "image/webp",
+            blurhash = null,
+            width = 300,
+            height = 200,
+            aspectRatio = 1.5f,
+        )
+        presenter.testWithLifecycleOwner {
+            awaitItem().eventSink(MessagesEvent.HandleAction(TimelineItemAction.SaveSticker, aMessageEvent(content = sticker)))
+            consumeItemsUntilPredicate { it.snackbarMessage != null }
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertThat(saved.single()).isEqualTo(ReceivedSticker("mxc://artise.co/cat", "cat.webp", 300, 200, "image/webp", 1000))
     }
 
     @Test
@@ -1503,6 +1540,7 @@ class MessagesPresenterTest {
 
     private fun TestScope.createMessagesPresenter(
         coroutineDispatchers: CoroutineDispatchers = testCoroutineDispatchers(),
+        receivedStickerSaver: ReceivedStickerSaver = ReceivedStickerSaver { Result.success(Unit) },
         timeline: Timeline = FakeTimeline(),
         joinedRoom: FakeJoinedRoom = FakeJoinedRoom(
             baseRoom = FakeBaseRoom(
@@ -1575,6 +1613,7 @@ class MessagesPresenterTest {
             markAsFullyRead = markAsFullyRead,
             liveLocationShareManager = liveLocationShareManager,
             sessionCoroutineScope = backgroundScope,
+            receivedStickerSaver = receivedStickerSaver,
         )
     }
 }

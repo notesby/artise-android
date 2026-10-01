@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeightIn
 import androidx.compose.foundation.layout.size
@@ -80,6 +81,7 @@ import io.element.android.libraries.matrix.ui.messages.reply.InReplyToDetailsPre
 import io.element.android.libraries.matrix.ui.messages.reply.aProfileDetailsReady
 import io.element.android.libraries.testtags.TestTags
 import io.element.android.libraries.testtags.testTag
+import io.element.android.libraries.textcomposer.artise.LocalStickerButton
 import io.element.android.libraries.textcomposer.components.SendButtonIcon
 import io.element.android.libraries.textcomposer.components.TextFormatting
 import io.element.android.libraries.textcomposer.components.VoiceMessageDeleteButtonIcon
@@ -670,13 +672,28 @@ private fun TextInputBox(
             Spacer(Modifier.height(4.dp))
         }
 
+        // Artise: the sticker button, at the end of an empty message field.
+        val stickerButton = LocalStickerButton.current.takeIf { isTextEmpty && composerMode is MessageComposerMode.Normal }
         Box(
             modifier = Modifier
-                .padding(top = 1.dp, bottom = 4.dp, start = 12.dp, end = 12.dp)
+                .padding(top = 1.dp, bottom = 4.dp, start = 12.dp, end = if (stickerButton != null) 40.dp else 12.dp)
                 .then(Modifier.testTag(TestTags.textEditor)),
             contentAlignment = Alignment.CenterStart,
         ) {
             textInput()
+            stickerButton?.let { button ->
+                // Drawn in the space kept free at the end of the field.
+                Icon(
+                    imageVector = CompoundIcons.Sticker(),
+                    contentDescription = button.contentDescription,
+                    tint = ElementTheme.colors.iconSecondary,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .offset(x = 36.dp)
+                        .clickable(onClick = button.onClick)
+                        .padding(4.dp),
+                )
+            }
             if (isTextEmpty && composerMode.showCaptionCompatibilityWarning()) {
                 var showBottomSheet by remember { mutableStateOf(false) }
                 Icon(

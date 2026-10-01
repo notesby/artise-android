@@ -176,6 +176,8 @@ class PinnedMessagesListPresenter(
         targetEvent: TimelineItem.Event,
     ) = launch {
         when (action) {
+            // Not offered in the pinned list.
+            TimelineItemAction.SaveSticker -> Unit
             TimelineItemAction.ViewSource -> {
                 navigator.navigateToEventDebugInfo(targetEvent.eventId, targetEvent.debugInfo)
             }
