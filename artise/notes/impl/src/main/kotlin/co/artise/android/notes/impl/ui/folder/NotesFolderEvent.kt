@@ -18,4 +18,37 @@ sealed interface NotesFolderEvent {
     data class CreateNote(val name: String) : NotesFolderEvent
 
     data object CancelNewNote : NotesFolderEvent
+
+    /** A long press on a note or file: show what can be done with it. */
+    data class ShowActions(val entry: NotesFolderEntry) : NotesFolderEvent
+
+    data object DismissActions : NotesFolderEvent
+
+    /** Open a photo or file in another app. */
+    data class OpenFile(val entry: NotesFolderEntry) : NotesFolderEvent
+
+    data class FileOpenHandled(val opened: Boolean) : NotesFolderEvent
+
+    data object StartRename : NotesFolderEvent
+
+    data class Rename(val newName: String) : NotesFolderEvent
+
+    data object StartMove : NotesFolderEvent
+
+    /** Move into [folder] ("" for the top level). */
+    data class MoveTo(val folder: String) : NotesFolderEvent
+
+    data object StartNewFolder : NotesFolderEvent
+
+    /** Move into a new folder called [name] (it can hold "/" for a folder inside another). */
+    data class MoveToNewFolder(val name: String) : NotesFolderEvent
+
+    data object StartDelete : NotesFolderEvent
+
+    data object ConfirmDelete : NotesFolderEvent
+
+    /** The file is used in notes: take it out of them, then delete it. */
+    data object ConfirmRemoveAndDelete : NotesFolderEvent
+
+    data object DismissDialog : NotesFolderEvent
 }

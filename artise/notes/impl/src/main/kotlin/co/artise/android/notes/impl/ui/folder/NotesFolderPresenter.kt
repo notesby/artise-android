@@ -16,11 +16,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import co.artise.android.notes.api.EditState
+import co.artise.android.notes.api.MediaInUseException
+import co.artise.android.notes.api.NotesException
 import co.artise.android.notes.api.NotesRepository
 import co.artise.android.notes.impl.ui.chats.NotesSyncStatus
 import co.artise.android.notes.impl.ui.chats.toSyncStatus
 import co.artise.android.notes.impl.ui.common.NoteNameProblem
 import co.artise.android.notes.impl.ui.common.NoteNames
+import co.artise.android.notes.impl.ui.note.OpenFileRequest
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
@@ -62,6 +65,12 @@ class NotesFolderPresenter(
         var sync by remember { mutableStateOf(NotesSyncStatus.OK) }
         var showPrivacyNotice by remember { mutableStateOf(false) }
         var newNote by remember { mutableStateOf<NewNoteDialog?>(null) }
+        var actionsFor by remember { mutableStateOf<NotesFolderEntry?>(null) }
+        var dialog by remember { mutableStateOf<FolderDialog?>(null) }
+        var busyPath by remember { mutableStateOf<String?>(null) }
+        var openFile by remember { mutableStateOf<OpenFileRequest?>(null) }
+        // The note or file the open dialog is about (kept while moving from one dialog to the next).
+        var target by remember { mutableStateOf<NotesFolderEntry?>(null) }
         var refreshRequests by remember { mutableIntStateOf(0) }
 
         suspend fun reload() {
@@ -100,6 +109,10 @@ class NotesFolderPresenter(
             showPrivacyNotice = showPrivacyNotice,
             needChoiceCount = needChoiceCount,
             newNote = newNote,
+            actionsFor = actionsFor,
+            dialog = dialog,
+            busyPath = busyPath,
+            openFile = openFile,
             eventSink = { event ->
                 when (event) {
                     NotesFolderEvent.Refresh -> refreshRequests++
@@ -109,6 +122,79 @@ class NotesFolderPresenter(
                     }
                     NotesFolderEvent.StartNewNote -> newNote = NewNoteDialog(problem = null)
                     NotesFolderEvent.CancelNewNote -> newNote = null
+                    is NotesFolderEvent.ShowActions -> actionsFor = event.entry
+                    NotesFolderEvent.DismissActions -> actionsFor = null
+                    is NotesFolderEvent.OpenFile -> scope.launch {
+                        actionsFor = null
+                        busyPath = event.entry.path
+                        repository.attachment(roomId, event.entry.path).fold(
+                            onSuccess = { openFile = OpenFileRequest(it.absolutePath, event.entry.name) },
+                            onFailure = { dialog = FolderDialog.Problem(FileProblem.OFFLINE) },
+                        )
+                        busyPath = null
+                    }
+                    is NotesFolderEvent.FileOpenHandled -> {
+                        openFile = null
+                        if (!event.opened) dialog = FolderDialog.Problem(FileProblem.NO_APP)
+                    }
+                    NotesFolderEvent.StartRename -> actionsFor?.let {
+                        target = it
+                        actionsFor = null
+                        dialog = FolderDialog.Rename(it, problem = null)
+                    }
+                    is NotesFolderEvent.Rename -> target?.let { entry ->
+                        scope.launch {
+                            val problem = NoteNames.renameProblem(entry.path, event.newName, repository.files(roomId).map { it.path })
+                            if (problem != null) {
+                                dialog = FolderDialog.Rename(entry, problem)
+                                return@launch
+                            }
+                            dialog = null
+                            move(entry, NoteNames.renamedPath(entry.path, event.newName), onDone = { dialog = it }, onBusy = { busyPath = it })
+                        }
+                    }
+                    NotesFolderEvent.StartMove -> actionsFor?.let { entry ->
+                        target = entry
+                        actionsFor = null
+                        scope.launch {
+                            val folders = NotesFolderEntries.allFolders(repository.files(roomId))
+                            dialog = FolderDialog.MoveTo(entry, folders.toImmutableList(), current = entry.path.substringBeforeLast('/', ""))
+                        }
+                    }
+                    is NotesFolderEvent.MoveTo -> target?.let { entry ->
+                        dialog = null
+                        scope.launch { move(entry, NoteNames.movedPath(entry.path, event.folder), onDone = { dialog = it }, onBusy = { busyPath = it }) }
+                    }
+                    NotesFolderEvent.StartNewFolder -> target?.let { dialog = FolderDialog.NewFolder(it, problem = null) }
+                    is NotesFolderEvent.MoveToNewFolder -> target?.let { entry ->
+                        val problem = NoteNames.folderProblem(event.name)
+                        if (problem != null) {
+                            dialog = FolderDialog.NewFolder(entry, problem)
+                        } else {
+                            dialog = null
+                            // Moving a file into a folder that doesn't exist yet creates it.
+                            scope.launch {
+                                move(entry, NoteNames.movedPath(entry.path, NoteNames.folderPath(event.name)), onDone = { dialog = it }, onBusy = {
+                                    busyPath =
+                                    it
+                                })
+                            }
+                        }
+                    }
+                    NotesFolderEvent.StartDelete -> actionsFor?.let {
+                        target = it
+                        actionsFor = null
+                        dialog = FolderDialog.ConfirmDelete(it)
+                    }
+                    NotesFolderEvent.ConfirmDelete -> target?.let { entry ->
+                        dialog = null
+                        scope.launch { delete(entry, removeFromNotes = false, onDone = { dialog = it }, onBusy = { busyPath = it }) }
+                    }
+                    NotesFolderEvent.ConfirmRemoveAndDelete -> target?.let { entry ->
+                        dialog = null
+                        scope.launch { delete(entry, removeFromNotes = true, onDone = { dialog = it }, onBusy = { busyPath = it }) }
+                    }
+                    NotesFolderEvent.DismissDialog -> dialog = null
                     is NotesFolderEvent.CreateNote -> scope.launch {
                         val problem = NoteNames.problemWith(folder, event.name, repository.files(roomId).map { it.path })
                         if (problem != null) {
@@ -128,5 +214,45 @@ class NotesFolderPresenter(
                 }
             },
         )
+    }
+
+    /** Moves or renames [entry] to [to] on the server (it updates the links to it); a problem comes back as a dialog. */
+    private suspend fun move(entry: NotesFolderEntry, to: String, onDone: (FolderDialog?) -> Unit, onBusy: (String?) -> Unit) {
+        if (to == entry.path) return
+        onBusy(entry.path)
+        val result = repository.moveNote(roomId, entry.path, to)
+        onBusy(null)
+        onDone(result.exceptionOrNull()?.let { FolderDialog.Problem(it.toFileProblem()) })
+    }
+
+    /**
+     * Deletes [entry]. A note waits in the queue like any edit; a photo or file is checked with the server first, and
+     * one that notes use is only deleted after the person agrees to take it out of them.
+     */
+    private suspend fun delete(entry: NotesFolderEntry, removeFromNotes: Boolean, onDone: (FolderDialog?) -> Unit, onBusy: (String?) -> Unit) {
+        if (entry !is NotesFolderEntry.File) {
+            repository.deleteFile(roomId, entry.path)
+            repository.syncInBackground(roomId)
+            onDone(null)
+            return
+        }
+        onBusy(entry.path)
+        val result = repository.deleteMedia(roomId, entry.path, removeFromNotes)
+        onBusy(null)
+        onDone(
+            when (val error = result.exceptionOrNull()) {
+                null -> null
+                is MediaInUseException -> FolderDialog.FileInUse(entry, error.usedBy.toImmutableList())
+                else -> FolderDialog.Problem(error.toFileProblem())
+            }
+        )
+    }
+
+    private fun Throwable.toFileProblem(): FileProblem = when (this) {
+        is NotesException.Network -> FileProblem.OFFLINE
+        is NotesException.Exists -> FileProblem.EXISTS
+        // The engine refuses to move a file with unsent changes, or one still uploading.
+        is NotesException.Conflict -> if (current == null) FileProblem.UNSENT else FileProblem.FAILED
+        else -> FileProblem.FAILED
     }
 }

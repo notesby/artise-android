@@ -135,4 +135,24 @@
         <item quantity="one">Delete %1$d unused file?</item>
         <item quantity="other">Delete %1$d unused files?</item>
     </plurals>
+    <string name="screen_notes_file_actions">More actions</string>
+    <string name="screen_notes_file_open">Open</string>
+    <string name="screen_notes_file_move">Move</string>
+    <string name="screen_notes_file_move_title">Move “%1$s” to…</string>
+    <string name="screen_notes_file_move_top_level">Notes (top level)</string>
+    <string name="screen_notes_file_move_here">It’s here now</string>
+    <string name="screen_notes_file_move_new_folder">New folder…</string>
+    <string name="screen_notes_folder_name_placeholder">Folder name</string>
+    <string name="screen_notes_folder_name_hint">Use “/” for a folder inside another, like Recipes/Desserts.</string>
+    <string name="screen_notes_file_delete_title">Delete “%1$s”?</string>
+    <string name="screen_notes_file_delete_note_message">It’s deleted for everyone in this chat. Its earlier versions stay in the notes’ history.</string>
+    <string name="screen_notes_file_delete_file_message">It’s deleted for everyone in this chat. Before deleting, Artise checks that no note uses it.</string>
+    <string name="screen_notes_file_problem_offline">This needs a connection. Try again when you’re online.</string>
+    <string name="screen_notes_file_problem_unsent">It has changes that haven’t been sent yet (or it’s still uploading). Wait for them to be sent, then try again.</string>
+    <string name="screen_notes_file_problem_exists">There’s already a note or file with that name there.</string>
+    <string name="screen_notes_file_problem_failed">Couldn’t do it. Try again.</string>
+    <plurals name="screen_notes_folder_file_count">
+        <item quantity="one">%1$d file</item>
+        <item quantity="other">%1$d files</item>
+    </plurals>
 </resources>

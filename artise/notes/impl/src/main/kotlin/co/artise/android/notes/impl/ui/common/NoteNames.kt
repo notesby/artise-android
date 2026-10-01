@@ -33,4 +33,43 @@ object NoteNames {
             else -> null
         }
     }
+
+    /**
+     * [path] renamed to [newName] in the same folder. A note named "Mole" stays "Mole.md"; a file keeps its extension
+     * when the new name leaves it out ("factura.pdf" renamed "recibo" → "recibo.pdf").
+     */
+    fun renamedPath(path: String, newName: String): String {
+        val folder = path.substringBeforeLast('/', missingDelimiterValue = "")
+        val name = newName.trim()
+        val extension = path.substringAfterLast('/').substringAfterLast('.', missingDelimiterValue = "")
+        val file = when {
+            extension.isEmpty() -> name
+            name.endsWith(".$extension", ignoreCase = true) -> name
+            else -> "$name.$extension"
+        }
+        return if (folder.isEmpty()) file else "$folder/$file"
+    }
+
+    /** The problem with renaming [path] to [newName], or `null`; [existingPaths] are the chat's files. */
+    fun renameProblem(path: String, newName: String, existingPaths: Collection<String>): NoteNameProblem? {
+        val trimmed = newName.trim()
+        if (trimmed.isEmpty() || trimmed.contains('/') || trimmed.startsWith('.')) return NoteNameProblem.INVALID
+        val target = renamedPath(path, trimmed)
+        return if (!target.equals(path, ignoreCase = true) && existingPaths.any { it.equals(target, ignoreCase = true) }) NoteNameProblem.EXISTS else null
+    }
+
+    /** [path] moved into [folder] ("" for the top level), keeping its name. */
+    fun movedPath(path: String, folder: String): String {
+        val name = path.substringAfterLast('/')
+        return if (folder.isEmpty()) name else "$folder/$name"
+    }
+
+    /** The problem with a folder called [name] ("Postres", or "Recetas/Postres" for one inside another), or `null`. */
+    fun folderProblem(name: String): NoteNameProblem? {
+        val parts = name.trim().trim('/').split('/')
+        return if (parts.any { it.isBlank() || it.startsWith('.') }) NoteNameProblem.INVALID else null
+    }
+
+    /** "  Recetas / Postres/ " → "Recetas/Postres". */
+    fun folderPath(name: String): String = name.trim().trim('/').split('/').joinToString("/") { it.trim() }
 }
