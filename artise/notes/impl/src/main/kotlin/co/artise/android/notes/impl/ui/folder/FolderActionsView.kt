@@ -15,9 +15,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import co.artise.android.notes.impl.R
+import co.artise.android.notes.impl.ui.common.NoteNameProblem
 import co.artise.android.notes.impl.ui.note.openDownloadedFile
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
@@ -34,7 +36,7 @@ import io.element.android.libraries.designsystem.theme.components.ModalBottomShe
 import io.element.android.libraries.designsystem.theme.components.Text
 import kotlinx.collections.immutable.toImmutableList
 
-/** What can be done with a note or file (a sheet after a long press), and the dialogs that follow. */
+/** What can be done with a folder, note or file (a sheet after a long press), and the dialogs that follow. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun FolderActionsAndDialogs(state: NotesFolderState) {
@@ -67,6 +69,18 @@ internal fun FolderActionsAndDialogs(state: NotesFolderState) {
             }
         }
     }
+    if (state.showNewMenu) {
+        ModalBottomSheet(onDismissRequest = { state.eventSink(NotesFolderEvent.DismissNewMenu) }, scrollable = false) {
+            Column(Modifier.navigationBarsPadding()) {
+                ActionItem(stringResource(R.string.screen_notes_new_note), IconSource.Vector(CompoundIcons.Document())) {
+                    state.eventSink(NotesFolderEvent.StartNewNote)
+                }
+                ActionItem(stringResource(R.string.screen_notes_new_folder), IconSource.Vector(CompoundIcons.Folder())) {
+                    state.eventSink(NotesFolderEvent.StartCreateFolder)
+                }
+            }
+        }
+    }
     val dismiss = { state.eventSink(NotesFolderEvent.DismissDialog) }
     when (val dialog = state.dialog) {
         null -> Unit
@@ -77,7 +91,7 @@ internal fun FolderActionsAndDialogs(state: NotesFolderState) {
             onSubmit = { state.eventSink(NotesFolderEvent.Rename(it)) },
             onDismissRequest = dismiss,
             validation = { !it.isNullOrBlank() },
-            supportingText = dialog.problem?.let { nameProblemText(it) },
+            supportingText = dialog.problem?.let { if (dialog.entry is NotesFolderEntry.Folder) folderNameProblemText(it) else nameProblemText(it) },
             submitText = stringResource(R.string.screen_notes_rename),
         )
         is FolderDialog.MoveTo -> {
@@ -115,6 +129,24 @@ internal fun FolderActionsAndDialogs(state: NotesFolderState) {
             supportingText = dialog.problem?.let { nameProblemText(it) } ?: stringResource(R.string.screen_notes_folder_name_hint),
             submitText = stringResource(R.string.screen_notes_file_move),
         )
+        is FolderDialog.CreateFolder -> TextFieldDialog(
+            title = stringResource(R.string.screen_notes_new_folder),
+            value = null,
+            placeholder = stringResource(R.string.screen_notes_folder_name_placeholder),
+            onSubmit = { state.eventSink(NotesFolderEvent.CreateFolder(it)) },
+            onDismissRequest = dismiss,
+            validation = { !it.isNullOrBlank() },
+            supportingText = dialog.problem?.let { folderNameProblemText(it) } ?: stringResource(R.string.screen_notes_folder_name_hint),
+            submitText = stringResource(R.string.screen_notes_folder_create),
+        )
+        is FolderDialog.ConfirmDeleteFolder -> ConfirmationDialog(
+            title = stringResource(R.string.screen_notes_file_delete_title, dialog.entry.name),
+            content = folderContentsText(dialog),
+            submitText = stringResource(R.string.screen_notes_delete),
+            destructiveSubmit = true,
+            onSubmitClick = { state.eventSink(NotesFolderEvent.ConfirmDelete) },
+            onDismiss = dismiss,
+        )
         is FolderDialog.ConfirmDelete -> ConfirmationDialog(
             title = stringResource(R.string.screen_notes_file_delete_title, dialog.entry.name),
             content = stringResource(
@@ -142,6 +174,7 @@ internal fun FolderActionsAndDialogs(state: NotesFolderState) {
                     FileProblem.OFFLINE -> R.string.screen_notes_file_problem_offline
                     FileProblem.UNSENT -> R.string.screen_notes_file_problem_unsent
                     FileProblem.EXISTS -> R.string.screen_notes_file_problem_exists
+                    FileProblem.GONE -> R.string.screen_notes_file_problem_gone
                     FileProblem.NO_APP -> R.string.screen_notes_attachment_no_app
                     FileProblem.FAILED -> R.string.screen_notes_file_problem_failed
                 }
@@ -159,6 +192,27 @@ private fun ActionItem(text: String, icon: IconSource, destructive: Boolean = fa
         onClick = onClick,
     ) {
         Text(text)
+    }
+}
+
+@Composable
+private fun folderNameProblemText(problem: NoteNameProblem): String = when (problem) {
+    NoteNameProblem.INVALID -> stringResource(R.string.screen_notes_name_invalid)
+    NoteNameProblem.EXISTS -> stringResource(R.string.screen_notes_folder_problem_exists)
+}
+
+/** "It's empty…", or what goes with the folder: "3 notes, 2 photos or files, 1 folder". */
+@Composable
+private fun folderContentsText(dialog: FolderDialog.ConfirmDeleteFolder): String {
+    val parts = listOfNotNull(
+        dialog.notes.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.screen_notes_folder_delete_notes, it, it) },
+        dialog.files.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.screen_notes_folder_delete_files, it, it) },
+        dialog.folders.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.screen_notes_folder_delete_folders, it, it) },
+    )
+    return if (parts.isEmpty()) {
+        stringResource(R.string.screen_notes_folder_delete_empty_message)
+    } else {
+        stringResource(R.string.screen_notes_folder_delete_message, parts.joinToString(", "))
     }
 }
 

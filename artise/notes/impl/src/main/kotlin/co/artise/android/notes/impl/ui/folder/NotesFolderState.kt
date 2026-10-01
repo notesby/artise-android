@@ -32,6 +32,12 @@ data class NotesFolderState(
     val busyPath: String?,
     /** A file to hand to another app, once. */
     val openFile: OpenFileRequest?,
+    /** The "+" choice is open: a new note or a new folder. */
+    val showNewMenu: Boolean,
+    /** A folder (not the top level) with nothing in it: offer to delete it. */
+    val canDeleteFolder: Boolean,
+    /** This folder was deleted: leave it. */
+    val isGone: Boolean,
     val eventSink: (NotesFolderEvent) -> Unit,
 )
 
@@ -47,6 +53,12 @@ sealed interface FolderDialog {
 
     data class ConfirmDelete(val entry: NotesFolderEntry) : FolderDialog
 
+    /** Deleting a folder: what's inside, so the person knows what goes with it. */
+    data class ConfirmDeleteFolder(val entry: NotesFolderEntry.Folder, val notes: Int, val files: Int, val folders: Int) : FolderDialog
+
+    /** The name of a new (empty) folder in this one. */
+    data class CreateFolder(val problem: NoteNameProblem?) : FolderDialog
+
     /** A file that notes use: say which, and offer to take it out of them and delete it. */
     data class FileInUse(val entry: NotesFolderEntry, val usedBy: ImmutableList<String>) : FolderDialog
 
@@ -60,6 +72,9 @@ enum class FileProblem {
     /** Changes not sent yet (or a file still uploading): they must reach the server first. */
     UNSENT,
     EXISTS,
+
+    /** Someone else deleted or moved it in the meantime. */
+    GONE,
     NO_APP,
     FAILED,
 }

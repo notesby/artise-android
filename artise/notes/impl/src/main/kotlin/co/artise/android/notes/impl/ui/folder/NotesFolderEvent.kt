@@ -51,4 +51,17 @@ sealed interface NotesFolderEvent {
     data object ConfirmRemoveAndDelete : NotesFolderEvent
 
     data object DismissDialog : NotesFolderEvent
+
+    /** The "+" button: choose between a new note and a new folder. */
+    data object ShowNewMenu : NotesFolderEvent
+
+    data object DismissNewMenu : NotesFolderEvent
+
+    data object StartCreateFolder : NotesFolderEvent
+
+    /** Create an empty folder called [name] here ("/" for one inside another). */
+    data class CreateFolder(val name: String) : NotesFolderEvent
+
+    /** Delete this folder, now that it's empty. */
+    data object DeleteThisFolder : NotesFolderEvent
 }

@@ -160,4 +160,28 @@
         <item quantity="many">%1$d archivos</item>
         <item quantity="other">%1$d archivos</item>
     </plurals>
+    <string name="screen_notes_new_folder">Nueva carpeta</string>
+    <string name="screen_notes_folder_create">Crear</string>
+    <string name="screen_notes_folder_delete_empty_message">Está vacía. Se borra para todos en este chat.</string>
+    <string name="screen_notes_folder_delete_message">Todo lo que contiene se borra para todos en este chat: %1$s. Las notas quedan en el historial de notas, y las fotos y archivos en la papelera durante 30 días.</string>
+    <plurals name="screen_notes_folder_delete_notes">
+        <item quantity="one">%1$d nota</item>
+        <item quantity="many">%1$d notas</item>
+        <item quantity="other">%1$d notas</item>
+    </plurals>
+    <plurals name="screen_notes_folder_delete_files">
+        <item quantity="one">%1$d foto o archivo</item>
+        <item quantity="many">%1$d fotos o archivos</item>
+        <item quantity="other">%1$d fotos o archivos</item>
+    </plurals>
+    <plurals name="screen_notes_folder_delete_folders">
+        <item quantity="one">%1$d carpeta</item>
+        <item quantity="many">%1$d carpetas</item>
+        <item quantity="other">%1$d carpetas</item>
+    </plurals>
+    <string name="screen_notes_folder_delete_this">Borrar esta carpeta</string>
+    <string name="screen_notes_folder_is_empty">Esta carpeta está vacía.</string>
+    <string name="screen_notes_file_problem_gone">Alguien más lo borró o lo movió mientras tanto.</string>
+    <string name="screen_notes_folder_problem_exists">Ya hay una carpeta o archivo con ese nombre aquí.</string>
+    <string name="screen_notes_new">Nueva nota o carpeta</string>
 </resources>

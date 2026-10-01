@@ -19,7 +19,7 @@ internal data class ChatsDto(val user: String, val chats: List<ChatDto>)
 internal data class ChatDto(val id: String, val name: String, val tree: String)
 
 @Serializable
-internal data class TreeDto(val tree: String, val files: List<FileDto>)
+internal data class TreeDto(val tree: String, val files: List<FileDto>, val folders: List<String> = emptyList())
 
 @Serializable
 internal data class FileDto(
@@ -99,7 +99,31 @@ internal data class ErrorDto(
     val current: CurrentDto? = null,
     /** For `in_use`: the notes that use the file. */
     @SerialName("used_by") val usedBy: List<String> = emptyList(),
+    /** For `not_empty`: what a folder holds. */
+    val files: Int = 0,
+    val folders: Int = 0,
 )
+
+@Serializable
+internal data class FolderDto(val path: String)
+
+@Serializable
+// No default for [folder]: the encoder leaves default values out, and the server needs it.
+internal data class MoveFolderDto(val from: String, val to: String, val folder: Boolean)
+
+@Serializable
+internal data class MovedFileDto(val from: String, val to: String, val version: String)
+
+@Serializable
+internal data class MovedFolderDto(
+    val from: String,
+    val to: String,
+    val moved: List<MovedFileDto> = emptyList(),
+    @SerialName("links_updated") val linksUpdated: List<String> = emptyList(),
+)
+
+@Serializable
+internal data class DeletedFolderDto(val path: String, val notes: Int = 0, val files: Int = 0)
 
 @Serializable
 internal data class CurrentDto(val path: String, val version: String, val content: String? = null)

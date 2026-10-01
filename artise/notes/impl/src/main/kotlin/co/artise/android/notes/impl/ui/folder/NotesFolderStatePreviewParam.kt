@@ -29,6 +29,11 @@ open class NotesFolderStatePreviewParam : PreviewParameterProvider<NotesFolderSt
                     current = "",
                 ),
             ),
+            aNotesFolderState(showNewMenu = true),
+            aNotesFolderState(
+                dialog = FolderDialog.ConfirmDeleteFolder(NotesFolderEntry.Folder("Recetas", "Recetas", 12, 3), notes = 12, files = 3, folders = 1),
+            ),
+            aNotesFolderState(title = "Viajes", entries = emptyList(), canDeleteFolder = true),
         )
 }
 
@@ -46,6 +51,8 @@ fun aNotesFolderState(
     newNote: NewNoteDialog? = null,
     actionsFor: NotesFolderEntry? = null,
     dialog: FolderDialog? = null,
+    showNewMenu: Boolean = false,
+    canDeleteFolder: Boolean = false,
 ) = NotesFolderState(
     title = title,
     entries = persistentListOf(*entries.toTypedArray()),
@@ -58,5 +65,8 @@ fun aNotesFolderState(
     dialog = dialog,
     busyPath = null,
     openFile = null,
+    showNewMenu = showNewMenu,
+    canDeleteFolder = canDeleteFolder,
+    isGone = false,
     eventSink = {},
 )

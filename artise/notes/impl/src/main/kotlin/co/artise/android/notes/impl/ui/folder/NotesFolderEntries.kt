@@ -15,13 +15,20 @@ import co.artise.android.notes.impl.ui.note.NoteEmbeds
  * sorted by name.
  */
 internal object NotesFolderEntries {
-    fun of(files: List<LocalFile>, folder: String): List<NotesFolderEntry> {
+    fun of(files: List<LocalFile>, folder: String, allFolders: Collection<String> = emptyList()): List<NotesFolderEntry> {
         val prefix = if (folder.isEmpty()) "" else "$folder/"
         val inFolder = files.filter { it.path.startsWith(prefix) }
-        val folders = inFolder
+        val withFiles = inFolder
             .filter { it.path.removePrefix(prefix).contains('/') }
             .groupBy { it.path.removePrefix(prefix).substringBefore('/') }
-            .map { (name, inside) -> NotesFolderEntry.Folder(name, prefix + name, inside.count { it.isNote }, inside.count { !it.isNote }) }
+        // Folders without any file inside (empty, or holding only empty folders) show too.
+        val names = withFiles.keys + allFolders.filter { it.startsWith(prefix) && it.length > prefix.length }
+            .map { it.removePrefix(prefix).substringBefore('/') }
+        val folders = names.distinct()
+            .map { name ->
+                val inside = withFiles[name].orEmpty()
+                NotesFolderEntry.Folder(name, prefix + name, inside.count { it.isNote }, inside.count { !it.isNote })
+            }
             .sortedBy { it.name.lowercase() }
         val here = inFolder.filter { !it.path.removePrefix(prefix).contains('/') }
         val notes = here

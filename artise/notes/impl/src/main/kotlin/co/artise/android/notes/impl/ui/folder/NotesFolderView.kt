@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
@@ -38,6 +41,7 @@ import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.IconSource
 import io.element.android.libraries.designsystem.theme.components.ListItem
+import io.element.android.libraries.designsystem.theme.components.OutlinedButton
 import io.element.android.libraries.designsystem.theme.components.Text
 
 @Composable
@@ -71,8 +75,8 @@ fun NotesFolderView(
             }
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { state.eventSink(NotesFolderEvent.StartNewNote) }) {
-                Icon(imageVector = CompoundIcons.Plus(), contentDescription = stringResource(R.string.screen_notes_new_note))
+            FloatingActionButton(onClick = { state.eventSink(NotesFolderEvent.ShowNewMenu) }) {
+                Icon(imageVector = CompoundIcons.Plus(), contentDescription = stringResource(R.string.screen_notes_new))
             }
         },
     ) {
@@ -108,10 +112,23 @@ fun NotesFolderView(
             if (state.entries.isEmpty() && !state.isRefreshing) {
                 item {
                     Text(
-                        text = stringResource(R.string.screen_notes_folder_empty),
+                        text = stringResource(if (state.canDeleteFolder) R.string.screen_notes_folder_is_empty else R.string.screen_notes_folder_empty),
                         style = ElementTheme.typography.fontBodyLgRegular,
                         color = ElementTheme.colors.textSecondary,
                         modifier = Modifier.padding(24.dp),
+                    )
+                }
+            }
+            if (state.canDeleteFolder) {
+                item {
+                    // A folder emptied by moving everything out stays on the server until someone deletes it.
+                    OutlinedButton(
+                        text = stringResource(R.string.screen_notes_folder_delete_this),
+                        onClick = { state.eventSink(NotesFolderEvent.DeleteThisFolder) },
+                        showProgress = state.busyPath != null,
+                        destructive = true,
+                        leadingIcon = IconSource.Vector(CompoundIcons.Delete()),
+                        modifier = Modifier.padding(horizontal = 24.dp),
                     )
                 }
             }
@@ -119,17 +136,21 @@ fun NotesFolderView(
                 val isBusy = state.busyPath == entry.path
                 val actionsLabel = stringResource(R.string.screen_notes_file_actions)
 
-                // A tap opens; a long press shows rename, move and delete (for notes and files).
+                // A tap opens; a long press shows rename, move and delete.
                 fun Modifier.clicks(onClick: () -> Unit) = combinedClickable(
                     onClick = onClick,
-                    onLongClick = if (entry is NotesFolderEntry.Folder) null else fun() = state.eventSink(NotesFolderEvent.ShowActions(entry)),
+                    onLongClick = { state.eventSink(NotesFolderEvent.ShowActions(entry)) },
                     onLongClickLabel = actionsLabel,
                 )
                 when (entry) {
                     is NotesFolderEntry.Folder -> ListItem(
                         modifier = Modifier.clicks { onFolderClick(entry.path) },
                         leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Folder())),
-                        trailingContent = ListItemContent.Text(folderCount(entry)),
+                        trailingContent = if (isBusy) {
+                            ListItemContent.Custom { CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) }
+                        } else {
+                            ListItemContent.Text(folderCount(entry))
+                        },
                     ) {
                         Text(entry.name)
                     }
@@ -171,6 +192,10 @@ fun NotesFolderView(
         )
     }
     FolderActionsAndDialogs(state)
+    if (state.isGone) {
+        val leave by rememberUpdatedState(onBackClick)
+        LaunchedEffect(Unit) { leave() }
+    }
 }
 
 @Composable

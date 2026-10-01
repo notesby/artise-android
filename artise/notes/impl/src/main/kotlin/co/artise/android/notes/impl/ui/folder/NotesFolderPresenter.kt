@@ -72,9 +72,11 @@ class NotesFolderPresenter(
         // The note or file the open dialog is about (kept while moving from one dialog to the next).
         var target by remember { mutableStateOf<NotesFolderEntry?>(null) }
         var refreshRequests by remember { mutableIntStateOf(0) }
+        var showNewMenu by remember { mutableStateOf(false) }
+        var isGone by remember { mutableStateOf(false) }
 
         suspend fun reload() {
-            entries = NotesFolderEntries.of(repository.files(roomId), folder).toImmutableList()
+            entries = NotesFolderEntries.of(repository.files(roomId), folder, repository.folders(roomId)).toImmutableList()
             needChoiceCount = repository.edits(roomId).count { it.state != EditState.PENDING }
         }
 
@@ -113,6 +115,9 @@ class NotesFolderPresenter(
             dialog = dialog,
             busyPath = busyPath,
             openFile = openFile,
+            showNewMenu = showNewMenu,
+            canDeleteFolder = folder.isNotEmpty() && entries.isEmpty() && !isRefreshing,
+            isGone = isGone,
             eventSink = { event ->
                 when (event) {
                     NotesFolderEvent.Refresh -> refreshRequests++
@@ -120,7 +125,10 @@ class NotesFolderPresenter(
                         showPrivacyNotice = false
                         scope.launch { repository.markPrivacyNoticeSeen() }
                     }
-                    NotesFolderEvent.StartNewNote -> newNote = NewNoteDialog(problem = null)
+                    NotesFolderEvent.StartNewNote -> {
+                        showNewMenu = false
+                        newNote = NewNoteDialog(problem = null)
+                    }
                     NotesFolderEvent.CancelNewNote -> newNote = null
                     is NotesFolderEvent.ShowActions -> actionsFor = event.entry
                     NotesFolderEvent.DismissActions -> actionsFor = null
@@ -144,20 +152,31 @@ class NotesFolderPresenter(
                     }
                     is NotesFolderEvent.Rename -> target?.let { entry ->
                         scope.launch {
-                            val problem = NoteNames.renameProblem(entry.path, event.newName, repository.files(roomId).map { it.path })
+                            val paths = repository.files(roomId).map { it.path }
+                            val problem = if (entry is NotesFolderEntry.Folder) {
+                                NoteNames.folderRenameProblem(entry.path, event.newName, paths + repository.folders(roomId))
+                            } else {
+                                NoteNames.renameProblem(entry.path, event.newName, paths)
+                            }
                             if (problem != null) {
                                 dialog = FolderDialog.Rename(entry, problem)
                                 return@launch
                             }
                             dialog = null
-                            move(entry, NoteNames.renamedPath(entry.path, event.newName), onDone = { dialog = it }, onBusy = { busyPath = it })
+                            val to = if (entry is NotesFolderEntry.Folder) {
+                                NoteNames.movedPath(event.newName.trim(), entry.path.substringBeforeLast('/', ""))
+                            } else {
+                                NoteNames.renamedPath(entry.path, event.newName)
+                            }
+                            move(entry, to, onDone = { dialog = it }, onBusy = { busyPath = it })
                         }
                     }
                     NotesFolderEvent.StartMove -> actionsFor?.let { entry ->
                         target = entry
                         actionsFor = null
                         scope.launch {
-                            val folders = NotesFolderEntries.allFolders(repository.files(roomId))
+                            // A folder can't go inside itself.
+                            val folders = repository.folders(roomId).filterNot { entry is NotesFolderEntry.Folder && it.isInside(entry.path) }
                             dialog = FolderDialog.MoveTo(entry, folders.toImmutableList(), current = entry.path.substringBeforeLast('/', ""))
                         }
                     }
@@ -181,20 +200,70 @@ class NotesFolderPresenter(
                             }
                         }
                     }
-                    NotesFolderEvent.StartDelete -> actionsFor?.let {
-                        target = it
+                    NotesFolderEvent.StartDelete -> actionsFor?.let { entry ->
+                        target = entry
                         actionsFor = null
-                        dialog = FolderDialog.ConfirmDelete(it)
+                        if (entry is NotesFolderEntry.Folder) {
+                            scope.launch { dialog = contentsOf(entry) }
+                        } else {
+                            dialog = FolderDialog.ConfirmDelete(entry)
+                        }
                     }
                     NotesFolderEvent.ConfirmDelete -> target?.let { entry ->
+                        val confirmed = dialog as? FolderDialog.ConfirmDeleteFolder
                         dialog = null
-                        scope.launch { delete(entry, removeFromNotes = false, onDone = { dialog = it }, onBusy = { busyPath = it }) }
+                        scope.launch {
+                            if (entry is NotesFolderEntry.Folder) {
+                                deleteFolder(entry, confirmed, onDone = { dialog = it }, onBusy = { busyPath = it })
+                            } else {
+                                delete(entry, removeFromNotes = false, onDone = { dialog = it }, onBusy = { busyPath = it })
+                            }
+                        }
                     }
                     NotesFolderEvent.ConfirmRemoveAndDelete -> target?.let { entry ->
                         dialog = null
                         scope.launch { delete(entry, removeFromNotes = true, onDone = { dialog = it }, onBusy = { busyPath = it }) }
                     }
                     NotesFolderEvent.DismissDialog -> dialog = null
+                    NotesFolderEvent.ShowNewMenu -> showNewMenu = true
+                    NotesFolderEvent.DismissNewMenu -> showNewMenu = false
+                    NotesFolderEvent.StartCreateFolder -> {
+                        showNewMenu = false
+                        dialog = FolderDialog.CreateFolder(problem = null)
+                    }
+                    is NotesFolderEvent.CreateFolder -> scope.launch {
+                        val problem = NoteNames.folderProblem(event.name)
+                        if (problem != null) {
+                            dialog = FolderDialog.CreateFolder(problem)
+                            return@launch
+                        }
+                        val path = listOf(folder, NoteNames.folderPath(event.name)).filter { it.isNotEmpty() }.joinToString("/")
+                        val taken = repository.folders(roomId) + repository.files(roomId).map { it.path }
+                        if (taken.any { it.equals(path, ignoreCase = true) }) {
+                            dialog = FolderDialog.CreateFolder(NoteNameProblem.EXISTS)
+                            return@launch
+                        }
+                        dialog = null
+                        busyPath = path
+                        val result = repository.createFolder(roomId, path)
+                        busyPath = null
+                        result.exceptionOrNull()?.let { error ->
+                            dialog = when (error) {
+                                is NotesException.Exists -> FolderDialog.CreateFolder(NoteNameProblem.EXISTS)
+                                else -> FolderDialog.Problem(error.toFileProblem())
+                            }
+                        }
+                    }
+                    NotesFolderEvent.DeleteThisFolder -> scope.launch {
+                        // Only offered when the folder looks empty: the server refuses if something new arrived in it.
+                        busyPath = folder
+                        val result = repository.deleteFolder(roomId, folder, recursive = false)
+                        busyPath = null
+                        result.fold(
+                            onSuccess = { isGone = true },
+                            onFailure = { dialog = FolderDialog.Problem(it.toFileProblem()) },
+                        )
+                    }
                     is NotesFolderEvent.CreateNote -> scope.launch {
                         val problem = NoteNames.problemWith(folder, event.name, repository.files(roomId).map { it.path })
                         if (problem != null) {
@@ -220,9 +289,51 @@ class NotesFolderPresenter(
     private suspend fun move(entry: NotesFolderEntry, to: String, onDone: (FolderDialog?) -> Unit, onBusy: (String?) -> Unit) {
         if (to == entry.path) return
         onBusy(entry.path)
-        val result = repository.moveNote(roomId, entry.path, to)
+        val error = if (entry is NotesFolderEntry.Folder) {
+            repository.moveFolder(roomId, entry.path, to).exceptionOrNull()
+        } else {
+            repository.moveNote(roomId, entry.path, to).exceptionOrNull()
+        }
         onBusy(null)
-        onDone(result.exceptionOrNull()?.let { FolderDialog.Problem(it.toFileProblem()) })
+        onDone(error?.let { FolderDialog.Problem(it.toFileProblem()) })
+    }
+
+    /** What deleting [entry] takes with it, from the phone's copy. */
+    private suspend fun contentsOf(entry: NotesFolderEntry.Folder): FolderDialog.ConfirmDeleteFolder {
+        val inside = repository.files(roomId).filter { it.path.isInside(entry.path) }
+        return FolderDialog.ConfirmDeleteFolder(
+            entry = entry,
+            notes = inside.count { it.isNote },
+            files = inside.count { !it.isNote },
+            folders = repository.folders(roomId).count { it.isInside(entry.path) && it != entry.path },
+        )
+    }
+
+    /**
+     * Deletes a folder the person confirmed, with what's inside ([confirmed] says what they were told). If the server
+     * holds more than that, it refuses: sync and ask again with the new counts.
+     */
+    private suspend fun deleteFolder(
+        entry: NotesFolderEntry.Folder,
+        confirmed: FolderDialog.ConfirmDeleteFolder?,
+        onDone: (FolderDialog?) -> Unit,
+        onBusy: (String?) -> Unit,
+    ) {
+        val shown = contentsOf(entry)
+        val recursive = listOfNotNull(shown, confirmed).any { it.notes + it.files + it.folders > 0 }
+        onBusy(entry.path)
+        val result = repository.deleteFolder(roomId, entry.path, recursive)
+        val error = result.exceptionOrNull()
+        if (error is NotesException.NotEmpty) {
+            repository.sync(roomId)
+            val updated = contentsOf(entry)
+            onBusy(null)
+            // The tree may still lag behind: then the server's own count says how much is inside.
+            onDone(if (updated == shown) updated.copy(notes = 0, files = error.files, folders = error.folders) else updated)
+            return
+        }
+        onBusy(null)
+        onDone(error?.let { FolderDialog.Problem(it.toFileProblem()) })
     }
 
     /**
@@ -251,8 +362,12 @@ class NotesFolderPresenter(
     private fun Throwable.toFileProblem(): FileProblem = when (this) {
         is NotesException.Network -> FileProblem.OFFLINE
         is NotesException.Exists -> FileProblem.EXISTS
+        is NotesException.NotFound -> FileProblem.GONE
         // The engine refuses to move a file with unsent changes, or one still uploading.
         is NotesException.Conflict -> if (current == null) FileProblem.UNSENT else FileProblem.FAILED
         else -> FileProblem.FAILED
     }
+
+    /** True for [folder] itself and anything at any depth inside it. */
+    private fun String.isInside(folder: String) = this == folder || startsWith("$folder/")
 }

@@ -70,6 +70,17 @@ object NoteNames {
         return if (parts.any { it.isBlank() || it.startsWith('.') }) NoteNameProblem.INVALID else null
     }
 
+    /**
+     * The problem with renaming the folder [path] to [newName] in the same parent, or `null`; [existingPaths] are the
+     * chat's files and folders (a file and a folder can't share a name).
+     */
+    fun folderRenameProblem(path: String, newName: String, existingPaths: Collection<String>): NoteNameProblem? {
+        val trimmed = newName.trim()
+        if (trimmed.isEmpty() || trimmed.contains('/') || trimmed.startsWith('.')) return NoteNameProblem.INVALID
+        val target = movedPath(trimmed, path.substringBeforeLast('/', missingDelimiterValue = ""))
+        return if (!target.equals(path, ignoreCase = true) && existingPaths.any { it.equals(target, ignoreCase = true) }) NoteNameProblem.EXISTS else null
+    }
+
     /** "  Recetas / Postres/ " → "Recetas/Postres". */
     fun folderPath(name: String): String = name.trim().trim('/').split('/').joinToString("/") { it.trim() }
 }

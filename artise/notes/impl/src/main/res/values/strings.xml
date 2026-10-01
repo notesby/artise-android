@@ -155,4 +155,25 @@
         <item quantity="one">%1$d file</item>
         <item quantity="other">%1$d files</item>
     </plurals>
+    <string name="screen_notes_new_folder">New folder</string>
+    <string name="screen_notes_folder_create">Create</string>
+    <string name="screen_notes_folder_delete_empty_message">It’s empty. It’s deleted for everyone in this chat.</string>
+    <string name="screen_notes_folder_delete_message">Everything inside is deleted for everyone in this chat: %1$s. Notes stay in the notes’ history, and photos and files stay in the trash for 30 days.</string>
+    <plurals name="screen_notes_folder_delete_notes">
+        <item quantity="one">%1$d note</item>
+        <item quantity="other">%1$d notes</item>
+    </plurals>
+    <plurals name="screen_notes_folder_delete_files">
+        <item quantity="one">%1$d photo or file</item>
+        <item quantity="other">%1$d photos or files</item>
+    </plurals>
+    <plurals name="screen_notes_folder_delete_folders">
+        <item quantity="one">%1$d folder</item>
+        <item quantity="other">%1$d folders</item>
+    </plurals>
+    <string name="screen_notes_folder_delete_this">Delete this folder</string>
+    <string name="screen_notes_folder_is_empty">This folder is empty.</string>
+    <string name="screen_notes_file_problem_gone">Someone else deleted or moved it in the meantime.</string>
+    <string name="screen_notes_folder_problem_exists">There’s already a folder or file with that name here.</string>
+    <string name="screen_notes_new">New note or folder</string>
 </resources>

@@ -7,11 +7,13 @@
 
 package co.artise.android.notes.impl.sync
 
+import co.artise.android.notes.api.DeletedFolder
 import co.artise.android.notes.api.EditKind
 import co.artise.android.notes.api.EditState
 import co.artise.android.notes.api.LocalFile
 import co.artise.android.notes.api.MediaFile
 import co.artise.android.notes.api.MediaInUseException
+import co.artise.android.notes.api.MovedFolder
 import co.artise.android.notes.api.MovedNote
 import co.artise.android.notes.api.Note
 import co.artise.android.notes.api.NoteLinks
@@ -62,7 +64,10 @@ import java.util.concurrent.ConcurrentHashMap
  * 2. [sync] sends the queue in order; conflicts wait for the person instead of blocking other notes;
  * 3. then the tree is pulled with its ETag, updating changed files and dropping removed ones,
  *    except files with local edits, which are never overwritten.
+ *
+ * Every notes operation goes through this one class, so the per-chat lock and the change notifications stay in one place.
  */
+@Suppress("LargeClass")
 class NotesSyncEngine(
     private val api: NotesApiClient,
     private val store: NotesLocalStore,
@@ -217,6 +222,60 @@ class NotesSyncEngine(
             }
             // The server rewrote links in other notes; pull them.
             if (moved.linksUpdated.isNotEmpty()) pullTree(roomId)
+            notifyChanged(roomId)
+        }
+    }
+
+    override suspend fun folders(roomId: RoomId): List<String> = io {
+        val fromFiles = store.files(roomId).flatMap { file ->
+            val parts = file.path.split('/').dropLast(1)
+            parts.indices.map { parts.subList(0, it + 1).joinToString("/") }
+        }
+        (store.folders(roomId) + fromFiles).distinct().sortedBy { it.lowercase() }
+    }
+
+    override suspend fun createFolder(roomId: RoomId, path: String): Result<Unit> = api.createFolder(roomId, path).onSuccess {
+        io {
+            // The parents exist now too.
+            val parts = path.split('/')
+            parts.indices.forEach { store.addFolder(roomId, parts.subList(0, it + 1).joinToString("/")) }
+        }
+        notifyChanged(roomId)
+    }
+
+    override suspend fun moveFolder(roomId: RoomId, from: String, to: String): Result<MovedFolder> = lockFor(roomId).withLock {
+        // Like a single move: changes inside must reach the server first, or the move would leave them behind.
+        if (io { store.files(roomId) }.any { it.path.startsWith("$from/") && (it.hasLocalEdits || it.version.isEmpty()) }) {
+            return Result.failure(NotesException.Conflict("$from holds changes that haven't been sent yet. Sync first.", null))
+        }
+        api.moveFolder(roomId, from, to).onSuccess { moved ->
+            io {
+                store.transaction {
+                    moved.moved.forEach { file ->
+                        store.renameFile(roomId, file.from, file.to)
+                        store.setVersion(roomId, file.to, file.version)
+                    }
+                    store.renameFolderTree(roomId, from, to)
+                    val parts = to.split('/')
+                    parts.indices.forEach { store.addFolder(roomId, parts.subList(0, it + 1).joinToString("/")) }
+                }
+            }
+            if (moved.linksUpdated.isNotEmpty()) pullTree(roomId)
+            notifyChanged(roomId)
+        }
+    }
+
+    override suspend fun deleteFolder(roomId: RoomId, path: String, recursive: Boolean): Result<DeletedFolder> = lockFor(roomId).withLock {
+        if (io { store.files(roomId) }.any { it.path.startsWith("$path/") && (it.hasLocalEdits || it.version.isEmpty()) }) {
+            return Result.failure(NotesException.Conflict("$path holds changes that haven't been sent yet. Sync first.", null))
+        }
+        api.deleteFolder(roomId, path, recursive).onSuccess {
+            io {
+                store.transaction {
+                    store.files(roomId).filter { it.path.startsWith("$path/") }.forEach { store.deleteFile(roomId, it.path) }
+                    store.removeFolderTree(roomId, path)
+                }
+            }
             notifyChanged(roomId)
         }
     }
@@ -716,7 +775,7 @@ class NotesSyncEngine(
             if (pullFile(roomId, file).getOrElse { return Result.failure(it) }) updated++
         }
         var removed = 0
-        io {
+        val foldersChanged = io {
             store.transaction {
                 for (mine in local.values) {
                     if (mine.path !in remote && !mine.hasLocalEdits && mine.version.isNotEmpty()) {
@@ -724,9 +783,15 @@ class NotesSyncEngine(
                         removed++
                     }
                 }
+                // Folders as the server has them, empty ones included; a folder holding a queued edit still shows,
+                // since folders also come from the files' paths.
+                val before = store.folders(roomId)
+                store.setFolders(roomId, changed.tree.folders)
                 store.saveTree(roomId, changed.tree.tree, changed.etag)
+                before.toSet() != changed.tree.folders.toSet()
             }
         }
+        if (foldersChanged) notifyChanged(roomId)
         return Result.success(PullResult(updated, removed))
     }
 
