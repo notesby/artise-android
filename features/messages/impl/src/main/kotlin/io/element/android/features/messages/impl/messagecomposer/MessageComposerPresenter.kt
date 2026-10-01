@@ -25,7 +25,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import co.artise.android.linkpreview.api.ComposerLinkPreview
+import co.artise.android.linkpreview.api.DraftLinkPreview
+import co.artise.android.linkpreview.api.LinkPreviewService
 import co.artise.android.stickers.api.KeyboardStickerSender
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
@@ -103,8 +107,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
@@ -112,8 +118,11 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import io.element.android.libraries.core.mimetype.MimeTypes.Any as AnyMimeTypes
+
+private val LINK_PREVIEW_DELAY = 600.milliseconds
 
 @Suppress("LargeClass")
 @AssistedInject
@@ -147,6 +156,7 @@ class MessageComposerPresenter(
     private val contentScannerService: ContentScannerService,
     private val contentValidationCache: EventContentValidationCache,
     private val keyboardStickerSender: KeyboardStickerSender,
+    private val linkPreviewService: LinkPreviewService,
 ) : Presenter<MessageComposerState> {
     @AssistedFactory
     interface Factory {
@@ -235,6 +245,34 @@ class MessageComposerPresenter(
         val suggestions = remember { mutableStateListOf<ResolvedSuggestion>() }
         ResolveSuggestionsEffect(suggestions)
 
+        // Artise: the preview of the first link typed, read by this phone and sent inside the message.
+        var linkPreview by remember { mutableStateOf<ComposerLinkPreview?>(null) }
+        val dismissedLinks = remember { mutableSetOf<String>() }
+        LaunchedEffect(Unit) {
+            snapshotFlow {
+                val text = if (showTextFormatting) richTextEditorState.messageMarkdown else markdownTextEditorState.text.value().toString()
+                // Replies, edits and threads are sent without one.
+                val canHavePreview = messageComposerContext.composerMode is MessageComposerMode.Normal && threadRoot == null
+                if (canHavePreview) linkPreviewService.firstLink(text) else null
+            }
+                .distinctUntilChanged()
+                .collectLatest { url ->
+                    when {
+                        url == null -> {
+                            linkPreview = null
+                            dismissedLinks.clear()
+                        }
+                        url in dismissedLinks -> linkPreview = null
+                        else -> {
+                            // Waits until the link is typed out (or pasted) before reading the page.
+                            delay(LINK_PREVIEW_DELAY)
+                            linkPreview = ComposerLinkPreview(url, preview = null)
+                            linkPreview = linkPreviewService.fetch(url).getOrNull()?.let { ComposerLinkPreview(url, it) }
+                        }
+                    }
+                }
+        }
+
         DisposableEffect(Unit) {
             // Declare that the user is not typing anymore when the composer is disposed
             onDispose {
@@ -284,7 +322,13 @@ class MessageComposerPresenter(
                         markdownTextEditorState = markdownTextEditorState,
                         richTextEditorState = richTextEditorState,
                         slashCommandAction = slashCommandAction,
+                        linkPreview = linkPreview?.preview,
                     )
+                    linkPreview = null
+                }
+                MessageComposerEvent.DismissLinkPreview -> linkPreview?.let {
+                    dismissedLinks += it.url
+                    linkPreview = null
                 }
                 is MessageComposerEvent.SendUri -> localCoroutineScope.launch {
                     // Artise: a sticker from the keyboard (Gboard, Samsung Keyboard, sticker apps) goes as a sticker,
@@ -442,6 +486,7 @@ class MessageComposerPresenter(
             resolveMentionDisplay = resolveMentionDisplay,
             resolveAtRoomMentionDisplay = resolveAtRoomMentionDisplay,
             slashCommandAction = slashCommandAction.value,
+            linkPreview = linkPreview,
             eventSink = ::handleEvent,
         )
     }
@@ -500,6 +545,7 @@ class MessageComposerPresenter(
         markdownTextEditorState: MarkdownTextEditorState,
         richTextEditorState: RichTextEditorState,
         slashCommandAction: MutableState<AsyncAction<Unit>>,
+        linkPreview: DraftLinkPreview?,
     ) = launch {
         val message = currentComposerMessage(markdownTextEditorState, richTextEditorState, withMentions = true)
         val capturedMode = messageComposerContext.composerMode
@@ -565,13 +611,34 @@ class MessageComposerPresenter(
         // Reset composer right away
         resetComposer(markdownTextEditorState, richTextEditorState, fromEdit = capturedMode is MessageComposerMode.Edit)
         when (capturedMode) {
-            is MessageComposerMode.Attachment,
-            is MessageComposerMode.Normal -> timelineController.invokeOnCurrentTimeline {
+            is MessageComposerMode.Attachment -> timelineController.invokeOnCurrentTimeline {
                 sendMessage(
                     body = message.markdown,
                     htmlBody = message.html,
                     intentionalMentions = message.intentionalMentions
                 )
+            }
+            is MessageComposerMode.Normal -> {
+                // Artise: the preview goes only if its link is still the message's first one.
+                val extraContent = linkPreview
+                    ?.takeIf { linkPreviewService.firstLink(message.markdown) == it.url }
+                    ?.let { linkPreviewService.extraContent(it, encrypted = room.info().isEncrypted == true) }
+                timelineController.invokeOnCurrentTimeline {
+                    if (extraContent != null) {
+                        sendMessageWithExtraContent(
+                            body = message.markdown,
+                            htmlBody = message.html,
+                            intentionalMentions = message.intentionalMentions,
+                            extraContent = extraContent,
+                        )
+                    } else {
+                        sendMessage(
+                            body = message.markdown,
+                            htmlBody = message.html,
+                            intentionalMentions = message.intentionalMentions
+                        )
+                    }
+                }
             }
             is MessageComposerMode.Edit -> {
                 timelineController.invokeOnCurrentTimeline {

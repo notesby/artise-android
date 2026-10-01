@@ -16,6 +16,8 @@ import app.cash.molecule.RecompositionMode
 import app.cash.molecule.moleculeFlow
 import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
+import co.artise.android.linkpreview.api.DraftLinkPreview
+import co.artise.android.linkpreview.api.LinkPreviewService
 import com.google.common.truth.Truth.assertThat
 import im.vector.app.features.analytics.plan.Composer
 import im.vector.app.features.analytics.plan.Interaction
@@ -107,6 +109,7 @@ import io.element.android.libraries.textcomposer.model.SuggestionType
 import io.element.android.libraries.textcomposer.model.TextEditorState
 import io.element.android.services.analytics.test.FakeAnalyticsService
 import io.element.android.tests.testutils.WarmUpRule
+import io.element.android.tests.testutils.consumeItemsUntilPredicate
 import io.element.android.tests.testutils.lambda.any
 import io.element.android.tests.testutils.lambda.assert
 import io.element.android.tests.testutils.lambda.lambdaRecorder
@@ -464,6 +467,69 @@ class MessageComposerPresenterTest : RobolectricTest() {
                 )
             )
         }
+    }
+
+    /** A link typed in the composer gets a preview, read once, and it's sent inside the message. */
+    @Test
+    fun `present - a link's preview is sent inside the message`() = runTest {
+        val extraContents = mutableListOf<String>()
+        val linkPreviewService = FakeLinkPreviewService(
+            fetchResult = { url -> Result.success(DraftLinkPreview(url, title = "Mole", description = null, siteName = null, image = null)) },
+        )
+        val presenter = createPresenter(
+            isRichTextEditorEnabled = false,
+            room = FakeJoinedRoom(
+                liveTimeline = FakeTimeline().apply {
+                    sendMessageWithExtraContentLambda = { _, _, _, extraContent ->
+                        extraContents += extraContent
+                        Result.success(Unit)
+                    }
+                },
+                typingNoticeResult = { Result.success(Unit) }
+            ),
+            slashCommandService = FakeSlashCommandService(parseResult = { _, _, _ -> SlashCommand.NotACommand }),
+            linkPreviewService = linkPreviewService,
+        )
+        presenter.test {
+            awaitItem().textEditorState.setMarkdown("mira https://cocina.example/mole")
+            val ready = consumeItemsUntilPredicate { it.linkPreview?.preview != null }.last()
+            assertThat(ready.linkPreview?.preview?.title).isEqualTo("Mole")
+            ready.eventSink(MessageComposerEvent.SendMessage)
+            waitForPredicate { extraContents.isNotEmpty() }
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertThat(extraContents).containsExactly("""{"preview":"https://cocina.example/mole"}""")
+        assertThat(linkPreviewService.fetched).containsExactly("https://cocina.example/mole")
+    }
+
+    /** The X sends the link without its preview, as a plain message. */
+    @Test
+    fun `present - a dismissed preview isn't sent`() = runTest {
+        val plainMessages = mutableListOf<String>()
+        val presenter = createPresenter(
+            isRichTextEditorEnabled = false,
+            room = FakeJoinedRoom(
+                liveTimeline = FakeTimeline().apply {
+                    sendMessageLambda = { body, _, _, _, _ ->
+                        plainMessages += body
+                        Result.success(Unit)
+                    }
+                },
+                typingNoticeResult = { Result.success(Unit) }
+            ),
+            slashCommandService = FakeSlashCommandService(parseResult = { _, _, _ -> SlashCommand.NotACommand }),
+            linkPreviewService = FakeLinkPreviewService(
+                fetchResult = { url -> Result.success(DraftLinkPreview(url, title = "Mole", description = null, siteName = null, image = null)) },
+            ),
+        )
+        presenter.test {
+            awaitItem().textEditorState.setMarkdown("https://cocina.example/mole")
+            consumeItemsUntilPredicate { it.linkPreview?.preview != null }.last().eventSink(MessageComposerEvent.DismissLinkPreview)
+            consumeItemsUntilPredicate { it.linkPreview == null }.last().eventSink(MessageComposerEvent.SendMessage)
+            waitForPredicate { plainMessages.isNotEmpty() }
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertThat(plainMessages).containsExactly("https://cocina.example/mole")
     }
 
     @Test
@@ -1677,6 +1743,7 @@ class MessageComposerPresenterTest : RobolectricTest() {
         threadRoot: ThreadId? = null,
         slashCommandService: SlashCommandService = FakeSlashCommandService(),
         featureFlagService: FakeFeatureFlagService = FakeFeatureFlagService(),
+        linkPreviewService: LinkPreviewService = FakeLinkPreviewService(),
     ) = MessageComposerPresenter(
         navigator = navigator,
         sessionCoroutineScope = this,
@@ -1724,6 +1791,7 @@ class MessageComposerPresenterTest : RobolectricTest() {
         contentScannerService = { _, _ -> },
         contentValidationCache = InMemoryEventContentValidationCache(),
         keyboardStickerSender = { _, _ -> false },
+        linkPreviewService = linkPreviewService,
     ).apply {
         isTesting = true
         showTextFormatting = isRichTextEditorEnabled

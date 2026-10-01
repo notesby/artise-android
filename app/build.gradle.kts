@@ -313,6 +313,8 @@ dependencies {
     implementation(projects.artise.accountdeletion)
     // Artise: stickers (picker, starter pack, stickers from photos and keyboards).
     implementation(projects.artise.stickers.impl)
+    // Artise: link previews, built on the sender's phone and sent inside the message.
+    implementation(projects.artise.linkpreview.impl)
     // Artise: Firebase Analytics, opt-in, in Play builds only.
     if ((ModulesConfig.analyticsConfig as? AnalyticsConfig.Enabled)?.withFirebase == true) {
         "gplayImplementation"(projects.artise.analytics)

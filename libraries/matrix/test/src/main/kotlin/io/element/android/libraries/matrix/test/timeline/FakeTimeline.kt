@@ -86,6 +86,24 @@ class FakeTimeline(
         sendMessageLambda(body, htmlBody, intentionalMentions, msgType, asPlainText)
     }
 
+    var sendMessageWithExtraContentLambda: (
+        body: String,
+        htmlBody: String?,
+        intentionalMentions: List<IntentionalMention>,
+        extraContent: String,
+    ) -> Result<Unit> = { _, _, _, _ ->
+        lambdaError()
+    }
+
+    override suspend fun sendMessageWithExtraContent(
+        body: String,
+        htmlBody: String?,
+        intentionalMentions: List<IntentionalMention>,
+        extraContent: String,
+    ): Result<Unit> = simulateLongTask {
+        sendMessageWithExtraContentLambda(body, htmlBody, intentionalMentions, extraContent)
+    }
+
     var redactEventLambda: (eventOrTransactionId: EventOrTransactionId, reason: String?) -> Result<Unit> = { _, _ ->
         lambdaError()
     }
