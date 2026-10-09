@@ -149,10 +149,12 @@ class DefaultNotificationCreator(
             )
         }
         val containsMissedCall = events.any { it.type == EventType.RTC_NOTIFICATION }
-        val channelId = if (containsMissedCall) {
-            notificationChannels.getChannelForIncomingCall(false)
-        } else {
-            notificationChannels.getChannelIdForMessage(
+        // Artise: a chat's notification moves to the "Reminders" channel while it holds an important or critical Ari post.
+        val containsReminder = !containsMissedCall && events.any { it.isReminder }
+        val channelId = when {
+            containsMissedCall -> notificationChannels.getChannelForIncomingCall(false)
+            containsReminder -> notificationChannels.getChannelIdForReminder()
+            else -> notificationChannels.getChannelIdForMessage(
                 sessionId = roomInfo.sessionId,
                 noisy = roomInfo.shouldBing,
             )
@@ -161,13 +163,18 @@ class DefaultNotificationCreator(
         // For example, alarm notifications should display before promo notifications, or message from known contact
         // that can be displayed in not disturb mode if white listed (the later will need compat28.x)
         // If any of the events are of rtc notification type it means a missed call, set the category to the right value
-        val category = if (containsMissedCall) {
-            NotificationCompat.CATEGORY_MISSED_CALL
-        } else {
-            NotificationCompat.CATEGORY_MESSAGE
+        val category = when {
+            containsMissedCall -> NotificationCompat.CATEGORY_MISSED_CALL
+            containsReminder -> NotificationCompat.CATEGORY_REMINDER
+            else -> NotificationCompat.CATEGORY_MESSAGE
         }
-        val builder = if (existingNotification != null) {
-            NotificationCompat.Builder(context, existingNotification)
+        // Artise: a notification keeps the channel it was posted on, so a reminder joining a chat's message notification
+        // starts a new one; the messages already shown carry over through the messaging style below.
+        val reusableNotification = existingNotification?.takeIf {
+            !containsReminder || NotificationCompat.getChannelId(it) == channelId
+        }
+        val builder = if (reusableNotification != null) {
+            NotificationCompat.Builder(context, reusableNotification)
                 // Clear existing actions
                 .clearActions()
         } else {
@@ -215,7 +222,10 @@ class DefaultNotificationCreator(
                 // Sets priority for 25 and below. For 26 and above, 'priority' is deprecated for
                 // 'importance' which is set in the NotificationChannel. The integers representing
                 // 'priority' are different from 'importance', so make sure you don't mix them.
-                if (roomInfo.shouldBing) {
+                if (containsReminder) {
+                    priority = NotificationCompat.PRIORITY_HIGH
+                    setLights(notificationAccountParams.color, 500, 500)
+                } else if (roomInfo.shouldBing) {
                     priority = NotificationCompat.PRIORITY_DEFAULT
                     setLights(notificationAccountParams.color, 500, 500)
                 } else {

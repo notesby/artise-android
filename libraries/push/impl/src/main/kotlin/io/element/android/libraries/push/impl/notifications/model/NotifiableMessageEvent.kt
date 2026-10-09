@@ -44,6 +44,8 @@ data class NotifiableMessageEvent(
     override val isUpdated: Boolean = false,
     val type: String = EventType.MESSAGE,
     val hasMentionOrReply: Boolean = false,
+    // Artise: an important or critical Ari automation post, shown on the "Reminders" channel.
+    val isReminder: Boolean = false,
 ) : NotifiableEvent {
     override val description: String = body ?: ""
 
