@@ -79,6 +79,7 @@ internal fun aTimelineItemContentFactory(
     sessionId = matrixClient.sessionId,
     dateFormatter = FakeDateFormatter(),
     stringProvider = FakeStringProvider(),
+    linkPreviewReader = { null },
 )
 
 internal fun TestScope.aTimelineItemsFactory(

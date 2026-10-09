@@ -32,6 +32,7 @@ dependencies {
     implementation(projects.features.enterprise.api)
     implementation(projects.artise.stickers.api)
     implementation(projects.artise.notes.api)
+    implementation(projects.artise.linkpreview.api)
     implementation(projects.features.forward.api)
     implementation(projects.features.location.api)
     implementation(projects.features.poll.api)

@@ -183,6 +183,7 @@ compiled into it. Network traffic on a phone wasn't captured. Re-check after mer
 | MapTiler (`api.maptiler.com`) | Opening a map to share, view or follow a location | The phone's IP address and the map area being viewed (map tiles). The key is set at build time from `local.properties`, never committed. Previews inside chat messages need MapTiler's static maps, which the current plan doesn't include. |
 | Google Cloud Storage and jsDelivr | Only if someone turns on background blur during a call | The phone's IP address, while downloading the blur model. |
 | Google ML Kit (through Google Play services) | When someone makes a sticker from a photo | **Not the photo** (the cut-out runs on the phone). ML Kit's own diagnostics: device and app information, a per-installation ID, performance numbers and image size/format ([ML Kit data disclosure](https://developers.google.com/ml-kit/android-data-disclosure)). Not behind the analytics consent. Kept (user decision, 2026-09-30) and disclosed below. |
+| The website of a link being typed | When someone types or pastes a link in the composer (link previews, 2026-10-01) | The sender's phone reads that one page and its picture, like a browser would: the website sees the phone's IP address. The people receiving the message never contact the website, and the server never sees the link: the preview travels inside the encrypted message. The X on the preview sends the link without it. |
 | A UnifiedPush distributor and gateway | Only if the person installs one and picks it in the notification settings | Pushes, instead of Firebase. |
 
 The copyright and acceptable-use links in Settings → About still open element.io pages, and help links open
@@ -207,6 +208,10 @@ Add a section about the phone app to `https://artise.co/privacy.html`, in both l
 > - **Google ML Kit**, only when you make a sticker from a photo. The background is removed on your phone and the
 >   photo is never sent; ML Kit sends Google its own diagnostics (phone model and Android version, app version, an ID
 >   for this installation, timing, and the image size and format).
+> - **The website of a link you type**, to show its preview. Your phone reads that page, as your browser would,
+>   so the website sees your phone's IP address. The preview is sent inside your encrypted message: the people who
+>   receive it don't contact the website, and the Artise server never sees the link. Tap the X on the preview to send
+>   the link without it.
 > - **Google Cloud Storage and jsDelivr**, only if you turn on background blur during a call. They receive your
 >   phone's IP address while the blur model downloads.
 >
