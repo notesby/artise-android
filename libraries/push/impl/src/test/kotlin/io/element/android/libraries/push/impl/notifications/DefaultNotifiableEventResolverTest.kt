@@ -120,6 +120,52 @@ class DefaultNotifiableEventResolverTest : RobolectricTest() {
     }
 
     @Test
+    fun `resolve a critical Ari post as a reminder that always makes a sound`() = runTest {
+        val result = resolveTextMessage(rawEvent = anAutomationPost(level = "critical"))
+        assertThat(result).isEqualTo(
+            Result.success(ResolvedPushEvent.Event(aNotifiableMessageEvent(body = "Hello world").copy(noisy = true, isReminder = true)))
+        )
+    }
+
+    @Test
+    fun `resolve an important Ari post as a reminder that keeps the chat's sound setting`() = runTest {
+        val result = resolveTextMessage(rawEvent = anAutomationPost(level = "important"))
+        assertThat(result).isEqualTo(
+            Result.success(ResolvedPushEvent.Event(aNotifiableMessageEvent(body = "Hello world").copy(isReminder = true)))
+        )
+    }
+
+    @Test
+    fun `resolve a normal Ari post, or one without a readable event, as a plain message`() = runTest {
+        val expected = Result.success(ResolvedPushEvent.Event(aNotifiableMessageEvent(body = "Hello world")))
+        assertThat(resolveTextMessage(rawEvent = anAutomationPost(level = "normal"))).isEqualTo(expected)
+        assertThat(resolveTextMessage(rawEvent = null)).isEqualTo(expected)
+    }
+
+    // Artise: a text message whose raw event is [rawEvent].
+    private suspend fun resolveTextMessage(rawEvent: String?): Result<ResolvedPushEvent>? {
+        val sut = createDefaultNotifiableEventResolver(
+            notificationResult = Result.success(
+                mapOf(
+                    AN_EVENT_ID to Result.success(
+                        aNotificationData(
+                            content = NotificationContent.MessageLike.RoomMessage(
+                                senderId = A_USER_ID_2,
+                                messageType = TextMessageType(body = "Hello world", formatted = null)
+                            ),
+                        ).copy(rawEvent = rawEvent)
+                    )
+                )
+            )
+        )
+        val request = aPushRequest(A_SESSION_ID, A_ROOM_ID, AN_EVENT_ID, "firebase")
+        return sut.resolveEvents(A_SESSION_ID, listOf(request)).getEvent(request)
+    }
+
+    private fun anAutomationPost(level: String) =
+        """{"type":"m.room.message","content":{"msgtype":"m.text","body":"Hello world","co.artise.automation":{"id":"a1","level":"$level"}}}"""
+
+    @Test
     @Config(qualifiers = "en")
     fun `resolve event message with mention`() = runTest {
         val sut = createDefaultNotifiableEventResolver(

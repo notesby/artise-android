@@ -38,6 +38,8 @@ data class NotificationData(
     val content: NotificationContent,
     val hasMention: Boolean,
     val roomJoinRule: JoinRule?,
+    // Artise: the event's JSON (decrypted when it could be), to read fields of our own such as `co.artise.automation`.
+    val rawEvent: String? = null,
 ) {
     fun getDisambiguatedDisplayName(userId: UserId): String = when {
         senderDisplayName.isNullOrBlank() -> userId.value

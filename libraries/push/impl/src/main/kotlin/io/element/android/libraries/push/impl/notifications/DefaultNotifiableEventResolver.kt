@@ -54,6 +54,7 @@ import io.element.android.libraries.matrix.api.timeline.item.event.VoiceMessageT
 import io.element.android.libraries.matrix.ui.messages.toPlainText
 import io.element.android.libraries.push.impl.R
 import io.element.android.libraries.push.impl.db.PushRequest
+import io.element.android.libraries.push.impl.notifications.artise.AutomationLevel
 import io.element.android.libraries.push.impl.notifications.model.InviteNotifiableEvent
 import io.element.android.libraries.push.impl.notifications.model.NotifiableMessageEvent
 import io.element.android.libraries.push.impl.notifications.model.ResolvedPushEvent
@@ -186,13 +187,15 @@ class DefaultNotifiableEventResolver(
                     senderDisambiguatedDisplayName = senderDisambiguatedDisplayName,
                     hasImageUri = imageUriString != null,
                 )
+                // Artise: Ari marks its important and critical automation posts; critical ones always make a sound.
+                val automationLevel = AutomationLevel.fromRawEvent(rawEvent)
                 val notifiableMessageEvent = buildNotifiableMessageEvent(
                     sessionId = userId,
                     senderId = content.senderId,
                     roomId = roomId,
                     eventId = eventId,
                     threadId = threadId.takeIf { featureFlagService.isFeatureEnabled(FeatureFlags.Threads) },
-                    noisy = isNoisy,
+                    noisy = isNoisy || automationLevel == AutomationLevel.CRITICAL,
                     timestamp = this.timestamp,
                     senderDisambiguatedDisplayName = senderDisambiguatedDisplayName,
                     body = messageBody,
@@ -203,6 +206,7 @@ class DefaultNotifiableEventResolver(
                     roomAvatarPath = roomAvatarUrl,
                     senderAvatarPath = senderAvatarUrl,
                     hasMentionOrReply = hasMention,
+                    isReminder = automationLevel?.isReminder == true,
                 )
                 ResolvedPushEvent.Event(notifiableMessageEvent)
             }
@@ -516,6 +520,7 @@ internal fun buildNotifiableMessageEvent(
     isUpdated: Boolean = false,
     type: String = EventType.MESSAGE,
     hasMentionOrReply: Boolean = false,
+    isReminder: Boolean = false,
 ) = NotifiableMessageEvent(
     sessionId = sessionId,
     senderId = senderId,
@@ -541,4 +546,5 @@ internal fun buildNotifiableMessageEvent(
     isUpdated = isUpdated,
     type = type,
     hasMentionOrReply = hasMentionOrReply,
+    isReminder = isReminder,
 )

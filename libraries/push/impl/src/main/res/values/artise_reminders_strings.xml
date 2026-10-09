@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<resources>
+    <string name="artise_notification_channel_reminders">Reminders</string>
+    <string name="artise_notification_channel_reminders_description">Important and critical reminders from Ari, such as medicines. They show even when a chat is set to silent.</string>
+</resources>
