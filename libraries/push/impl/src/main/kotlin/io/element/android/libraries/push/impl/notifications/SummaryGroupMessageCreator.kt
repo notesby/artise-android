@@ -22,6 +22,8 @@ interface SummaryGroupMessageCreator {
         roomNotifications: List<RoomNotification>,
         invitationNotifications: List<OneShotNotification>,
         simpleNotifications: List<OneShotNotification>,
+        // Artise: the account has a notification on the "Reminders" channel; the summary must be there too.
+        onReminderChannel: Boolean = false,
     ): Notification
 }
 
@@ -44,6 +46,7 @@ class DefaultSummaryGroupMessageCreator(
         roomNotifications: List<RoomNotification>,
         invitationNotifications: List<OneShotNotification>,
         simpleNotifications: List<OneShotNotification>,
+        onReminderChannel: Boolean,
     ): Notification {
         val summaryIsNoisy = roomNotifications.any { it.shouldBing } ||
             invitationNotifications.any { it.isNoisy } ||
@@ -58,6 +61,7 @@ class DefaultSummaryGroupMessageCreator(
             sumTitle,
             noisy = summaryIsNoisy,
             lastMessageTimestamp = lastMessageTimestamp,
+            onReminderChannel = onReminderChannel,
         )
     }
 }

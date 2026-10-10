@@ -9,12 +9,14 @@
 package io.element.android.libraries.push.impl.notifications
 
 import android.app.Notification
+import androidx.core.app.NotificationCompat
 import coil3.ImageLoader
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.api.core.ThreadId
+import io.element.android.libraries.push.impl.notifications.artise.REMINDER_NOTIFICATION_CHANNEL_ID
 import io.element.android.libraries.push.impl.notifications.factories.NotificationAccountParams
 import io.element.android.libraries.push.impl.notifications.factories.NotificationCreator
 import io.element.android.libraries.push.impl.notifications.model.FallbackNotifiableEvent
@@ -170,8 +172,18 @@ class DefaultNotificationDataFactory(
                     invitationNotifications = invitationNotifications,
                     simpleNotifications = simpleNotifications,
                     notificationAccountParams = notificationAccountParams,
+                    onReminderChannel = hasReminder(roomNotifications, notificationAccountParams.user.userId),
                 )
             )
+        }
+    }
+
+    /** Artise: whether a new or still shown notification of [sessionId] (the summary aside) is on the "Reminders" channel. */
+    private fun hasReminder(roomNotifications: List<RoomNotification>, sessionId: SessionId): Boolean {
+        val shown = activeNotificationsProvider.getNotificationsForSession(sessionId).map { it.notification }
+        return (roomNotifications.map { it.notification } + shown).any { notification ->
+            notification.flags and Notification.FLAG_GROUP_SUMMARY == 0 &&
+                NotificationCompat.getChannelId(notification) == REMINDER_NOTIFICATION_CHANNEL_ID
         }
     }
 
