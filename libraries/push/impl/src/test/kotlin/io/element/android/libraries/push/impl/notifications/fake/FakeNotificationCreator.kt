@@ -102,6 +102,7 @@ class FakeNotificationCreator(
         compatSummary: String,
         noisy: Boolean,
         lastMessageTimestamp: Long,
+        onReminderChannel: Boolean,
     ): Notification {
         return createSummaryListNotificationResult(notificationAccountParams, compatSummary, noisy, lastMessageTimestamp, notificationAccountParams)
     }

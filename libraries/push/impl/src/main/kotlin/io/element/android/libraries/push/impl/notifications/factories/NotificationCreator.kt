@@ -88,6 +88,8 @@ interface NotificationCreator {
         compatSummary: String,
         noisy: Boolean,
         lastMessageTimestamp: Long,
+        // Artise: put the summary on the "Reminders" channel, next to the reminders it groups.
+        onReminderChannel: Boolean = false,
     ): Notification
 
     fun createDiagnosticNotification(
@@ -362,13 +364,22 @@ class DefaultNotificationCreator(
         compatSummary: String,
         noisy: Boolean,
         lastMessageTimestamp: Long,
+        onReminderChannel: Boolean,
     ): Notification {
         val userId = notificationAccountParams.user.userId
-        val channelId = notificationChannels.getChannelIdForMessage(
-            sessionId = userId,
-            noisy = noisy,
-        )
+        // Artise: a summary on another channel than a reminder it groups can be shown apart from it on recent Android
+        // versions (a second notification for the same message). On the Reminders channel it stays silent: the
+        // reminder itself alerts.
+        val channelId = if (onReminderChannel) {
+            notificationChannels.getChannelIdForReminder()
+        } else {
+            notificationChannels.getChannelIdForMessage(
+                sessionId = userId,
+                noisy = noisy,
+            )
+        }
         return NotificationCompat.Builder(context, channelId)
+            .apply { if (onReminderChannel) setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN) }
             .setOnlyAlertOnce(true)
             // used in compat < N, after summary is built based on child notifications
             .setWhen(lastMessageTimestamp)
