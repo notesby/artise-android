@@ -90,7 +90,9 @@ fun NotesChangesView(
                     HorizontalDivider()
                 }
             }
-            item(key = "status") {
+            // A different key before the first page: otherwise the list keeps the spinner in place when the changes arrive above it,
+            // opening scrolled to the bottom (and loading the next page).
+            item(key = if (state.days.isEmpty()) "status:first" else "status") {
                 HistoryStatus(
                     isLoading = state.isLoading || state.isLoadingMore,
                     failed = state.failed,
