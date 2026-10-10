@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<resources>
+    <!-- Change history -->
+    <string name="screen_notes_history_title">Histórico</string>
+    <string name="screen_notes_history_menu">Histórico</string>
+    <string name="screen_notes_history_empty">Ainda não há alterações.</string>
+    <string name="screen_notes_history_offline">O histórico precisa de conexão.</string>
+    <string name="screen_notes_history_retry">Tentar de novo</string>
+    <string name="screen_notes_note_history_title">Histórico de %1$s</string>
+    <string name="screen_notes_note_history_empty">Esta nota ainda não tem versões salvas.</string>
+    <string name="screen_notes_version_from">Versão: %1$s · somente leitura</string>
+    <string name="screen_notes_version_read_only">Versão anterior · somente leitura</string>
+    <string name="a11y_notes_history_added">Adicionado</string>
+    <string name="a11y_notes_history_modified">Alterado</string>
+    <string name="a11y_notes_history_deleted">Excluído</string>
+    <string name="a11y_notes_history_renamed">Renomeado</string>
+    <string name="a11y_notes_history_copied">Copiado</string>
+    <string name="screen_notes_change_ari">Ari, a pedido de %1$s</string>
+    <string name="screen_notes_change_automation">Ari, automação %2$s de %1$s</string>
+    <string name="screen_notes_change_routine">Ari, rotina %2$s de %1$s</string>
+    <string name="screen_notes_change_brief">Ari, resumo da manhã %2$s de %1$s</string>
+    <string name="screen_notes_change_ari_own">Ari (por conta própria)</string>
+    <string name="screen_notes_change_reaction">%1$s, reagindo à mensagem de Ari</string>
+    <string name="screen_notes_change_chat">%1$s, enviado no chat</string>
+    <string name="screen_notes_change_app">%1$s, no app</string>
+    <string name="screen_notes_change_files">%1$s, na página de arquivos</string>
+    <string name="screen_notes_change_sync">Um dispositivo sincronizado</string>
+</resources>

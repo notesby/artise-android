@@ -44,6 +44,9 @@ class NoteNode(
 
         /** Replace this note's screen with the renamed note. */
         fun showRenamedNote(roomId: RoomId, newPath: String)
+
+        /** The note's versions, each readable. */
+        fun openNoteHistory(roomId: RoomId, path: String)
     }
 
     private val inputs: Inputs = inputs()
@@ -68,6 +71,7 @@ class NoteNode(
             onBackClick = ::navigateUp,
             onBacklinkClick = { callback.openNote(inputs.roomId, it) },
             onEditClick = { callback.openEditor(inputs.roomId, inputs.path) },
+            onHistoryClick = { callback.openNoteHistory(inputs.roomId, inputs.path) },
             modifier = modifier,
         )
     }

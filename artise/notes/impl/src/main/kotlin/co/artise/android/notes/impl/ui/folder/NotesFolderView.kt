@@ -54,6 +54,7 @@ fun NotesFolderView(
     onReviewChoicesClick: () -> Unit,
     onMapClick: () -> Unit,
     onMediaClick: () -> Unit,
+    onHistoryClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     NotesScaffold(
@@ -69,6 +70,9 @@ fun NotesFolderView(
             }
             IconButton(onClick = onMapClick) {
                 Icon(imageVector = CompoundIcons.Explore(), contentDescription = stringResource(R.string.screen_notes_map))
+            }
+            IconButton(onClick = onHistoryClick) {
+                Icon(imageVector = CompoundIcons.History(), contentDescription = stringResource(R.string.screen_notes_history_title))
             }
             IconButton(onClick = onSearchClick) {
                 Icon(imageVector = CompoundIcons.Search(), contentDescription = stringResource(R.string.a11y_notes_search))
@@ -227,6 +231,7 @@ internal fun NotesFolderViewPreview(@PreviewParameter(NotesFolderStatePreviewPar
         onSearchClick = {},
         onReviewChoicesClick = {},
         onMapClick = {},
-        onMediaClick = {}
+        onMediaClick = {},
+        onHistoryClick = {},
     )
 }

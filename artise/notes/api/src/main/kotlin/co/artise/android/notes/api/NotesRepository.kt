@@ -127,6 +127,9 @@ interface NotesRepository {
 
     suspend fun history(roomId: RoomId, path: String): Result<List<NoteVersion>>
 
+    /** The chat's latest changes, newest first; with [before] (the last commit of a page), the next older page. */
+    suspend fun changeHistory(roomId: RoomId, before: String?): Result<NotesChangesPage>
+
     /** A note as it was at [commit] from [history]. To restore it, pass its content to [editNote]. */
     suspend fun noteAt(roomId: RoomId, path: String, commit: String): Result<Note>
 }

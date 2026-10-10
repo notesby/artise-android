@@ -25,7 +25,10 @@ enum class NotesScreen : VectorAnalyticsScreen {
     NotesSearch,
     NotesMap,
     NotesChoices,
-    NotesMedia;
+    NotesMedia,
+    NotesHistory,
+    NoteHistory,
+    NoteVersion;
 
     override fun getName(): String = name
 
