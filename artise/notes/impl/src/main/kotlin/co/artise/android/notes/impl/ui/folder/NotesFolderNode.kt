@@ -47,6 +47,9 @@ class NotesFolderNode(
         fun openMap(roomId: RoomId)
 
         fun openMedia(roomId: RoomId)
+
+        /** The chat's change history. */
+        fun openHistory(roomId: RoomId)
     }
 
     private val inputs: Inputs = inputs()
@@ -64,6 +67,7 @@ class NotesFolderNode(
             onReviewChoicesClick = { callback.openChoices(inputs.roomId) },
             onMapClick = { callback.openMap(inputs.roomId) },
             onMediaClick = { callback.openMedia(inputs.roomId) },
+            onHistoryClick = { callback.openHistory(inputs.roomId) },
             modifier = modifier,
         )
     }

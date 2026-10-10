@@ -176,4 +176,30 @@
     <string name="screen_notes_file_problem_gone">Someone else deleted or moved it in the meantime.</string>
     <string name="screen_notes_folder_problem_exists">There’s already a folder or file with that name here.</string>
     <string name="screen_notes_new">New note or folder</string>
+    <!-- Change history -->
+    <string name="screen_notes_history_title">History</string>
+    <string name="screen_notes_history_menu">History</string>
+    <string name="screen_notes_history_empty">No changes yet.</string>
+    <string name="screen_notes_history_offline">The history needs a connection.</string>
+    <string name="screen_notes_history_retry">Try again</string>
+    <string name="screen_notes_note_history_title">History of %1$s</string>
+    <string name="screen_notes_note_history_empty">This note has no saved versions yet.</string>
+    <string name="screen_notes_version_from">Version: %1$s · read-only</string>
+    <string name="screen_notes_version_read_only">Earlier version · read-only</string>
+    <string name="a11y_notes_history_added">Added</string>
+    <string name="a11y_notes_history_modified">Changed</string>
+    <string name="a11y_notes_history_deleted">Deleted</string>
+    <string name="a11y_notes_history_renamed">Renamed</string>
+    <string name="a11y_notes_history_copied">Copied</string>
+    <string name="screen_notes_change_ari">Ari, asked by %1$s</string>
+    <string name="screen_notes_change_automation">Ari, %1$s\'s automation %2$s</string>
+    <string name="screen_notes_change_routine">Ari, %1$s\'s routine %2$s</string>
+    <string name="screen_notes_change_brief">Ari, %1$s\'s morning brief %2$s</string>
+    <string name="screen_notes_change_ari_own">Ari (on its own)</string>
+    <string name="screen_notes_change_reaction">%1$s, by reacting to Ari\'s message</string>
+    <string name="screen_notes_change_chat">%1$s, sent in the chat</string>
+    <string name="screen_notes_change_app">%1$s, in the app</string>
+    <string name="screen_notes_change_files">%1$s, on the files page</string>
+    <string name="screen_notes_change_sync">A synced device</string>
+    <string name="screen_notes_history_renamed" translatable="false">%1$s → %2$s</string>
 </resources>

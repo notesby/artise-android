@@ -21,6 +21,10 @@ import co.artise.android.notes.impl.ui.choices.NotesChoicesNode
 import co.artise.android.notes.impl.ui.editor.NoteEditorNode
 import co.artise.android.notes.impl.ui.folder.NotesFolderNode
 import co.artise.android.notes.impl.ui.graph.NotesGraphNode
+import co.artise.android.notes.impl.ui.history.NoteHistoryNode
+import co.artise.android.notes.impl.ui.history.NoteVersionNode
+import co.artise.android.notes.impl.ui.history.NoteVersionPresenter
+import co.artise.android.notes.impl.ui.history.NotesChangesNode
 import co.artise.android.notes.impl.ui.media.NotesMediaNode
 import co.artise.android.notes.impl.ui.note.NoteNode
 import co.artise.android.notes.impl.ui.search.NotesSearchNode
@@ -41,7 +45,7 @@ import io.element.android.libraries.matrix.api.core.RoomId
 import kotlinx.coroutines.launch
 import kotlinx.parcelize.Parcelize
 
-/** Chats with notes → a chat's folders → a note → the editor, with search and version choices per chat. */
+/** Chats with notes → a chat's folders → a note → the editor, with search, version choices and change history per chat. */
 @ContributesNode(SessionScope::class)
 @AssistedInject
 class NotesFlowNode(
@@ -83,6 +87,17 @@ class NotesFlowNode(
         /** A chat's photos and files, and the notes that use them. */
         @Parcelize
         data class Media(val roomId: RoomId) : NavTarget
+
+        /** Every change to a chat's notes: who it was for and how it was made. */
+        @Parcelize
+        data class Changes(val roomId: RoomId) : NavTarget
+
+        @Parcelize
+        data class NoteHistory(val roomId: RoomId, val path: String) : NavTarget
+
+        /** A note at one version, read-only; [savedAt] says when, for the title. */
+        @Parcelize
+        data class NoteVersion(val roomId: RoomId, val path: String, val commit: String, val savedAt: String) : NavTarget
     }
 
     override fun onBuilt() {
@@ -105,7 +120,9 @@ class NotesFlowNode(
         NotesSearchNode.Callback,
         NotesChoicesNode.Callback,
         NotesGraphNode.Callback,
-        NotesMediaNode.Callback {
+        NotesMediaNode.Callback,
+        NotesChangesNode.Callback,
+        NoteHistoryNode.Callback {
         override fun openChat(roomId: RoomId) = backstack.push(NavTarget.Folder(roomId, folder = ""))
 
         override fun openFolder(roomId: RoomId, folder: String) = backstack.push(NavTarget.Folder(roomId, folder))
@@ -121,6 +138,13 @@ class NotesFlowNode(
         override fun openMap(roomId: RoomId) = backstack.push(NavTarget.Map(roomId))
 
         override fun openMedia(roomId: RoomId) = backstack.push(NavTarget.Media(roomId))
+
+        override fun openHistory(roomId: RoomId) = backstack.push(NavTarget.Changes(roomId))
+
+        override fun openNoteHistory(roomId: RoomId, path: String) = backstack.push(NavTarget.NoteHistory(roomId, path))
+
+        override fun openNoteVersion(roomId: RoomId, path: String, commit: String, savedAt: String) =
+            backstack.push(NavTarget.NoteVersion(roomId, path, commit, savedAt))
 
         override fun combine(roomId: RoomId, path: String, editId: Long) = backstack.push(NavTarget.Editor(roomId, path, editId))
 
@@ -139,6 +163,12 @@ class NotesFlowNode(
         is NavTarget.Choices -> createNode<NotesChoicesNode>(buildContext, listOf(NotesChoicesNode.Inputs(navTarget.roomId), navigation))
         is NavTarget.Map -> createNode<NotesGraphNode>(buildContext, listOf(NotesGraphNode.Inputs(navTarget.roomId), navigation))
         is NavTarget.Media -> createNode<NotesMediaNode>(buildContext, listOf(NotesMediaNode.Inputs(navTarget.roomId), navigation))
+        is NavTarget.Changes -> createNode<NotesChangesNode>(buildContext, listOf(NotesChangesNode.Inputs(navTarget.roomId), navigation))
+        is NavTarget.NoteHistory -> createNode<NoteHistoryNode>(buildContext, listOf(NoteHistoryNode.Inputs(navTarget.roomId, navTarget.path), navigation))
+        is NavTarget.NoteVersion -> createNode<NoteVersionNode>(
+            buildContext,
+            listOf(NoteVersionNode.Inputs(NoteVersionPresenter.Version(navTarget.roomId, navTarget.path, navTarget.commit, navTarget.savedAt))),
+        )
     }
 
     @Composable

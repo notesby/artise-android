@@ -18,6 +18,7 @@ import co.artise.android.notes.api.MovedNote
 import co.artise.android.notes.api.Note
 import co.artise.android.notes.api.NoteLinks
 import co.artise.android.notes.api.NoteVersion
+import co.artise.android.notes.api.NotesChangesPage
 import co.artise.android.notes.api.NotesChat
 import co.artise.android.notes.api.NotesException
 import co.artise.android.notes.api.NotesFile
@@ -541,6 +542,8 @@ class NotesSyncEngine(
     override suspend fun graph(roomId: RoomId): Result<NotesGraph> = api.graph(roomId)
 
     override suspend fun history(roomId: RoomId, path: String): Result<List<NoteVersion>> = api.history(roomId, path)
+
+    override suspend fun changeHistory(roomId: RoomId, before: String?): Result<NotesChangesPage> = api.changes(roomId, before)
 
     override suspend fun noteAt(roomId: RoomId, path: String, commit: String): Result<Note> = api.note(roomId, path, atCommit = commit)
 

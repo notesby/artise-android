@@ -90,7 +90,33 @@ internal data class GraphDto(val nodes: List<String>, val edges: List<List<Strin
 internal data class HistoryDto(val path: String, val versions: List<VersionDto>)
 
 @Serializable
-internal data class VersionDto(val commit: String, val at: String, val message: String, val by: String)
+internal data class VersionDto(
+    val commit: String,
+    val at: String,
+    val message: String,
+    val by: String = "",
+    val who: String? = null,
+    val how: String? = null,
+    val detail: String = "",
+)
+
+@Serializable
+internal data class ChangesDto(val changes: List<ChangeDto> = emptyList(), val more: Boolean = false)
+
+@Serializable
+internal data class ChangeDto(
+    val commit: String,
+    val at: String,
+    val message: String,
+    val by: String = "",
+    val who: String? = null,
+    val how: String? = null,
+    val detail: String = "",
+    val files: List<ChangedFileDto> = emptyList(),
+)
+
+@Serializable
+internal data class ChangedFileDto(val path: String, val change: String, val from: String? = null)
 
 @Serializable
 internal data class ErrorDto(
