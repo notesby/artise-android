@@ -9,6 +9,7 @@ package co.artise.android.stickers.impl.share
 
 import co.artise.android.stickers.impl.maker.MadeSticker
 import co.artise.android.stickers.impl.packs.DefaultStickerRepository
+import co.artise.android.stickers.impl.packs.RecentAccountData
 import co.artise.android.stickers.impl.packs.StarterPack
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
@@ -31,13 +32,14 @@ class DefaultStickerAccount(
     private val matrixClientProvider: MatrixClientProvider,
     private val starterPack: StarterPack,
     private val dispatchers: CoroutineDispatchers,
+    private val recentAccountData: RecentAccountData,
 ) : StickerAccount {
     override suspend fun isSignedIn(): Boolean = sessionStore.getLatestSession() != null
 
     override suspend fun addToMyStickers(made: MadeSticker): Result<Unit> {
         val session = sessionStore.getLatestSession() ?: return Result.failure(IllegalStateException("Not signed in"))
         return matrixClientProvider.getOrRestore(SessionId(session.userId)).mapCatchingExceptions { client ->
-            DefaultStickerRepository(client, starterPack, dispatchers).addToMine(made.picture, STICKER_DESCRIPTION).getOrThrow()
+            DefaultStickerRepository(client, starterPack, dispatchers, recentAccountData).addToMine(made.picture, STICKER_DESCRIPTION).getOrThrow()
         }.map { }
     }
 

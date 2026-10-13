@@ -9,11 +9,16 @@ package co.artise.android.stickers.impl
 
 import co.artise.android.stickers.impl.packs.DefaultStickerRepository
 import co.artise.android.stickers.impl.packs.ImagePack
+import co.artise.android.stickers.impl.packs.RecentAccountData
 import co.artise.android.stickers.impl.packs.StarterPack
 import co.artise.android.stickers.impl.packs.StickerPicture
 import com.google.common.truth.Truth.assertThat
+import io.element.android.libraries.matrix.test.A_SESSION_ID
+import io.element.android.libraries.matrix.test.A_SESSION_ID_2
 import io.element.android.libraries.matrix.test.FakeMatrixClient
+import io.element.android.services.toolbox.test.systemclock.FakeSystemClock
 import io.element.android.tests.testutils.testCoroutineDispatchers
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
@@ -36,7 +41,28 @@ class StickerRepositoryTest {
         }
     }
 
-    private fun kotlinx.coroutines.test.TestScope.repository() = DefaultStickerRepository(client, starterPack, testCoroutineDispatchers())
+    private val clock = FakeSystemClock()
+    private val recent = RecentAccountData(clock)
+
+    private fun TestScope.repository(matrixClient: FakeMatrixClient = client) =
+        DefaultStickerRepository(matrixClient, starterPack, testCoroutineDispatchers(), recent)
+
+    /** Like the SDK: reads come from a local store that only gets this device's writes at the next [sync]. */
+    private class LaggingAccountData {
+        val server = mutableMapOf<String, String>()
+        private val store = mutableMapOf<String, String>()
+        val client = FakeMatrixClient(
+            getAccountDataLambda = { type -> Result.success(store[type]) },
+            setAccountDataLambda = { type, content ->
+                server[type] = content
+                Result.success(Unit)
+            },
+        ).apply { givenUploadMediaResult(Result.success("mxc://artise.co/new")) }
+
+        fun sync() = store.putAll(server)
+    }
+
+    private fun aPicture() = StickerPicture(byteArrayOf(9), 300, 200, "image/webp")
 
     /** A sticker made from a photo is uploaded and kept in the account's pack, so every device has it. */
     @Test
@@ -69,5 +95,68 @@ class StickerRepositoryTest {
         val repository = repository()
         repository.refresh().getOrThrow()
         assertThat(repository.myStickers.value.map { it.description }).containsExactly("Perro")
+    }
+
+    /** Two stickers saved before the next sync both stay: the second save adds to the pack the first one wrote, not the old one. */
+    @Test
+    fun `stickers saved in a row both stay before a sync`() = runTest {
+        val account = LaggingAccountData()
+        val repository = repository(account.client)
+        val first = repository.addToMine(aPicture(), "Uno").getOrThrow()
+        val second = repository.addToMine(aPicture(), "Dos").getOrThrow()
+        assertThat(second.id).isNotEqualTo(first.id)
+        assertThat(ImagePack.stickers(account.server[ImagePack.USER_PACK_EVENT_TYPE]).map { it.description }).containsExactly("Uno", "Dos")
+
+        // Removing one right away keeps the other.
+        repository.remove(first).getOrThrow()
+        assertThat(ImagePack.stickers(account.server[ImagePack.USER_PACK_EVENT_TYPE]).map { it.description }).containsExactly("Dos")
+        account.sync()
+        repository.refresh().getOrThrow()
+        assertThat(repository.myStickers.value.map { it.description }).containsExactly("Dos")
+    }
+
+    /** A refresh before the sync doesn't bring back the old pack. */
+    @Test
+    fun `a refresh before the sync keeps what was just saved`() = runTest {
+        val account = LaggingAccountData()
+        val repository = repository(account.client)
+        repository.addToMine(aPicture(), "Uno").getOrThrow()
+        repository.refresh().getOrThrow()
+        assertThat(repository.myStickers.value.map { it.description }).containsExactly("Uno")
+    }
+
+    /** A starter sticker sent twice before the next sync is uploaded once. */
+    @Test
+    fun `starter stickers upload once before a sync`() = runTest {
+        val account = LaggingAccountData()
+        val repository = repository(account.client)
+        val coffee = Sticker("starter:coffee", "Café", StickerSource.Starter("stickers/starter/coffee.webp"), 256, 256, "image/webp", 3)
+        repository.mxcUrlFor(coffee).getOrThrow()
+        repository.mxcUrlFor(coffee).getOrThrow()
+        assertThat(uploads).hasSize(1)
+    }
+
+    /** Once the store has caught up, or after 30 seconds, the store wins again: another device may have changed the pack since. */
+    @Test
+    fun `the store wins once it caught up or after 30 seconds`() {
+        recent.remember(A_SESSION_ID, "pack", "mine")
+        clock.epochMillisResult += 29_000
+        assertThat(recent.pick(A_SESSION_ID, "pack", "old")).isEqualTo("mine")
+        clock.epochMillisResult += 2_000
+        assertThat(recent.pick(A_SESSION_ID, "pack", "old")).isEqualTo("old")
+
+        recent.remember(A_SESSION_ID, "pack", "mine")
+        assertThat(recent.pick(A_SESSION_ID, "pack", "mine")).isEqualTo("mine")
+        assertThat(recent.pick(A_SESSION_ID, "pack", "from another device")).isEqualTo("from another device")
+    }
+
+    /** Stickers shared from other apps get a repository each; two in a row still both stay, and other accounts aren't mixed in. */
+    @Test
+    fun `separate repositories of one account share what was just written`() = runTest {
+        val account = LaggingAccountData()
+        repository(account.client).addToMine(aPicture(), "Uno").getOrThrow()
+        repository(account.client).addToMine(aPicture(), "Dos").getOrThrow()
+        assertThat(ImagePack.stickers(account.server[ImagePack.USER_PACK_EVENT_TYPE]).map { it.description }).containsExactly("Uno", "Dos")
+        assertThat(recent.pick(A_SESSION_ID_2, ImagePack.USER_PACK_EVENT_TYPE, null)).isNull()
     }
 }
