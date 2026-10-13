@@ -55,6 +55,7 @@ class DefaultStickerRepository(
     private val matrixClient: MatrixClient,
     private val starterPack: StarterPack,
     private val dispatchers: CoroutineDispatchers,
+    private val recent: RecentAccountData,
 ) : StickerRepository {
     private val mine = MutableStateFlow<List<Sticker>>(emptyList())
     override val myStickers: StateFlow<List<Sticker>> = mine.asStateFlow()
@@ -62,7 +63,7 @@ class DefaultStickerRepository(
     // Reading and writing the pack happen one at a time, so two stickers saved together both stay.
     private val packLock = Mutex()
 
-    override suspend fun refresh(): Result<Unit> = matrixClient.getAccountData(ImagePack.USER_PACK_EVENT_TYPE).map { content ->
+    override suspend fun refresh(): Result<Unit> = readAccountData(ImagePack.USER_PACK_EVENT_TYPE).map { content ->
         mine.value = ImagePack.stickers(content)
     }
 
@@ -84,10 +85,10 @@ class DefaultStickerRepository(
 
     override suspend fun addUploaded(sticker: Sticker): Result<Sticker> = runCatchingExceptions {
         packLock.withLock {
-            val content = matrixClient.getAccountData(ImagePack.USER_PACK_EVENT_TYPE).getOrThrow()
+            val content = readAccountData(ImagePack.USER_PACK_EVENT_TYPE).getOrThrow()
             val shortcode = ImagePack.freeShortcode(content)
             val updated = ImagePack.withSticker(content, shortcode, sticker, PACK_NAME)
-            matrixClient.setAccountData(ImagePack.USER_PACK_EVENT_TYPE, updated).getOrThrow()
+            writeAccountData(ImagePack.USER_PACK_EVENT_TYPE, updated).getOrThrow()
             mine.value = ImagePack.stickers(updated)
             sticker.copy(id = shortcode)
         }
@@ -95,9 +96,9 @@ class DefaultStickerRepository(
 
     override suspend fun remove(sticker: Sticker): Result<Unit> = runCatchingExceptions {
         packLock.withLock {
-            val content = matrixClient.getAccountData(ImagePack.USER_PACK_EVENT_TYPE).getOrThrow()
+            val content = readAccountData(ImagePack.USER_PACK_EVENT_TYPE).getOrThrow()
             val updated = ImagePack.withoutSticker(content, sticker.id)
-            matrixClient.setAccountData(ImagePack.USER_PACK_EVENT_TYPE, updated).getOrThrow()
+            writeAccountData(ImagePack.USER_PACK_EVENT_TYPE, updated).getOrThrow()
             mine.value = ImagePack.stickers(updated)
         }
     }
@@ -106,17 +107,24 @@ class DefaultStickerRepository(
         is StickerSource.Uploaded -> Result.success(source.mxcUrl)
         is StickerSource.Starter -> runCatchingExceptions {
             packLock.withLock {
-                val uploads = matrixClient.getAccountData(UPLOADS_EVENT_TYPE).getOrThrow().toJsonObject()
+                val uploads = readAccountData(UPLOADS_EVENT_TYPE).getOrThrow().toJsonObject()
                 (uploads[sticker.id] as? JsonPrimitive)?.content ?: run {
                     val bytes = withContext(dispatchers.io) { starterPack.bytes(source.assetPath) }
                     val url = matrixClient.uploadMedia(sticker.mimeType, bytes).getOrThrow()
                     val updated = JsonObject(uploads + (sticker.id to JsonPrimitive(url)))
-                    matrixClient.setAccountData(UPLOADS_EVENT_TYPE, updated.toString()).getOrThrow()
+                    writeAccountData(UPLOADS_EVENT_TYPE, updated.toString()).getOrThrow()
                     url
                 }
             }
         }
     }
+
+    // The store lags behind our own writes until the next sync: reads go through what we wrote last.
+    private suspend fun readAccountData(eventType: String): Result<String?> =
+        matrixClient.getAccountData(eventType).map { recent.pick(matrixClient.sessionId, eventType, it) }
+
+    private suspend fun writeAccountData(eventType: String, content: String): Result<Unit> =
+        matrixClient.setAccountData(eventType, content).onSuccess { recent.remember(matrixClient.sessionId, eventType, content) }
 
     private fun String?.toJsonObject(): Map<String, kotlinx.serialization.json.JsonElement> =
         this?.let { runCatchingExceptions { Json.parseToJsonElement(it).jsonObject }.getOrNull() } ?: emptyMap()
