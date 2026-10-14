@@ -72,6 +72,8 @@ dependencies {
     implementation(projects.libraries.preferences.api)
     implementation(projects.libraries.uiUtils)
     implementation(projects.libraries.wellknown.api)
+    // Artise: the "Your workspace" step and the workspace's name and logo on the password screen.
+    implementation(projects.artise.workspace.api)
     implementation(libs.androidx.browser)
     implementation(libs.androidx.webkit)
     implementation(libs.serialization.json)
@@ -87,6 +89,7 @@ dependencies {
     testImplementation(projects.libraries.permissions.test)
     testImplementation(projects.libraries.sessionStorage.test)
     testImplementation(projects.libraries.wellknown.test)
+    testImplementation(projects.artise.workspace.test)
     testImplementation(libs.androidx.camera.camera2)
     testImplementation(libs.androidx.camera.lifecycle)
 }

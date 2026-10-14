@@ -8,7 +8,9 @@
 package co.artise.android.enterprise
 
 import app.cash.turbine.test
+import co.artise.android.workspace.api.SignInWorkspace
 import co.artise.android.workspace.api.WorkspaceConfig
+import co.artise.android.workspace.test.FakeSignInWorkspaceHolder
 import co.artise.android.workspace.test.FakeWorkspaceConfigRepository
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.enterprise.api.BugReportUrl
@@ -19,25 +21,24 @@ import org.junit.Test
 
 class ArtiseEnterpriseServiceTest {
     private val workspaces = FakeWorkspaceConfigRepository()
-    private val service = ArtiseEnterpriseService(workspaces)
+    private val signIn = FakeSignInWorkspaceHolder()
+    private val service = ArtiseEnterpriseService(workspaces, signIn)
 
-    /** Sign-in offers artise.co and nothing else, and the user can't type another server. */
+    /** No server is offered or typed in Element's screens: sign-in starts with the workspace's name. */
     @Test
-    fun `only artise co is offered`() {
-        assertThat(service.accountProviderAllowList()).containsExactly(artiseAccountProvider)
+    fun `no fixed server`() {
+        assertThat(service.accountProviderAllowList()).isEmpty()
         assertThat(service.canConnectToAnyAccountProvider()).isFalse()
     }
 
-    /** artise.co is accepted whether typed as the server name or the base URL, in any case. */
+    /** artise.co, and the workspace chosen at sign-in, are accepted by server name or URL, in any case; others are refused. */
     @Test
-    fun `artise co is allowed by name or base url`() = runTest {
+    fun `only artise co and the chosen workspace are allowed`() = runTest {
         assertThat(service.isAllowedToConnectToAccountProvider(AccountProvider.Generic("Artise.co"))).isTrue()
         assertThat(service.isAllowedToConnectToAccountProvider(AccountProvider.Generic("https://artise.co/"))).isTrue()
-    }
-
-    /** Any other server, matrix.org included, is refused. */
-    @Test
-    fun `other servers are refused`() = runTest {
+        assertThat(service.isAllowedToConnectToAccountProvider(AccountProvider.Generic("acme.artise.co"))).isFalse()
+        signIn.choose(SignInWorkspace("acme", "Acme", "acme.artise.co", logoUrl = null))
+        assertThat(service.isAllowedToConnectToAccountProvider(AccountProvider.Generic("acme.artise.co"))).isTrue()
         assertThat(service.isAllowedToConnectToAccountProvider(AccountProvider.Generic("matrix.org"))).isFalse()
         assertThat(service.isAllowedToConnectToAccountProvider(AccountProvider.Generic("artise.co.evil.example"))).isFalse()
     }

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<resources>
+    <string name="screen_workspace_title">Tu espacio de trabajo</string>
+    <string name="screen_workspace_subtitle">Escribe el nombre de tu espacio de trabajo. Tu administrador te lo puede decir.</string>
+    <string name="screen_workspace_field_label">Espacio de trabajo</string>
+    <string name="screen_workspace_error_invalid">Ese nombre no es válido. Usa de 3 a 30 letras, números o guiones.</string>
+    <string name="screen_workspace_error_not_found">No hay ningún espacio de trabajo llamado %1$s</string>
+    <string name="screen_workspace_error_paused">Este espacio de trabajo está en pausa. Habla con su administrador.</string>
+    <string name="screen_workspace_error_too_many_tries">Demasiados intentos. Espera un minuto y vuelve a intentarlo.</string>
+    <string name="screen_workspace_error_unreachable">No se puede conectar con Artise. Revisa tu conexión y vuelve a intentarlo.</string>
+    <string name="screen_workspace_error_server_unreachable">No se puede conectar con el servidor de %1$s ahora. Inténtalo de nuevo en un momento.</string>
+    <string name="screen_workspace_error_no_password">%1$s no usa usuario y contraseña, así que no puedes entrar desde aquí.</string>
+</resources>

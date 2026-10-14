@@ -30,6 +30,8 @@ dependencies {
     api(projects.artise.workspace.api)
     implementation(projects.libraries.architecture)
     implementation(projects.libraries.core)
+    implementation(projects.libraries.designsystem)
+    implementation(projects.libraries.uiStrings)
     implementation(projects.libraries.di)
     implementation(projects.libraries.matrix.api)
     implementation(projects.libraries.network)
@@ -45,4 +47,5 @@ dependencies {
     testImplementation(projects.services.toolbox.test)
     testImplementation(projects.services.appnavstate.test)
     testImplementation(libs.network.mockwebserver)
+    testImplementation(projects.artise.workspace.test)
 }

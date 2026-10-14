@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
+import co.artise.android.workspace.api.WorkspaceSignInEntryPoint
 import com.bumble.appyx.core.lifecycle.subscribe
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.Node
@@ -65,6 +66,8 @@ class LoginFlowNode(
     private val appCoroutineScope: CoroutineScope,
     private val elementClassicConnection: ElementClassicConnection,
     private val preferencesEntryPoint: PreferencesEntryPoint,
+    // Artise: signing in starts with the workspace's name.
+    private val workspaceSignInEntryPoint: WorkspaceSignInEntryPoint,
 ) : BaseFlowNode<LoginFlowNode.NavTarget>(
     backstack = BackStack(
         initialElement = NavTarget.CheckClassicFlow,
@@ -126,6 +129,10 @@ class LoginFlowNode(
         @Parcelize
         data object ChooseAccountProvider : NavTarget
 
+        // Artise: "Your workspace", before the password screen.
+        @Parcelize
+        data object Workspace : NavTarget
+
         @Parcelize
         data class LoginPassword(
             val initialLogin: String = "",
@@ -163,13 +170,8 @@ class LoginFlowNode(
                     }
 
                     override fun navigateToSignInFlow(mustChooseAccountProvider: Boolean) {
-                        backstack.push(
-                            if (mustChooseAccountProvider) {
-                                NavTarget.ChooseAccountProvider
-                            } else {
-                                NavTarget.ConfirmAccountProvider(isAccountCreation = false)
-                            }
-                        )
+                        // Artise: every sign-in starts with the workspace's name, instead of choosing or confirming a server.
+                        backstack.push(NavTarget.Workspace)
                     }
 
                     override fun navigateToQrCode() {
@@ -254,6 +256,17 @@ class LoginFlowNode(
                     }
                 }
                 createNode<ConfirmAccountProviderNode>(buildContext, plugins = listOf(inputs, callback))
+            }
+            NavTarget.Workspace -> {
+                val callback = object : WorkspaceSignInEntryPoint.Callback {
+                    override fun onWorkspaceReady(serverName: String) {
+                        lifecycleScope.launch {
+                            accountProviderDataSource.setUrl(serverName)
+                            backstack.push(NavTarget.LoginPassword())
+                        }
+                    }
+                }
+                workspaceSignInEntryPoint.createNode(this, buildContext, WorkspaceSignInEntryPoint.Params(), callback)
             }
             is NavTarget.LoginPassword -> {
                 val inputs = LoginPasswordNode.Inputs(
