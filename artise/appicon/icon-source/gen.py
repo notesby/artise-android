@@ -1,6 +1,6 @@
 """Generate the Artise launcher icon: SVG previews, Android vector drawables and PNGs.
 
-One geometry, three outputs, so the preview is exactly what ships.
+One geometry, three outputs, so the preview is exactly what ships. Also the welcome screen's logo (onboarding_logo).
 Canvas is the adaptive-icon 108x108 dp; the mark stays inside the 66 dp safe circle.
 """
 import math
@@ -64,10 +64,8 @@ def sparkle(cx, cy, r, pinch=0.16):
 
 
 # A house whose base turns into a chat bubble's tail: home + conversation.
-HOUSE = rounded_polygon(
-    [(54, 27), (80, 46.5), (80, 71), (49, 71), (39.5, 81), (39.5, 71), (28, 71), (28, 46.5)],
-    [4.5, 4, 5, 2.5, 1.8, 1.2, 5, 4],
-)
+HOUSE_POINTS = [(54, 27), (80, 46.5), (80, 71), (49, 71), (39.5, 81), (39.5, 71), (28, 71), (28, 46.5)]
+HOUSE = rounded_polygon(HOUSE_POINTS, [4.5, 4, 5, 2.5, 1.8, 1.2, 5, 4])
 # Ari: one big sparkle and a small companion.
 SPARK_BIG = sparkle(52, 55.5, 11.5)
 SPARK_SMALL = sparkle(66.5, 45.5, 4.6)
@@ -147,6 +145,52 @@ MONO_XML = HEADER + f"""<vector xmlns:android="http://schemas.android.com/apk/re
 </vector>
 """
 
+# Welcome screen logo (Element X shows a drawable named "onboarding_logo" instead of its own): the mark on a circle filled with
+# the icon's gradient, the mark taking about 58% of the circle's width. The mark is centred on (54, 54).
+MARK_WIDTH = (max(x for x, _ in HOUSE_POINTS) - min(x for x, _ in HOUSE_POINTS)) * SCALE
+LOGO_R = round(MARK_WIDTH / 0.58 / 2, 2)
+LOGO_SIZE_DP = 160
+LOGO_CIRCLE = f"M{54 - LOGO_R:.2f},54 a{LOGO_R},{LOGO_R} 0 1,0 {2 * LOGO_R:.2f},0 a{LOGO_R},{LOGO_R} 0 1,0 {-2 * LOGO_R:.2f},0 Z"
+
+ONBOARDING_LOGO_XML = HEADER + f"""<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="{LOGO_SIZE_DP}dp"
+    android:height="{LOGO_SIZE_DP}dp"
+    android:viewportWidth="{2 * LOGO_R:.2f}"
+    android:viewportHeight="{2 * LOGO_R:.2f}">
+    <group
+        android:translateX="{LOGO_R - 54:.2f}"
+        android:translateY="{LOGO_R - 54:.2f}">
+        <path android:pathData="{LOGO_CIRCLE}">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="{54 - LOGO_R:.2f}"
+                    android:startY="{54 - LOGO_R:.2f}"
+                    android:endX="{54 + LOGO_R:.2f}"
+                    android:endY="{54 + LOGO_R:.2f}">
+                    <item android:offset="0" android:color="{BLUE_LIGHT}" />
+                    <item android:offset="1" android:color="{BLUE_DEEP}" />
+                </gradient>
+            </aapt:attr>
+        </path>
+        <path android:fillColor="{YELLOW}" android:pathData="{HOUSE}" />
+        <path android:fillColor="{BLUE}" android:pathData="{SPARK_BIG}" />
+        <path android:fillColor="{BLUE}" android:pathData="{SPARK_SMALL}" />
+    </group>
+</vector>
+"""
+
+ONBOARDING_LOGO_SVG = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="{54 - LOGO_R:.2f} {54 - LOGO_R:.2f} {2 * LOGO_R:.2f} {2 * LOGO_R:.2f}">
+  <defs><linearGradient id="g" x1="{54 - LOGO_R:.2f}" y1="{54 - LOGO_R:.2f}" x2="{54 + LOGO_R:.2f}" y2="{54 + LOGO_R:.2f}" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="{BLUE_LIGHT}"/><stop offset="1" stop-color="{BLUE_DEEP}"/>
+  </linearGradient></defs>
+  <path d="{LOGO_CIRCLE}" fill="url(#g)"/>
+  <path d="{HOUSE}" fill="{YELLOW}"/>
+  <path d="{SPARK_BIG}" fill="{BLUE}"/>
+  <path d="{SPARK_SMALL}" fill="{BLUE}"/>
+</svg>"""
+
 
 def full_icon_svg(mask):
     """Background plus foreground, clipped to a launcher mask ('square' for Play, 'circle', 'squircle')."""
@@ -169,6 +213,8 @@ def full_icon_svg(mask):
 (OUT / "ic_launcher_monochrome.xml").write_text(MONO_XML)
 (OUT / "foreground.svg").write_text(FOREGROUND_SVG)
 (OUT / "monochrome.svg").write_text(MONO_SVG)
+(OUT / "onboarding_logo.xml").write_text(ONBOARDING_LOGO_XML)
+(OUT / "onboarding_logo.svg").write_text(ONBOARDING_LOGO_SVG)
 
 # Play Store: 512x512, 32-bit PNG, full square (Play applies its own rounding).
 # The adaptive canvas is 108 dp but launchers show the middle 72 dp, so Play's icon zooms to that area.
@@ -178,5 +224,6 @@ cairosvg.svg2png(bytestring=play.encode(), write_to=str(OUT / "ic_launcher-plays
 for mask in ("circle", "visible"):
     svg = full_icon_svg(mask).replace('viewBox="0 0 108 108"', 'viewBox="18 18 72 72"').replace('r="54"', 'r="36"')
     cairosvg.svg2png(bytestring=svg.encode(), write_to=str(OUT / f"preview_{mask}.png"), output_width=256, output_height=256)
+cairosvg.svg2png(bytestring=ONBOARDING_LOGO_SVG.encode(), write_to=str(OUT / "preview_onboarding_logo.png"), output_width=320, output_height=320)
 cairosvg.svg2png(bytestring=MONO_SVG.encode(), write_to=str(OUT / "preview_mono.png"), output_width=256, output_height=256)
 print("written to", OUT)
