@@ -8,6 +8,8 @@
 package co.artise.android.enterprise
 
 import app.cash.turbine.test
+import co.artise.android.workspace.api.WorkspaceConfig
+import co.artise.android.workspace.test.FakeWorkspaceConfigRepository
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.enterprise.api.BugReportUrl
 import io.element.android.libraries.matrix.api.accountprovider.AccountProvider
@@ -16,7 +18,8 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
 class ArtiseEnterpriseServiceTest {
-    private val service = ArtiseEnterpriseService()
+    private val workspaces = FakeWorkspaceConfigRepository()
+    private val service = ArtiseEnterpriseService(workspaces)
 
     /** Sign-in offers artise.co and nothing else, and the user can't type another server. */
     @Test
@@ -63,10 +66,12 @@ class ArtiseEnterpriseServiceTest {
         }
     }
 
-    /** Firebase pushes go through Artise's Sygnal on matrix.artise.co; UnifiedPush keeps the app default. */
+    /** Firebase pushes go through Artise's shared gateway, unless the account's workspace names its own; UnifiedPush keeps the app default. */
     @Test
-    fun `firebase pushes use the artise gateway`() {
-        assertThat(service.firebasePushGateway()).isEqualTo("https://matrix.artise.co/_matrix/push/v1/notify")
+    fun `firebase pushes use the workspace gateway`() {
+        assertThat(service.firebasePushGateway(A_SESSION_ID)).isEqualTo("https://push.artise.co/_matrix/push/v1/notify")
+        workspaces.givenConfig(A_SESSION_ID, WorkspaceConfig(pushGateway = "https://push.acme.example/_matrix/push/v1/notify"))
+        assertThat(service.firebasePushGateway(A_SESSION_ID)).isEqualTo("https://push.acme.example/_matrix/push/v1/notify")
         assertThat(service.unifiedPushDefaultPushGateway()).isNull()
     }
 }

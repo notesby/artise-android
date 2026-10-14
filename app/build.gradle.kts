@@ -298,6 +298,8 @@ dependencies {
         implementation(projects.artise.enterprise)
         implementation(projects.artise.appicon)
         implementation(projects.artise.notes.impl)
+        // Artise: workspaces (lookup, workspace file and branding, push gateway per account).
+        implementation(projects.artise.workspace.impl)
     }
     allFeaturesImpl(project)
     implementation(projects.features.migration.api)

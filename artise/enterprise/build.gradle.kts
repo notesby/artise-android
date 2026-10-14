@@ -20,6 +20,7 @@ setupDependencyInjection()
 
 dependencies {
     implementation(projects.libraries.compound)
+    implementation(projects.artise.workspace.api)
     api(projects.features.enterprise.api)
     implementation(projects.features.enterprise.implFoss)
     implementation(projects.libraries.architecture)
@@ -29,4 +30,5 @@ dependencies {
 
     testCommonDependencies(libs)
     testImplementation(projects.libraries.matrix.test)
+    testImplementation(projects.artise.workspace.test)
 }

@@ -89,7 +89,7 @@ class DefaultEnterpriseServiceTest {
     @Test
     fun `firebasePushGateway returns null`() = runTest {
         val defaultEnterpriseService = createDefaultEnterpriseService()
-        assertThat(defaultEnterpriseService.firebasePushGateway()).isNull()
+        assertThat(defaultEnterpriseService.firebasePushGateway(A_SESSION_ID)).isNull()
     }
 
     @Test
