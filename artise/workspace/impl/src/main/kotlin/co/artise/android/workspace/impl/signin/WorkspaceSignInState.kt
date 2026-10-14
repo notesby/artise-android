@@ -15,6 +15,8 @@ data class WorkspaceSignInState(
     val problem: WorkspaceProblem?,
     /** Set once the server is ready; the node then moves on to the password screen. */
     val readyServerName: String?,
+    /** An invite's join page to open in the browser (once), where the person picks a username and password. */
+    val joinPageUrl: String?,
     val eventSink: (WorkspaceSignInEvent) -> Unit,
 )
 
@@ -37,6 +39,9 @@ sealed interface WorkspaceProblem {
 
     /** The server doesn't take a username and password. */
     data class NoPasswordSignIn(val name: String) : WorkspaceProblem
+
+    /** The workspace doesn't take invites from the app yet (its server has no join page). */
+    data object InviteUnavailable : WorkspaceProblem
 }
 
 sealed interface WorkspaceSignInEvent {
@@ -46,4 +51,9 @@ sealed interface WorkspaceSignInEvent {
 
     /** The node moved on to the password screen. */
     data object ReadyHandled : WorkspaceSignInEvent
+
+    data object JoinPageOpened : WorkspaceSignInEvent
+
+    /** Back from the browser (or any return to the screen): after a join page, sign-in for its workspace goes on. */
+    data object Resumed : WorkspaceSignInEvent
 }

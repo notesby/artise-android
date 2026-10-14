@@ -31,6 +31,7 @@ dependencies {
     implementation(projects.libraries.architecture)
     implementation(projects.libraries.core)
     implementation(projects.libraries.designsystem)
+    implementation(projects.libraries.androidutils)
     implementation(projects.libraries.uiStrings)
     implementation(projects.libraries.di)
     implementation(projects.libraries.matrix.api)

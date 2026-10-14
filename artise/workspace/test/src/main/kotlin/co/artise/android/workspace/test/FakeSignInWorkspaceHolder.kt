@@ -9,6 +9,7 @@ package co.artise.android.workspace.test
 
 import co.artise.android.workspace.api.SignInWorkspace
 import co.artise.android.workspace.api.SignInWorkspaceHolder
+import co.artise.android.workspace.api.WorkspaceInvite
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -26,4 +27,14 @@ class FakeSignInWorkspaceHolder(
     }
 
     override fun lastTyped(): String? = lastTyped
+
+    private val invite = MutableStateFlow<WorkspaceInvite?>(null)
+
+    override val pendingInvite: StateFlow<WorkspaceInvite?> = invite
+
+    override fun offerInvite(invite: WorkspaceInvite) {
+        this.invite.value = invite
+    }
+
+    override fun takeInvite(): WorkspaceInvite? = invite.value.also { invite.value = null }
 }

@@ -113,6 +113,7 @@ private fun problemText(problem: WorkspaceProblem): String = when (problem) {
     WorkspaceProblem.Unreachable -> stringResource(R.string.screen_workspace_error_unreachable)
     is WorkspaceProblem.ServerUnreachable -> stringResource(R.string.screen_workspace_error_server_unreachable, problem.name)
     is WorkspaceProblem.NoPasswordSignIn -> stringResource(R.string.screen_workspace_error_no_password, problem.name)
+    WorkspaceProblem.InviteUnavailable -> stringResource(R.string.screen_workspace_error_invite_unavailable)
 }
 
 @PreviewsDayNight

@@ -7,9 +7,11 @@
 
 package co.artise.android.workspace.impl.signin
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import co.artise.android.workspace.api.WorkspaceSignInEntryPoint
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.Node
@@ -18,6 +20,8 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedInject
 import io.element.android.annotations.ContributesNode
+import io.element.android.compound.theme.ElementTheme
+import io.element.android.libraries.androidutils.browser.openUrlInChromeCustomTab
 import io.element.android.libraries.architecture.callback
 import io.element.android.libraries.architecture.inputs
 
@@ -34,6 +38,18 @@ class WorkspaceSignInNode(
     @Composable
     override fun View(modifier: Modifier) {
         val state = presenter.present()
+        val activity = LocalActivity.current
+        val isDark = !ElementTheme.isLightTheme
+        // An invite's join page, in the browser; coming back (resume) lets sign-in go on.
+        LaunchedEffect(state.joinPageUrl) {
+            val url = state.joinPageUrl ?: return@LaunchedEffect
+            activity?.openUrlInChromeCustomTab(null, darkTheme = isDark, url = url)
+            state.eventSink(WorkspaceSignInEvent.JoinPageOpened)
+        }
+        LifecycleResumeEffect(Unit) {
+            state.eventSink(WorkspaceSignInEvent.Resumed)
+            onPauseOrDispose {}
+        }
         LaunchedEffect(state.readyServerName) {
             state.readyServerName?.let {
                 state.eventSink(WorkspaceSignInEvent.ReadyHandled)

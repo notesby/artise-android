@@ -116,6 +116,20 @@
                 <data android:path="/element/" />
             </intent-filter>
             <!--
+              Artise: workspace invite links, https://join.artise.co/{workspace}/{code}
+              Matching asset file: https://join.artise.co/.well-known/assetlinks.json
+            -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="https" />
+                <data android:host="join.artise.co" />
+                <data android:pathPattern="/..*/..*" />
+            </intent-filter>
+            <!--
               matrix: links
             -->
             <intent-filter>

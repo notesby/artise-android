@@ -13,6 +13,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import co.artise.android.accountdeletion.AccountDeletion
+import co.artise.android.workspace.test.FakeSignInWorkspaceHolder
 import com.bumble.appyx.core.modality.AncestryInfo
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.node
@@ -194,6 +195,7 @@ class RootFlowNodeTest : RobolectricTest() {
 
                 override fun consumeStarted() = false
             },
+            signInWorkspaceHolder = FakeSignInWorkspaceHolder(),
             appCoroutineScope = backgroundScope,
         )
     }

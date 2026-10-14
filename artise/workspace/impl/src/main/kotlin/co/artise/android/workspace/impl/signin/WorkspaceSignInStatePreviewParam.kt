@@ -29,5 +29,6 @@ internal fun aWorkspaceSignInState(
     isLoading = isLoading,
     problem = problem,
     readyServerName = null,
+    joinPageUrl = null,
     eventSink = {},
 )

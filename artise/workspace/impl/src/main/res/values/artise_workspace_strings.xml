@@ -17,4 +17,5 @@
     <string name="screen_workspace_error_unreachable">Can\'t reach Artise. Check your connection and try again.</string>
     <string name="screen_workspace_error_server_unreachable">Can\'t reach %1$s\'s server right now. Try again in a moment.</string>
     <string name="screen_workspace_error_no_password">%1$s doesn\'t use a username and password, so you can\'t sign in to it here.</string>
+    <string name="screen_workspace_error_invite_unavailable">This invite can\'t be opened in the app yet. Open the link in your browser instead.</string>
 </resources>

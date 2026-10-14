@@ -62,6 +62,7 @@ dependencies {
 
     testCommonDependencies(libs)
     testImplementation(projects.features.login.test)
+    testImplementation(projects.artise.workspace.test)
     testImplementation(projects.features.share.test)
     testImplementation(projects.libraries.accountselect.test)
     testImplementation(projects.libraries.featureflag.test)

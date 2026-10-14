@@ -15,8 +15,11 @@ import io.element.android.libraries.architecture.NodeInputs
 
 /** The "Your workspace" step of signing in: finds the workspace's server and gets it ready for the password screen. */
 interface WorkspaceSignInEntryPoint : FeatureEntryPoint {
-    /** [workspace] prefills the field (an invite link's workspace) and, with [continueRightAway], looks it up straight away. */
-    data class Params(val workspace: String? = null, val continueRightAway: Boolean = false) : NodeInputs
+    /**
+     * [workspace] prefills the field. With an [invite], the workspace is looked up straight away and the invite's join page opens in
+     * the browser (to pick a username and password); when it's closed, sign-in for that workspace goes on.
+     */
+    data class Params(val workspace: String? = null, val invite: WorkspaceInvite? = null) : NodeInputs
 
     fun createNode(parentNode: Node, buildContext: BuildContext, params: Params, callback: Callback): Node
 

@@ -52,10 +52,12 @@ class WorkspaceSignInPresenter(
     @Composable
     override fun present(): WorkspaceSignInState {
         val scope = rememberCoroutineScope()
-        var input by rememberSaveable { mutableStateOf(params.workspace ?: holder.lastTyped().orEmpty()) }
+        var input by rememberSaveable { mutableStateOf(params.invite?.slug ?: params.workspace ?: holder.lastTyped().orEmpty()) }
         var isLoading by remember { mutableStateOf(false) }
         var problem by remember { mutableStateOf<WorkspaceProblem?>(null) }
         var readyServerName by remember { mutableStateOf<String?>(null) }
+        var joinPageUrl by remember { mutableStateOf<String?>(null) }
+        var awaitingJoinPage by rememberSaveable { mutableStateOf(false) }
 
         fun submit() {
             if (isLoading) return
@@ -73,8 +75,19 @@ class WorkspaceSignInPresenter(
             }
         }
 
+        // An invite: look the workspace up and open its join page; sign-in goes on when the person comes back.
         LaunchedEffect(Unit) {
-            if (params.continueRightAway && input.isNotBlank()) submit()
+            val invite = params.invite ?: return@LaunchedEffect
+            if (awaitingJoinPage) return@LaunchedEffect
+            isLoading = true
+            when (val found = lookup.find(invite.slug)) {
+                is WorkspaceLookupResult.Found -> {
+                    val joinUrl = found.workspace.joinUrl
+                    if (joinUrl == null) problem = WorkspaceProblem.InviteUnavailable else joinPageUrl = joinUrl.trimEnd('/') + "/" + invite.code
+                }
+                else -> problem = problemOf(found, invite.slug)
+            }
+            isLoading = false
         }
 
         return WorkspaceSignInState(
@@ -82,6 +95,7 @@ class WorkspaceSignInPresenter(
             isLoading = isLoading,
             problem = problem,
             readyServerName = readyServerName,
+            joinPageUrl = joinPageUrl,
             eventSink = { event ->
                 when (event) {
                     is WorkspaceSignInEvent.InputChanged -> {
@@ -90,6 +104,14 @@ class WorkspaceSignInPresenter(
                     }
                     WorkspaceSignInEvent.Continue -> submit()
                     WorkspaceSignInEvent.ReadyHandled -> readyServerName = null
+                    WorkspaceSignInEvent.JoinPageOpened -> {
+                        joinPageUrl = null
+                        awaitingJoinPage = true
+                    }
+                    WorkspaceSignInEvent.Resumed -> if (awaitingJoinPage) {
+                        awaitingJoinPage = false
+                        submit()
+                    }
                 }
             },
         )
@@ -106,11 +128,7 @@ class WorkspaceSignInPresenter(
         val (serverName, lookupName) = when (val found = lookup.find(input)) {
             is WorkspaceLookupResult.Found -> found.workspace.serverName to found.workspace.name
             is WorkspaceLookupResult.ServerName -> found.serverName to null
-            WorkspaceLookupResult.Invalid -> return Resolved.Problem(WorkspaceProblem.Invalid)
-            is WorkspaceLookupResult.NotFound -> return Resolved.Problem(WorkspaceProblem.NotFound(typed))
-            is WorkspaceLookupResult.Suspended -> return Resolved.Problem(WorkspaceProblem.Paused)
-            WorkspaceLookupResult.TooManyTries -> return Resolved.Problem(WorkspaceProblem.TooManyTries)
-            WorkspaceLookupResult.Unreachable -> return Resolved.Problem(WorkspaceProblem.Unreachable)
+            else -> return Resolved.Problem(problemOf(found, typed))
         }
         return coroutineScope {
             val config = async { withTimeoutOrNull(BRANDING_TIMEOUT) { configRepository.fetch(serverName) } }
@@ -127,6 +145,14 @@ class WorkspaceSignInPresenter(
                 onFailure = { Resolved.Problem(WorkspaceProblem.ServerUnreachable(name)) },
             )
         }
+    }
+
+    private fun problemOf(result: WorkspaceLookupResult, typed: String): WorkspaceProblem = when (result) {
+        is WorkspaceLookupResult.NotFound -> WorkspaceProblem.NotFound(typed)
+        is WorkspaceLookupResult.Suspended -> WorkspaceProblem.Paused
+        WorkspaceLookupResult.TooManyTries -> WorkspaceProblem.TooManyTries
+        WorkspaceLookupResult.Unreachable -> WorkspaceProblem.Unreachable
+        WorkspaceLookupResult.Invalid, is WorkspaceLookupResult.Found, is WorkspaceLookupResult.ServerName -> WorkspaceProblem.Invalid
     }
 
     private companion object {

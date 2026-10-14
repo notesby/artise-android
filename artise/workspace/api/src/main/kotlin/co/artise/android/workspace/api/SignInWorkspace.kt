@@ -20,11 +20,21 @@ data class SignInWorkspace(
     val logoUrl: String?,
 )
 
-/** Remembers the workspace chosen while signing in, and the last one used to prefill the field next time. */
+/**
+ * Remembers the workspace chosen while signing in, the last one used to prefill the field next time, and an invite link waiting for
+ * the sign-in screens.
+ */
 interface SignInWorkspaceHolder {
     val current: StateFlow<SignInWorkspace?>
 
     fun choose(workspace: SignInWorkspace)
 
     fun lastTyped(): String?
+
+    /** An invite link opened while signed out, waiting for the sign-in screens to [takeInvite] it and open its join page. */
+    val pendingInvite: StateFlow<WorkspaceInvite?>
+
+    fun offerInvite(invite: WorkspaceInvite)
+
+    fun takeInvite(): WorkspaceInvite?
 }

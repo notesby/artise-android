@@ -10,6 +10,7 @@ package co.artise.android.workspace.impl.signin
 import co.artise.android.workspace.api.SignInWorkspace
 import co.artise.android.workspace.api.Workspace
 import co.artise.android.workspace.api.WorkspaceConfig
+import co.artise.android.workspace.api.WorkspaceInvite
 import co.artise.android.workspace.api.WorkspaceLookup
 import co.artise.android.workspace.api.WorkspaceLookupResult
 import co.artise.android.workspace.api.WorkspaceSignInEntryPoint
@@ -127,17 +128,49 @@ class WorkspaceSignInPresenterTest {
         }
     }
 
-    /** The field starts with the last workspace used; an invite link's workspace wins and is looked up right away. */
+    /** The field starts with the last workspace used. */
     @Test
-    fun `prefill and invite links`() = runTest {
+    fun `prefill with the last workspace`() = runTest {
         presenter(holder = FakeSignInWorkspaceHolder(lastTyped = "artise")).test {
             assertThat(awaitItem().input).isEqualTo("artise")
         }
+    }
+
+    /**
+     * An invite link: its workspace fills the field and is looked up, the join page opens; back from it, sign-in for that workspace
+     * goes on by itself.
+     */
+    @Test
+    fun `an invite opens its join page, then sign-in`() = runTest {
+        val invite = WorkspaceInvite("acme", "Ab3_xyZ9")
         presenter(
+            lookupResult = { WorkspaceLookupResult.Found(acme.copy(joinUrl = "https://join.artise.co/acme")) },
             holder = FakeSignInWorkspaceHolder(lastTyped = "artise"),
-            params = WorkspaceSignInEntryPoint.Params(workspace = "acme", continueRightAway = true),
+            params = WorkspaceSignInEntryPoint.Params(invite = invite),
         ).test {
-            assertThat(consumeItemsUntilPredicate { it.readyServerName != null && !it.isLoading }.last().input).isEqualTo("acme")
+            val opening = consumeItemsUntilPredicate { it.joinPageUrl != null }.last()
+            assertThat(opening.input).isEqualTo("acme")
+            assertThat(opening.joinPageUrl).isEqualTo("https://join.artise.co/acme/Ab3_xyZ9")
+            // Resuming before the page was opened does nothing.
+            opening.eventSink(WorkspaceSignInEvent.Resumed)
+            opening.eventSink(WorkspaceSignInEvent.JoinPageOpened)
+            assertThat(homeservers).isEmpty()
+            consumeItemsUntilPredicate { it.joinPageUrl == null }.last().eventSink(WorkspaceSignInEvent.Resumed)
+            assertThat(consumeItemsUntilPredicate { it.readyServerName != null && !it.isLoading }.last().readyServerName).isEqualTo("acme.artise.co")
+        }
+    }
+
+    /** An invite to a workspace whose server has no join page yet, or that doesn't exist: said plainly, nothing opens. */
+    @Test
+    fun `invite problems`() = runTest {
+        val invite = WorkspaceInvite("acme", "Ab3_xyZ9")
+        presenter(params = WorkspaceSignInEntryPoint.Params(invite = invite)).test {
+            val state = consumeItemsUntilPredicate { !it.isLoading && it.problem != null }.last()
+            assertThat(state.problem).isEqualTo(WorkspaceProblem.InviteUnavailable)
+            assertThat(state.joinPageUrl).isNull()
+        }
+        presenter(lookupResult = { WorkspaceLookupResult.NotFound("acme") }, params = WorkspaceSignInEntryPoint.Params(invite = invite)).test {
+            assertThat(consumeItemsUntilPredicate { !it.isLoading && it.problem != null }.last().problem).isEqualTo(WorkspaceProblem.NotFound("acme"))
         }
     }
 }
