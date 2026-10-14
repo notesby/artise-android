@@ -30,6 +30,7 @@ setupDependencyInjection()
 dependencies {
     // Artise: notes from the home menu.
     implementation(projects.artise.notes.api)
+    implementation(projects.artise.workspace.api)
     implementation(projects.appconfig)
     implementation(projects.libraries.core)
     implementation(projects.libraries.androidutils)

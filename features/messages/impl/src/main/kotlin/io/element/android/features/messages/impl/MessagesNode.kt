@@ -24,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
 import co.artise.android.stickers.api.StickerPickerRenderer
+import co.artise.android.workspace.api.LocalWorkspaceBranding
+import co.artise.android.workspace.api.WorkspaceFeatures
 import com.bumble.appyx.core.lifecycle.subscribe
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.Node
@@ -291,8 +293,10 @@ class MessagesNode(
         CompositionLocalProvider(
             LocalTimelineItemPresenterFactories provides timelineItemPresenterFactories,
             LocalEventContentValidationState provides eventContentValidationCache,
-            LocalStickerButton provides stickerButton,
-            LocalOpenNotes provides callback::navigateToNotes,
+            // Artise: no sticker button when the workspace has turned stickers off.
+            LocalStickerButton provides stickerButton.takeIf { LocalWorkspaceBranding.current.hasFeature(WorkspaceFeatures.STICKERS) },
+            // Artise: the notes shortcut only when the workspace's server has notes.
+            LocalOpenNotes provides callback::navigateToNotes.takeIf { LocalWorkspaceBranding.current.hasNotes },
         ) {
             val state = presenter.present()
 

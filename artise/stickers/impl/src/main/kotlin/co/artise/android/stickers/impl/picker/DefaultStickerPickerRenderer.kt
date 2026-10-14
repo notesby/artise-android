@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalConfiguration
 import co.artise.android.stickers.api.StickerPickerRenderer
+import co.artise.android.workspace.api.WorkspaceAccent
 import dev.zacsweers.metro.ContributesBinding
 import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.matrix.api.room.JoinedRoom
@@ -26,6 +27,9 @@ class DefaultStickerPickerRenderer(
         val language = LocalConfiguration.current.locales[0].language
         val currentOnDismiss by rememberUpdatedState(onDismiss)
         val presenter = remember(room, language) { presenterFactory.create(room, language) { currentOnDismiss() } }
-        StickerPickerView(state = presenter.present(), onDismiss = onDismiss)
+        // The workspace's accent on the picker's buttons.
+        WorkspaceAccent {
+            StickerPickerView(state = presenter.present(), onDismiss = onDismiss)
+        }
     }
 }

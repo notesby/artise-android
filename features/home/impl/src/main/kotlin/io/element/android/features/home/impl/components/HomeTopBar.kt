@@ -57,6 +57,8 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import co.artise.android.workspace.api.LocalWorkspaceBranding
+import co.artise.android.workspace.api.WorkspaceNameLine
 import io.element.android.appconfig.RoomListConfig
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
@@ -149,11 +151,19 @@ fun HomeTopBar(
                         // "Chats"
                         else -> ElementTheme.typography.fontHeadingLgBold
                     }
-                    AdaptativeTitle(
-                        title = displayTitle,
-                        style = style,
-                        twoLinesStyle = ElementTheme.typography.fontHeadingSmMedium,
-                    )
+                    // Artise: the workspace's logo and name above "Chats".
+                    val workspace = LocalWorkspaceBranding.current
+                    val workspaceName = workspace.name
+                    Column {
+                        if (workspaceName != null && spaceFiltersState !is SpaceFiltersState.Selected) {
+                            WorkspaceNameLine(name = workspaceName, logoUrl = workspace.logoUrl)
+                        }
+                        AdaptativeTitle(
+                            title = displayTitle,
+                            style = style,
+                            twoLinesStyle = ElementTheme.typography.fontHeadingSmMedium,
+                        )
+                    }
                 }
             },
             navigationIcon = {
@@ -200,7 +210,8 @@ private fun RowScope.RoomListMenuItems(
     canReportBug: Boolean,
     spaceFiltersState: SpaceFiltersState,
 ) {
-    if (RoomListConfig.SHOW_NOTES_BUTTON) {
+    // Artise: only when the workspace's server has notes.
+    if (RoomListConfig.SHOW_NOTES_BUTTON && LocalWorkspaceBranding.current.hasNotes) {
         IconButton(onClick = { onMenuActionClick(RoomListMenuAction.Notes) }) {
             Icon(
                 imageVector = CompoundIcons.Document(),

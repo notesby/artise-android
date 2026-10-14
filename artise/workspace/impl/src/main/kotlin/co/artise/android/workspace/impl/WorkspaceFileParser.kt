@@ -8,6 +8,7 @@
 package co.artise.android.workspace.impl
 
 import co.artise.android.workspace.api.WorkspaceConfig
+import co.artise.android.workspace.api.WorkspaceLinks
 import io.element.android.libraries.core.extensions.runCatchingExceptions
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -45,12 +46,21 @@ object WorkspaceFileParser {
         language = section.string("language"),
         features = (section["features"] as? JsonArray)?.mapNotNull { it.stringOrNull() }?.toSet(),
         pushGateway = section.string("push_gateway"),
+        links = (section["links"] as? JsonObject)?.let { links ->
+            WorkspaceLinks(
+                web = links.httpsUrl("web"),
+                notesApi = links.httpsUrl("notes_api"),
+                deleteAccount = links.httpsUrl("delete_account"),
+            )
+        },
     )
 
     /** `#RRGGBB` as `0xFFRRGGBB`; anything else (names, `#RGB`, alpha) is refused. */
     fun parseColor(value: String): Long? = value.takeIf { HEX_COLOR.matches(it) }?.drop(1)?.toLong(16)?.or(OPAQUE)
 
     private fun JsonObject.string(key: String): String? = this[key]?.stringOrNull()
+
+    private fun JsonObject.httpsUrl(key: String): String? = string(key)?.takeIf { it.startsWith("https://") }
 
     private fun JsonElement.stringOrNull(): String? = (this as? JsonPrimitive)?.takeIf { it.isString }?.content?.trim()?.takeIf { it.isNotEmpty() }
 }

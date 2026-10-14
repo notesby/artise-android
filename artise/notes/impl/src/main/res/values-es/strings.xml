@@ -7,11 +7,11 @@
   -->
 <resources>
     <string name="screen_notes_title">Notas</string>
-    <string name="screen_notes_chats_empty">Ninguno de tus chats tiene notas todavía. Pídele a Ari que guarde algo, como “Ari, anota que la clave del wifi es…”</string>
+    <string name="screen_notes_chats_empty">Ninguno de tus chats tiene notas todavía. Pídele a %1$s que guarde algo, como “%1$s, anota que la clave del wifi es…”</string>
     <string name="screen_notes_offline">Sin conexión. Estas son las notas guardadas en este teléfono.</string>
     <string name="screen_notes_sync_failed">No se pudieron actualizar las notas. Desliza hacia abajo para intentarlo de nuevo.</string>
     <string name="screen_notes_privacy_title">Sobre las notas</string>
-    <string name="screen_notes_privacy_body">Ari puede leer las notas de este chat, así que se guardan en el servidor de Artise, sin el cifrado de extremo a extremo de tus mensajes.</string>
+    <string name="screen_notes_privacy_body">%1$s puede leer las notas de este chat, así que se guardan en el servidor de Artise, sin el cifrado de extremo a extremo de tus mensajes.</string>
     <string name="screen_notes_privacy_ok">Entendido</string>
     <string name="screen_notes_folder_empty">Todavía no hay notas aquí.</string>
     <string name="screen_notes_unsent">Sin enviar</string>
@@ -199,12 +199,12 @@
     <string name="a11y_notes_history_deleted">Eliminado</string>
     <string name="a11y_notes_history_renamed">Renombrado</string>
     <string name="a11y_notes_history_copied">Copiado</string>
-    <string name="screen_notes_change_ari">Ari, a pedido de %1$s</string>
-    <string name="screen_notes_change_automation">Ari, automatización %2$s de %1$s</string>
-    <string name="screen_notes_change_routine">Ari, rutina %2$s de %1$s</string>
-    <string name="screen_notes_change_brief">Ari, resumen de la mañana %2$s de %1$s</string>
-    <string name="screen_notes_change_ari_own">Ari (por su cuenta)</string>
-    <string name="screen_notes_change_reaction">%1$s, reaccionando al mensaje de Ari</string>
+    <string name="screen_notes_change_ari">%2$s, a pedido de %1$s</string>
+    <string name="screen_notes_change_automation">%3$s, automatización %2$s de %1$s</string>
+    <string name="screen_notes_change_routine">%3$s, rutina %2$s de %1$s</string>
+    <string name="screen_notes_change_brief">%3$s, resumen de la mañana %2$s de %1$s</string>
+    <string name="screen_notes_change_ari_own">%1$s (por su cuenta)</string>
+    <string name="screen_notes_change_reaction">%1$s, reaccionando al mensaje de %2$s</string>
     <string name="screen_notes_change_chat">%1$s, enviado en el chat</string>
     <string name="screen_notes_change_app">%1$s, en la app</string>
     <string name="screen_notes_change_files">%1$s, en la página de archivos</string>

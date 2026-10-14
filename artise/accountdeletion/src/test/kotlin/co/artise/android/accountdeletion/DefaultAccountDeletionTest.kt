@@ -7,8 +7,14 @@
 
 package co.artise.android.accountdeletion
 
+import co.artise.android.workspace.api.WorkspaceConfig
+import co.artise.android.workspace.api.WorkspaceLinks
+import co.artise.android.workspace.test.FakeWorkspaceConfigRepository
 import com.google.common.truth.Truth.assertThat
+import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.services.toolbox.test.systemclock.FakeSystemClock
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
 class DefaultAccountDeletionTest {
@@ -16,14 +22,29 @@ class DefaultAccountDeletionTest {
         override var startedAt: Long? = null
     }
     private val clock = FakeSystemClock()
-    private val deletion = DefaultAccountDeletion(store, clock)
+    private val workspaces = FakeWorkspaceConfigRepository()
+    private val deletion = DefaultAccountDeletion(store, clock, workspaces)
+    private val acme = SessionId("@ana:acme.artise.co")
 
-    /** The page opens in Spanish when the app is in Spanish, in English otherwise. */
+    /** The workspace's own page, in Spanish when the app is in Spanish, in English otherwise. */
     @Test
-    fun `page language`() {
-        assertThat(deletion.pageUrl("es")).isEqualTo("https://chat.artise.co/account/delete?lang=es")
-        assertThat(deletion.pageUrl("en")).isEqualTo("https://chat.artise.co/account/delete")
-        assertThat(deletion.pageUrl("fr")).isEqualTo("https://chat.artise.co/account/delete")
+    fun `page of the workspace in the app's language`() {
+        workspaces.givenConfig(acme, WorkspaceConfig(links = WorkspaceLinks(null, null, "https://web.acme.example/account/delete")))
+        assertThat(deletion.pageUrl(acme, "es")).isEqualTo("https://web.acme.example/account/delete?lang=es")
+        assertThat(deletion.pageUrl(acme, "en")).isEqualTo("https://web.acme.example/account/delete")
+        workspaces.givenConfig(acme, WorkspaceConfig(links = WorkspaceLinks(null, null, "https://web.acme.example/delete?from=app")))
+        assertThat(deletion.pageUrl(acme, "es")).isEqualTo("https://web.acme.example/delete?from=app&lang=es")
+    }
+
+    /** No `links` (no web host): no page and no guessing, except artise.co until its file has `links`. */
+    @Test
+    fun `no page without links`() = runTest {
+        workspaces.givenConfig(acme, WorkspaceConfig(name = "Acme"))
+        assertThat(deletion.pageUrl(acme, "en")).isNull()
+        assertThat(deletion.hasPageFlow(acme).first()).isFalse()
+        val artise = SessionId("@ana:artise.co")
+        assertThat(deletion.pageUrl(artise, "es")).isEqualTo("https://chat.artise.co/account/delete?lang=es")
+        assertThat(deletion.hasPageFlow(artise).first()).isTrue()
     }
 
     /** A sign-out soon after opening the page is the deletion, once. */

@@ -8,6 +8,7 @@
 package co.artise.android.workspace.impl
 
 import co.artise.android.workspace.api.WorkspaceConfig
+import co.artise.android.workspace.api.WorkspaceLinks
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
@@ -46,6 +47,19 @@ class WorkspaceFileParserTest {
                 pushGateway = "https://push.artise.co/_matrix/push/v1/notify",
             )
         )
+    }
+
+    /** `links` gives full URLs (only https ones are kept); a server without a web host sends none. */
+    @Test
+    fun `links are read`() {
+        val config = WorkspaceFileParser.parse(
+            """
+            {"co.artise.workspace": {"links": {"web": "https://chat.artise.co", "notes_api": "https://chat.artise.co/api/notes/v1",
+            "delete_account": "http://chat.artise.co/account/delete", "status": "https://status.artise.co"}}}
+            """.trimIndent()
+        )
+        assertThat(config?.links).isEqualTo(WorkspaceLinks("https://chat.artise.co", "https://chat.artise.co/api/notes/v1", null))
+        assertThat(WorkspaceFileParser.parse("""{"co.artise.workspace": {"name": "Acme"}}""")?.links).isNull()
     }
 
     /** Only some fields: the rest stay at Artise's defaults. */
