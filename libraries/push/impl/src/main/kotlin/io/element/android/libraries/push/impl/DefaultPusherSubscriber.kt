@@ -83,7 +83,9 @@ class DefaultPusherSubscriber(
             deviceDisplayName = "MyDevice",
             url = gateway,
             defaultPayload = createDefaultPayload(pushClientSecret.getSecretForUser(userId)),
-            append = false,
+            // Artise: true, so registering doesn't remove other accounts' pushers that share this phone's token (several
+            // workspaces, one shared gateway). This account's own pusher for the token is still replaced, URL included.
+            append = true,
         )
 
     /**

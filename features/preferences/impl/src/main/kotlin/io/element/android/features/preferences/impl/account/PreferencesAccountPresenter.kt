@@ -13,6 +13,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import co.artise.android.accountdeletion.AccountDeletion
 import dev.zacsweers.metro.Inject
 import io.element.android.features.enterprise.api.SessionEnterpriseService
 import io.element.android.features.logout.api.direct.DirectLogoutState
@@ -36,6 +37,8 @@ class PreferencesAccountPresenter(
     private val rageshakeFeatureAvailability: RageshakeFeatureAvailability,
     private val featureFlagService: FeatureFlagService,
     private val sessionEnterpriseService: SessionEnterpriseService,
+    // Artise: whether the workspace has a delete-account page.
+    private val accountDeletion: AccountDeletion,
 ) : Presenter<PreferencesAccountState> {
     @Composable
     override fun present(): PreferencesAccountState {
@@ -55,8 +58,10 @@ class PreferencesAccountPresenter(
 
         val showSecureBackupIndicator by indicatorService.showSettingChatBackupIndicator()
 
-        // Artise: deleting the account is always offered; it happens on Artise's page (Google Play requires it).
-        val canDeactivateAccount = true
+        // Artise: deleting the account happens on the workspace's page (Google Play requires it), offered when the server has one.
+        val canDeactivateAccount by remember {
+            accountDeletion.hasPageFlow(matrixClient.sessionId)
+        }.collectAsState(initial = accountDeletion.pageUrl(matrixClient.sessionId, "en") != null)
         val canReportBug by remember { rageshakeFeatureAvailability.isAvailable() }.collectAsState(false)
 
         val directLogoutState = directLogoutPresenter.present()

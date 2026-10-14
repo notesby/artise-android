@@ -74,7 +74,7 @@ class FakeEnterpriseService(
         return semanticColorsState.asStateFlow()
     }
 
-    override fun firebasePushGateway(): String? {
+    override fun firebasePushGateway(sessionId: SessionId): String? {
         return firebasePushGatewayResult()
     }
 

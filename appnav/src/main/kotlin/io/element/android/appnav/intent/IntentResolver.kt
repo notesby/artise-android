@@ -9,6 +9,7 @@
 package io.element.android.appnav.intent
 
 import android.content.Intent
+import co.artise.android.workspace.api.WorkspaceInvite
 import dev.zacsweers.metro.Inject
 import io.element.android.features.login.api.LoginIntentResolver
 import io.element.android.features.login.api.LoginParams
@@ -28,6 +29,9 @@ sealed interface ResolvedIntent {
     data class Permalink(val permalinkData: PermalinkData) : ResolvedIntent
     data class Login(val params: LoginParams) : ResolvedIntent
     data class IncomingShare(val shareIntentData: ShareIntentData) : ResolvedIntent
+
+    // Artise: an invite link to a workspace (https://join.artise.co/{slug}/{code}).
+    data class WorkspaceInvite(val invite: co.artise.android.workspace.api.WorkspaceInvite) : ResolvedIntent
 }
 
 @Inject
@@ -52,6 +56,10 @@ class IntentResolver(
         val actionViewData = intent
             .takeIf { it.action == Intent.ACTION_VIEW }
             ?.dataString
+
+        // Artise: an invite to a workspace?
+        val workspaceInvite = actionViewData?.let { WorkspaceInvite.parse(it) }
+        if (workspaceInvite != null) return ResolvedIntent.WorkspaceInvite(workspaceInvite)
 
         // Mobile configuration link clicked? (mobile.element.io)
         val mobileLoginData = actionViewData

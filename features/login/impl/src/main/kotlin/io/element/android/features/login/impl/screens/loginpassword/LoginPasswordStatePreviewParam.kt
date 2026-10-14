@@ -9,6 +9,7 @@
 package io.element.android.features.login.impl.screens.loginpassword
 
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import co.artise.android.workspace.api.SignInWorkspace
 import io.element.android.features.login.impl.accountprovider.anAccountProviderManaged
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.matrix.api.accountprovider.AccountProvider
@@ -22,6 +23,8 @@ open class LoginPasswordStatePreviewParam : PreviewParameterProvider<LoginPasswo
             aLoginPasswordState(loginAction = AsyncData.Loading()),
             // Error
             aLoginPasswordState(loginAction = AsyncData.Failure(Exception("An error occurred"))),
+            // Artise: a workspace without a logo
+            aLoginPasswordState(workspace = SignInWorkspace("acme", "Acme", "element.io", logoUrl = null)),
         )
 }
 
@@ -30,11 +33,13 @@ fun aLoginPasswordState(
     formState: LoginFormState = LoginFormState.Default,
     loginAction: AsyncData<SessionId> = AsyncData.Uninitialized,
     eventSink: (LoginPasswordEvent) -> Unit = {},
+    workspace: SignInWorkspace? = null,
 ) = LoginPasswordState(
     accountProvider = accountProvider,
     formState = formState,
     loginAction = loginAction,
     eventSink = eventSink,
+    workspace = workspace,
 )
 
 fun aLoginFormState(

@@ -13,6 +13,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.res.stringResource
 import co.artise.android.notes.api.ChangeAuthor
 import co.artise.android.notes.impl.R
+import co.artise.android.workspace.api.LocalWorkspaceBranding
 
 /** Who a change was for and how it was made, ready to be put in words: a string with its arguments, or the server's plain name. */
 @Immutable
@@ -50,8 +51,9 @@ object ChangeLabels {
     fun tidy(text: String): String = text.replace(Regex(" {2,}"), " ").trim()
 }
 
+/** The label in words. The workspace's assistant ("Ari" by default) always goes last, after [ChangeLabel.Text.args]. */
 @Composable
 fun ChangeLabel.text(): String = when (this) {
-    is ChangeLabel.Text -> ChangeLabels.tidy(stringResource(res, *args.toTypedArray()))
+    is ChangeLabel.Text -> ChangeLabels.tidy(stringResource(res, *args.toTypedArray(), LocalWorkspaceBranding.current.assistantName))
     is ChangeLabel.Plain -> name
 }

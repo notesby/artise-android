@@ -13,6 +13,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import co.artise.android.accountdeletion.AccountDeletion
+import co.artise.android.workspace.test.FakeSignInWorkspaceHolder
 import com.bumble.appyx.core.modality.AncestryInfo
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.node
@@ -39,6 +40,7 @@ import io.element.android.features.signedout.test.FakeSignedOutEntryPoint
 import io.element.android.libraries.accountselect.test.FakeAccountSelectEntryPoint
 import io.element.android.libraries.architecture.AssistedNodeFactory
 import io.element.android.libraries.featureflag.test.FakeFeatureFlagService
+import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.test.FakeSdkMetadata
 import io.element.android.libraries.matrix.test.auth.FakeMatrixAuthenticationService
 import io.element.android.libraries.matrix.test.permalink.FakePermalinkParser
@@ -56,6 +58,7 @@ import io.element.android.tests.testutils.node.FakeParentNode
 import io.element.android.tests.testutils.presenter.NotUsedPresenter
 import io.element.android.tests.testutils.robolectric.RobolectricTest
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -185,12 +188,14 @@ class RootFlowNodeTest : RobolectricTest() {
             analyticsService = FakeAnalyticsService(),
             analyticsColdStartWatcher = FakeAnalyticsColdStartWatcher(),
             accountDeletion = object : AccountDeletion {
-                override fun pageUrl(language: String) = ""
+                override fun pageUrl(sessionId: SessionId, language: String) = ""
+                override fun hasPageFlow(sessionId: SessionId) = flowOf(true)
 
                 override fun markStarted() = Unit
 
                 override fun consumeStarted() = false
             },
+            signInWorkspaceHolder = FakeSignInWorkspaceHolder(),
             appCoroutineScope = backgroundScope,
         )
     }

@@ -27,6 +27,7 @@ dependencies {
     allFeaturesApi(project)
 
     implementation(projects.artise.accountdeletion)
+    implementation(projects.artise.workspace.api)
     implementation(projects.libraries.core)
     implementation(projects.libraries.accountselect.api)
     implementation(projects.libraries.androidutils)
@@ -61,6 +62,7 @@ dependencies {
 
     testCommonDependencies(libs)
     testImplementation(projects.features.login.test)
+    testImplementation(projects.artise.workspace.test)
     testImplementation(projects.features.share.test)
     testImplementation(projects.libraries.accountselect.test)
     testImplementation(projects.libraries.featureflag.test)

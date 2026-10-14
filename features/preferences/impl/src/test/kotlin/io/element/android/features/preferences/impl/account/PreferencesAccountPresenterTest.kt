@@ -7,6 +7,7 @@
 
 package io.element.android.features.preferences.impl.account
 
+import co.artise.android.accountdeletion.AccountDeletion
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.enterprise.api.SessionEnterpriseService
 import io.element.android.features.enterprise.test.FakeSessionEnterpriseService
@@ -18,6 +19,7 @@ import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.featureflag.test.FakeFeatureFlagService
 import io.element.android.libraries.indicator.api.IndicatorService
 import io.element.android.libraries.indicator.test.FakeIndicatorService
+import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.api.oauth.AccountManagementAction
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.test.AN_AVATAR_URL
@@ -165,6 +167,7 @@ class PreferencesAccountPresenterTest {
         indicatorService: IndicatorService = FakeIndicatorService(),
         featureFlagService: FeatureFlagService = FakeFeatureFlagService(),
         sessionEnterpriseService: SessionEnterpriseService = FakeSessionEnterpriseService(),
+        accountDeletion: AccountDeletion = FakeAccountDeletion(),
     ) = PreferencesAccountPresenter(
         matrixClient = matrixClient,
         sessionVerificationService = sessionVerificationService,
@@ -174,5 +177,13 @@ class PreferencesAccountPresenterTest {
         rageshakeFeatureAvailability = rageshakeFeatureAvailability,
         featureFlagService = featureFlagService,
         sessionEnterpriseService = sessionEnterpriseService,
+        accountDeletion = accountDeletion,
     )
+}
+
+private class FakeAccountDeletion(private val url: String? = "https://chat.artise.co/account/delete") : AccountDeletion {
+    override fun pageUrl(sessionId: SessionId, language: String) = url
+    override fun hasPageFlow(sessionId: SessionId) = flowOf(url != null)
+    override fun markStarted() = Unit
+    override fun consumeStarted() = false
 }

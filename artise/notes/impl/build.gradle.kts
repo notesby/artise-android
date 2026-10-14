@@ -23,6 +23,7 @@ setupDependencyInjection()
 
 dependencies {
     api(projects.artise.notes.api)
+    implementation(projects.artise.workspace.api)
     implementation(projects.libraries.architecture)
     implementation(projects.libraries.core)
     implementation(projects.libraries.dateformatter.api)

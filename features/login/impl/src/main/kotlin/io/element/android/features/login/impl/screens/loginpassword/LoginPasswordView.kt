@@ -45,6 +45,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import co.artise.android.workspace.api.WorkspaceHeader
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.login.impl.R
@@ -126,15 +127,28 @@ fun LoginPasswordView(
                 .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
         ) {
             // Title
-            IconTitleSubtitleMolecule(
-                modifier = Modifier.padding(top = 20.dp, start = 16.dp, end = 16.dp),
-                iconStyle = BigIcon.Style.Default(CompoundIcons.UserProfileSolid()),
-                title = stringResource(
-                    id = R.string.screen_account_provider_signin_title,
-                    state.accountProvider.friendlyServerName()
-                ),
-                subTitle = stringResource(id = R.string.screen_login_subtitle)
-            )
+            val workspace = state.workspace
+            if (workspace != null) {
+                // Artise: the workspace's name and logo.
+                WorkspaceHeader(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 20.dp, start = 16.dp, end = 16.dp),
+                    title = stringResource(id = R.string.screen_account_provider_signin_title, workspace.name),
+                    subtitle = stringResource(id = R.string.screen_login_subtitle),
+                    logoUrl = workspace.logoUrl,
+                )
+            } else {
+                IconTitleSubtitleMolecule(
+                    modifier = Modifier.padding(top = 20.dp, start = 16.dp, end = 16.dp),
+                    iconStyle = BigIcon.Style.Default(CompoundIcons.UserProfileSolid()),
+                    title = stringResource(
+                        id = R.string.screen_account_provider_signin_title,
+                        state.accountProvider.friendlyServerName()
+                    ),
+                    subTitle = stringResource(id = R.string.screen_login_subtitle)
+                )
+            }
             Spacer(Modifier.height(40.dp))
             LoginForm(
                 state = state,

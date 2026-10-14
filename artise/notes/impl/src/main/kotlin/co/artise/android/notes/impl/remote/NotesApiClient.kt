@@ -37,6 +37,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -44,9 +45,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.io.IOException
 import java.net.URLEncoder
-
-/** Where the Notes API lives. */
-const val NOTES_API_BASE_URL = "https://chat.artise.co/api/notes/v1"
 
 /** The answer to a conditional tree request. */
 sealed interface TreeResponse {
@@ -66,9 +64,9 @@ class NotesApiClient(
     private val okHttpClient: OkHttpClient,
     private val tokenSource: NotesTokenSource,
     private val dispatchers: CoroutineDispatchers,
-    baseUrl: String = NOTES_API_BASE_URL,
+    /** The workspace's `links.notes_api`, read at each call; null when the server has no notes. */
+    private val baseUrl: () -> String?,
 ) {
-    private val baseUrl: HttpUrl = baseUrl.trimEnd('/').toHttpUrl()
     private val json = Json { ignoreUnknownKeys = true }
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
@@ -236,10 +234,13 @@ class NotesApiClient(
         else -> FileChange.MODIFIED
     }
 
-    private fun url(vararg segments: String): HttpUrl = baseUrl.newBuilder().apply { segments.forEach { addPathSegment(it) } }.build()
+    // Without a notes API nothing is ever sent (see send): the placeholder only lets the request be built.
+    private fun base(): HttpUrl = baseUrl()?.trimEnd('/')?.toHttpUrlOrNull() ?: NO_NOTES_API
+
+    private fun url(vararg segments: String): HttpUrl = base().newBuilder().apply { segments.forEach { addPathSegment(it) } }.build()
 
     // The contract wants room ids fully percent-encoded in the path: `!abc:artise.co` → `%21abc%3Aartise.co`.
-    private fun url(roomId: RoomId, endpoint: String): HttpUrl = baseUrl.newBuilder()
+    private fun url(roomId: RoomId, endpoint: String): HttpUrl = base().newBuilder()
         .addPathSegment("chats")
         .addEncodedPathSegment(URLEncoder.encode(roomId.value, Charsets.UTF_8.name()))
         .addPathSegment(endpoint)
@@ -254,6 +255,8 @@ class NotesApiClient(
 
     /** Signs [request] in, retries once with a fresh token on `401`, and maps failures to [NotesException]. */
     private suspend fun <T> send(request: Request, read: (Response) -> T): Result<T> = withContext(dispatchers.io) {
+        // No notes on this workspace's server: fail before any token is asked for or sent.
+        if (base() == NO_NOTES_API) return@withContext Result.failure(NotesException.Network(IOException("This workspace has no notes")))
         val firstToken = tokenSource.token().getOrElse { return@withContext Result.failure(noToken(it)) }
         execute(request, firstToken, read, retryOnUnauthorized = true) ?: run {
             tokenSource.invalidate(firstToken)
@@ -311,6 +314,7 @@ class NotesApiClient(
     private fun Response.bodyString(): String = body.string()
 
     private companion object {
+        val NO_NOTES_API = "https://notes.invalid/".toHttpUrl()
         const val CHANGES_PAGE_SIZE = 50
         const val HTTP_UNAUTHORIZED = 401
         const val HTTP_NOT_MODIFIED = 304

@@ -18,6 +18,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
+import co.artise.android.workspace.api.WorkspaceBrandingRenderer
 import com.bumble.appyx.core.composable.PermanentChild
 import com.bumble.appyx.core.lifecycle.subscribe
 import com.bumble.appyx.core.modality.BuildContext
@@ -140,6 +141,8 @@ class LoggedInFlowNode(
     @SessionCoroutineScope
     private val sessionCoroutineScope: CoroutineScope,
     private val ftueService: FtueService,
+    // Artise: the workspace's look (name, logo, accent, assistant's name) and welcome.
+    private val workspaceBrandingRenderer: WorkspaceBrandingRenderer,
     private val roomDirectoryEntryPoint: RoomDirectoryEntryPoint,
     private val shareEntryPoint: ShareEntryPoint,
     private val matrixClient: MatrixClient,
@@ -707,9 +710,12 @@ class LoggedInFlowNode(
                 ) { contentModifier ->
                     Box(modifier = contentModifier) {
                         val ftueState by ftueService.state.collectAsState()
-                        BackstackView(transitionHandler = rememberLoggedInFlowTransitionHandler(backstack))
-                        if (ftueState is FtueState.Complete) {
-                            PermanentChild(permanentNavModel = permanentNavModel, navTarget = NavTarget.LoggedInPermanent)
+                        // Artise: the workspace's look for Artise screens, and its welcome once onboarding is done.
+                        workspaceBrandingRenderer.Render(matrixClient.sessionId, canWelcome = ftueState is FtueState.Complete) {
+                            BackstackView(transitionHandler = rememberLoggedInFlowTransitionHandler(backstack))
+                            if (ftueState is FtueState.Complete) {
+                                PermanentChild(permanentNavModel = permanentNavModel, navTarget = NavTarget.LoggedInPermanent)
+                            }
                         }
                     }
                 }

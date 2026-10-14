@@ -81,8 +81,11 @@ interface EnterpriseService {
      */
     fun semanticColorsFlow(sessionId: SessionId?): Flow<SemanticColorsLightDark>
 
-    /** The push gateway to register with when using Firebase, or `null` to use the app default. */
-    fun firebasePushGateway(): String?
+    /**
+     * The push gateway to register with when using Firebase, or `null` to use the app default.
+     * Artise: per account, since each workspace (server) can name its own gateway.
+     */
+    fun firebasePushGateway(sessionId: SessionId): String?
 
     /** The push gateway to register with when using UnifiedPush, or `null` to use the app default. */
     fun unifiedPushDefaultPushGateway(): String?

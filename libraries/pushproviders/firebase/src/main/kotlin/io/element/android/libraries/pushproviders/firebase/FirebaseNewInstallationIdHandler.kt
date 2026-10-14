@@ -56,7 +56,7 @@ class DefaultFirebaseNewInstallationIdHandler(
                                 .registerPusher(
                                     matrixClient = client,
                                     pushKey = installationId,
-                                    gateway = firebaseGatewayProvider.getFirebaseGateway(),
+                                    gateway = firebaseGatewayProvider.getFirebaseGateway(client.sessionId),
                                 )
                                 .onFailure {
                                     Timber.tag(loggerTag.value).e(it, "Failed to register pusher for session $sessionId")

@@ -8,10 +8,12 @@
 
 package io.element.android.libraries.pushproviders.firebase
 
+import io.element.android.libraries.matrix.api.core.SessionId
+
 const val A_FIREBASE_GATEWAY = "aGateway"
 
 class FakeFirebaseGatewayProvider(
     private val firebaseGatewayResult: () -> String = { A_FIREBASE_GATEWAY }
 ) : FirebaseGatewayProvider {
-    override fun getFirebaseGateway() = firebaseGatewayResult()
+    override fun getFirebaseGateway(sessionId: SessionId) = firebaseGatewayResult()
 }

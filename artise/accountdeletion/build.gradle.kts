@@ -22,7 +22,11 @@ dependencies {
     implementation(projects.libraries.di)
     implementation(libs.androidx.corektx)
     implementation(projects.services.toolbox.api)
+    api(projects.libraries.matrix.api)
+    implementation(projects.artise.workspace.api)
 
     testCommonDependencies(libs)
     testImplementation(projects.services.toolbox.test)
+    testImplementation(projects.artise.workspace.test)
+    testImplementation(projects.libraries.matrix.test)
 }

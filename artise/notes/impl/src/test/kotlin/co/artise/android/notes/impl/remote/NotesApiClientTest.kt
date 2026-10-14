@@ -38,7 +38,20 @@ class NotesApiClientTest {
     @After
     fun tearDown() = server.shutdown()
 
-    private fun TestScope.client() = NotesApiClient(OkHttpClient(), tokens, testCoroutineDispatchers(useUnconfinedTestDispatcher = true), server.baseUrl)
+    private fun TestScope.client(): NotesApiClient {
+        val baseUrl = server.baseUrl
+        return NotesApiClient(OkHttpClient(), tokens, testCoroutineDispatchers(useUnconfinedTestDispatcher = true)) { baseUrl }
+    }
+
+    /** A workspace whose server has no notes (no `links.notes_api`): nothing is sent, and no token is even asked for. */
+    @Test
+    fun `no notes api means no request`() = runTest {
+        val client = NotesApiClient(OkHttpClient(), tokens, testCoroutineDispatchers(useUnconfinedTestDispatcher = true)) { null }
+        val result = client.chats()
+        assertThat(result.exceptionOrNull()).isInstanceOf(NotesException.Network::class.java)
+        assertThat(server.requests).isEmpty()
+        assertThat(tokens.issued).isEqualTo(0)
+    }
 
     /** Every request carries the OpenID token, and room ids are fully percent-encoded in the path as the contract asks. */
     @Test

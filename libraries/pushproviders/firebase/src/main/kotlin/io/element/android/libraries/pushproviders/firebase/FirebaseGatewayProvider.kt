@@ -11,16 +11,18 @@ package io.element.android.libraries.pushproviders.firebase
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import io.element.android.features.enterprise.api.EnterpriseService
+import io.element.android.libraries.matrix.api.core.SessionId
 
 interface FirebaseGatewayProvider {
-    fun getFirebaseGateway(): String
+    // Artise: per account, see EnterpriseService.firebasePushGateway.
+    fun getFirebaseGateway(sessionId: SessionId): String
 }
 
 @ContributesBinding(AppScope::class)
 class DefaultFirebaseGatewayProvider(
     private val enterpriseService: EnterpriseService,
 ) : FirebaseGatewayProvider {
-    override fun getFirebaseGateway(): String {
-        return enterpriseService.firebasePushGateway() ?: FirebaseConfig.PUSHER_HTTP_URL
+    override fun getFirebaseGateway(sessionId: SessionId): String {
+        return enterpriseService.firebasePushGateway(sessionId) ?: FirebaseConfig.PUSHER_HTTP_URL
     }
 }

@@ -8,6 +8,8 @@
 
 package io.element.android.features.login.impl.screens.loginpassword
 
+import co.artise.android.workspace.api.SignInWorkspaceHolder
+import co.artise.android.workspace.test.FakeSignInWorkspaceHolder
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.login.impl.accountprovider.AccountProviderDataSource
 import io.element.android.features.login.impl.accountprovider.SaveAccountProviderToHistory
@@ -189,10 +191,12 @@ class LoginPasswordPresenterTest {
         authenticationService: FakeMatrixAuthenticationService = FakeMatrixAuthenticationService(),
         accountProviderDataSource: AccountProviderDataSource = anAccountProviderDataSource(),
         appPreferencesStore: AppPreferencesStore = InMemoryAppPreferencesStore(),
+        signInWorkspaceHolder: SignInWorkspaceHolder = FakeSignInWorkspaceHolder(),
     ): LoginPasswordPresenter = LoginPasswordPresenter(
         initialLogin = initialLogin,
         authenticationService = authenticationService,
         accountProviderDataSource = accountProviderDataSource,
         saveAccountProviderToHistory = SaveAccountProviderToHistory(accountProviderDataSource, appPreferencesStore),
+        signInWorkspaceHolder = signInWorkspaceHolder,
     )
 }

@@ -9,6 +9,7 @@
 package io.element.android.features.login.impl.screens.loginpassword
 
 import android.os.Parcelable
+import co.artise.android.workspace.api.SignInWorkspace
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.matrix.api.accountprovider.AccountProvider
 import io.element.android.libraries.matrix.api.core.SessionId
@@ -18,7 +19,9 @@ data class LoginPasswordState(
     val accountProvider: AccountProvider,
     val formState: LoginFormState,
     val loginAction: AsyncData<SessionId>,
-    val eventSink: (LoginPasswordEvent) -> Unit
+    val eventSink: (LoginPasswordEvent) -> Unit,
+    // Artise: the workspace chosen on the workspace step, shown with its name and logo.
+    val workspace: SignInWorkspace?,
 ) {
     val submitEnabled: Boolean
         get() = loginAction !is AsyncData.Failure &&

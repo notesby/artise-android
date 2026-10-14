@@ -18,6 +18,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import co.artise.android.notes.impl.R
 import co.artise.android.notes.impl.ui.common.NotesScaffold
+import co.artise.android.workspace.api.LocalWorkspaceBranding
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.libraries.designsystem.components.list.ListItemContent
@@ -47,7 +48,7 @@ fun NotesChatsView(
             if (state.chats.isEmpty() && !state.isRefreshing) {
                 item {
                     Text(
-                        text = stringResource(R.string.screen_notes_chats_empty),
+                        text = stringResource(R.string.screen_notes_chats_empty, LocalWorkspaceBranding.current.assistantName),
                         style = ElementTheme.typography.fontBodyLgRegular,
                         color = ElementTheme.colors.textSecondary,
                         modifier = Modifier.padding(24.dp),

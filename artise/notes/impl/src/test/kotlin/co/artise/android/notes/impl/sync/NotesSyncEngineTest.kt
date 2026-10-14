@@ -67,7 +67,7 @@ class NotesSyncEngineTest {
         val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY).also { NotesDatabase.Schema.create(it) }
         val dispatchers = testCoroutineDispatchers(useUnconfinedTestDispatcher = true)
         return NotesSyncEngine(
-            api = NotesApiClient(OkHttpClient(), FakeNotesTokenSource(), dispatchers, server.baseUrl),
+            api = NotesApiClient(OkHttpClient(), FakeNotesTokenSource(), dispatchers) { server.baseUrl },
             store = NotesLocalStore(NotesDatabase(driver)),
             clock = FakeSystemClock(),
             dispatchers = dispatchers,

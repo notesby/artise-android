@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<resources>
+    <string name="screen_workspace_title">Your workspace</string>
+    <string name="screen_workspace_subtitle">Type your workspace\'s name. Your admin can tell you what it is.</string>
+    <string name="screen_workspace_field_label">Workspace</string>
+    <string name="screen_workspace_field_placeholder" translatable="false">acme</string>
+    <string name="screen_workspace_error_invalid">That workspace name isn\'t valid. Use 3 to 30 letters, numbers or hyphens.</string>
+    <string name="screen_workspace_error_not_found">No workspace called %1$s</string>
+    <string name="screen_workspace_error_paused">This workspace is paused. Contact its admin.</string>
+    <string name="screen_workspace_error_too_many_tries">Too many tries, wait a minute and try again.</string>
+    <string name="screen_workspace_error_unreachable">Can\'t reach Artise. Check your connection and try again.</string>
+    <string name="screen_workspace_error_server_unreachable">Can\'t reach %1$s\'s server right now. Try again in a moment.</string>
+    <string name="screen_workspace_error_no_password">%1$s doesn\'t use a username and password, so you can\'t sign in to it here.</string>
+    <string name="screen_workspace_error_invite_unavailable">This invite can\'t be opened in the app yet. Open the link in your browser instead.</string>
+</resources>
