@@ -45,29 +45,16 @@ data class WorkspaceConfig(
     }
 }
 
-/** Full URLs from the workspace file's `links`. The web host is a per-server setting: never derived from the server name. */
+/**
+ * Full URLs from the workspace file's `links`. The web host is a per-server setting: never derived from the server name, and a
+ * workspace without `links` has no web pages (artise.co included).
+ */
 data class WorkspaceLinks(
     val web: String?,
     /** The Notes API base; the paths in family-wiki docs/notes-api.md are relative to it. */
     val notesApi: String?,
     val deleteAccount: String?,
-) {
-    companion object {
-        /** artise.co's links, for its file until it publishes `links` (the next server deploy). */
-        private val ARTISE_CO_UNTIL_LINKS_DEPLOY = WorkspaceLinks(
-            web = "https://chat.artise.co",
-            notesApi = "https://chat.artise.co/api/notes/v1",
-            deleteAccount = "https://chat.artise.co/account/delete",
-        )
-
-        /**
-         * The links of the account on [serverName]: its workspace file's, or none.
-         * Temporary: remove the artise.co fallback once artise.co's file has `links` (after the next server deploy).
-         */
-        fun of(serverName: String, config: WorkspaceConfig?): WorkspaceLinks? =
-            config?.links ?: ARTISE_CO_UNTIL_LINKS_DEPLOY.takeIf { serverName == "artise.co" }
-    }
-}
+)
 
 /** The server part of an account's Matrix ID ("@ana:acme.artise.co" → "acme.artise.co"). */
 fun SessionId.serverName(): String = value.substringAfter(':')

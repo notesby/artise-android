@@ -42,7 +42,7 @@ class DefaultWorkspaceBrandingRenderer(
     override fun Render(sessionId: SessionId, canWelcome: Boolean, content: @Composable () -> Unit) {
         val flow = remember(sessionId) { configRepository.configFlow(sessionId) }
         val config by flow.collectAsState(initial = remember(sessionId) { configRepository.cached(sessionId) })
-        val branding = remember(sessionId, config) { WorkspaceBranding.of(sessionId.serverName(), config) }
+        val branding = remember(sessionId, config) { WorkspaceBranding.of(config) }
         CompositionLocalProvider(LocalWorkspaceBranding provides branding) {
             content()
             if (canWelcome) Welcome(sessionId, config)

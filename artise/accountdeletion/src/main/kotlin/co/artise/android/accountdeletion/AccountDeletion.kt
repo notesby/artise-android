@@ -11,8 +11,6 @@ import android.content.Context
 import androidx.core.content.edit
 import co.artise.android.workspace.api.WorkspaceConfig
 import co.artise.android.workspace.api.WorkspaceConfigRepository
-import co.artise.android.workspace.api.WorkspaceLinks
-import co.artise.android.workspace.api.serverName
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.SingleIn
@@ -59,14 +57,14 @@ class DefaultAccountDeletion(
     private val workspaceConfigRepository: WorkspaceConfigRepository,
 ) : AccountDeletion {
     override fun pageUrl(sessionId: SessionId, language: String): String? =
-        pageOf(sessionId, workspaceConfigRepository.cached(sessionId))?.let { page ->
+        pageOf(workspaceConfigRepository.cached(sessionId))?.let { page ->
             if (language == "es") page + (if ('?' in page) "&" else "?") + "lang=es" else page
         }
 
     override fun hasPageFlow(sessionId: SessionId): Flow<Boolean> =
-        workspaceConfigRepository.configFlow(sessionId).map { pageOf(sessionId, it) != null }
+        workspaceConfigRepository.configFlow(sessionId).map { pageOf(it) != null }
 
-    private fun pageOf(sessionId: SessionId, config: WorkspaceConfig?): String? = WorkspaceLinks.of(sessionId.serverName(), config)?.deleteAccount
+    private fun pageOf(config: WorkspaceConfig?): String? = config?.links?.deleteAccount
 
     override fun markStarted() {
         store.startedAt = clock.epochMillis()

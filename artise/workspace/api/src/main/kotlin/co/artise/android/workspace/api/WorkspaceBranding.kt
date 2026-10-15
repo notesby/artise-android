@@ -45,8 +45,8 @@ data class WorkspaceBranding(
             links = null,
         )
 
-        fun of(serverName: String, config: WorkspaceConfig?): WorkspaceBranding = if (config == null) {
-            Default.copy(links = WorkspaceLinks.of(serverName, null))
+        fun of(config: WorkspaceConfig?): WorkspaceBranding = if (config == null) {
+            Default
         } else {
             WorkspaceBranding(
                 name = config.name,
@@ -54,7 +54,7 @@ data class WorkspaceBranding(
                 accent = config.accentColor?.let { Color(it) },
                 assistantName = config.assistantName ?: DEFAULT_ASSISTANT_NAME,
                 features = config.features,
-                links = WorkspaceLinks.of(serverName, config),
+                links = config.links,
             )
         }
     }

@@ -19,7 +19,7 @@ class WorkspaceBrandingTest {
     /** No settings: Artise's own look, with Ari, and every screen. */
     @Test
     fun `default look`() {
-        val branding = WorkspaceBranding.of("acme.artise.co", null)
+        val branding = WorkspaceBranding.of(null)
         assertThat(branding).isEqualTo(WorkspaceBranding.Default)
         assertThat(branding.assistantName).isEqualTo("Ari")
         assertThat(branding.accent).isNull()
@@ -30,7 +30,6 @@ class WorkspaceBrandingTest {
     @Test
     fun `workspace look`() {
         val branding = WorkspaceBranding.of(
-            "acme.artise.co",
             WorkspaceConfig(
                 name = "Acme",
                 logoUrl = "https://artise.co/brand/logo-1.png",
@@ -44,22 +43,20 @@ class WorkspaceBrandingTest {
         assertThat(branding.accent).isEqualTo(Color(0xFF1F6FEB))
         assertThat(branding.assistantName).isEqualTo("Max")
         assertThat(branding.hasFeature(WorkspaceFeatures.STICKERS)).isFalse()
-        assertThat(WorkspaceBranding.of("acme.artise.co", WorkspaceConfig(features = setOf("stickers"))).hasFeature(WorkspaceFeatures.STICKERS)).isTrue()
-        assertThat(WorkspaceBranding.of("acme.artise.co", WorkspaceConfig(name = "Acme")).assistantName).isEqualTo("Ari")
+        assertThat(WorkspaceBranding.of(WorkspaceConfig(features = setOf("stickers"))).hasFeature(WorkspaceFeatures.STICKERS)).isTrue()
+        assertThat(WorkspaceBranding.of(WorkspaceConfig(name = "Acme")).assistantName).isEqualTo("Ari")
     }
 
-    /** Notes are offered only with a Notes API link; artise.co has its links until its file publishes them. */
+    /** Notes are offered only with a Notes API link, from the workspace file; artise.co included. */
     @Test
     fun `notes need a notes link`() {
-        assertThat(WorkspaceBranding.of("acme.artise.co", WorkspaceConfig(name = "Acme")).hasNotes).isFalse()
+        assertThat(WorkspaceBranding.of(WorkspaceConfig(name = "Acme")).hasNotes).isFalse()
         val links = WorkspaceLinks("https://web.acme.example", "https://web.acme.example/api/notes/v1", null)
-        assertThat(WorkspaceBranding.of("acme.artise.co", WorkspaceConfig(links = links)).hasNotes).isTrue()
-        assertThat(WorkspaceBranding.of("artise.co", null).hasNotes).isTrue()
-        assertThat(WorkspaceBranding.of("artise.co", null).links?.notesApi).isEqualTo("https://chat.artise.co/api/notes/v1")
-        // Never derived from the server name: another server without links has none.
-        assertThat(WorkspaceLinks.of("beta.artise.co", WorkspaceConfig())).isNull()
-        // Once artise.co publishes links, they win.
-        assertThat(WorkspaceLinks.of("artise.co", WorkspaceConfig(links = links))).isEqualTo(links)
+        assertThat(WorkspaceBranding.of(WorkspaceConfig(links = links)).hasNotes).isTrue()
+        assertThat(WorkspaceBranding.of(null).hasNotes).isFalse()
+        // Never derived from the server name.
+        assertThat(WorkspaceBranding.of(WorkspaceConfig()).links).isNull()
+        assertThat(WorkspaceBranding.of(WorkspaceConfig(links = links)).links).isEqualTo(links)
     }
 
     /** The welcome shows once, right after signing in, in the phone's language, else the workspace's, else not at all. */

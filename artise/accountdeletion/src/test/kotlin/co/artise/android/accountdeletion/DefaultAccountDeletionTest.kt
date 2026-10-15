@@ -36,13 +36,15 @@ class DefaultAccountDeletionTest {
         assertThat(deletion.pageUrl(acme, "es")).isEqualTo("https://web.acme.example/delete?from=app&lang=es")
     }
 
-    /** No `links` (no web host): no page and no guessing, except artise.co until its file has `links`. */
+    /** No `links` (no web host): no page and no guessing, artise.co included. */
     @Test
     fun `no page without links`() = runTest {
         workspaces.givenConfig(acme, WorkspaceConfig(name = "Acme"))
         assertThat(deletion.pageUrl(acme, "en")).isNull()
         assertThat(deletion.hasPageFlow(acme).first()).isFalse()
         val artise = SessionId("@ana:artise.co")
+        assertThat(deletion.pageUrl(artise, "es")).isNull()
+        workspaces.givenConfig(artise, WorkspaceConfig(links = WorkspaceLinks(null, null, "https://chat.artise.co/account/delete")))
         assertThat(deletion.pageUrl(artise, "es")).isEqualTo("https://chat.artise.co/account/delete?lang=es")
         assertThat(deletion.hasPageFlow(artise).first()).isTrue()
     }
