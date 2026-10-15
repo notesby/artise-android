@@ -11,7 +11,9 @@ package config
 object BuildTimeConfig {
     const val APPLICATION_ID = "co.artise.app"
     const val APPLICATION_NAME = "Artise"
-    val METADATA_HOST_REVERSED: String? = null
+    // Artise: the OAuth redirect scheme (debug and nightly add .debug and .nightly). A workspace's sign-in service (MAS) accepts a
+    // native app's custom scheme only when it starts with URL_WEBSITE's host reversed (co.artise); same as iOS (co.artise.app:/oauth).
+    val METADATA_HOST_REVERSED: String? = "co.artise.app"
     val OAUTH_CLIENT_URL_PATH: String? = "apps/android"
     val URL_WEBSITE: String? = "https://artise.co"
     val URL_LOGO: String? = "https://artise.co/icon.png"
