@@ -28,6 +28,8 @@ data class WorkspaceConfig(
     val pushGateway: String? = null,
     /** The server's web pages and APIs; null when it has no web host (then no notes, no delete-account page). */
     val links: WorkspaceLinks? = null,
+    /** The workspace's own sign-in clients; null when its sign-in service doesn't have them (then the app registers itself). */
+    val oauth: WorkspaceOAuth? = null,
 ) {
     /** False only when the workspace lists its features and [feature] isn't one of them. */
     fun hasFeature(feature: String): Boolean = features?.contains(feature) ?: true
@@ -54,6 +56,16 @@ data class WorkspaceLinks(
     /** The Notes API base; the paths in family-wiki docs/notes-api.md are relative to it. */
     val notesApi: String?,
     val deleteAccount: String?,
+)
+
+/**
+ * The workspace file's `oauth`: the sign-in service's clients for Artise's apps, registered ahead of time so it skips its consent page.
+ * Only the release app can use them, since [redirectUri] opens only the app the App Link file names.
+ */
+data class WorkspaceOAuth(
+    val androidClientId: String,
+    /** An https App Link, e.g. https://join.artise.co/oauth. */
+    val redirectUri: String,
 )
 
 /** The server part of an account's Matrix ID ("@ana:acme.artise.co" → "acme.artise.co"). */

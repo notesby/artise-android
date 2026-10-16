@@ -11,6 +11,7 @@ package io.element.android.libraries.oauth.impl
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import io.element.android.libraries.matrix.api.auth.OAuthRedirectUrlProvider
+import io.element.android.libraries.matrix.api.auth.OAuthStaticClientProvider
 import io.element.android.libraries.oauth.api.OAuthAction
 import timber.log.Timber
 
@@ -25,6 +26,7 @@ fun interface OAuthUrlParser {
 @ContributesBinding(AppScope::class)
 class DefaultOAuthUrlParser(
     private val oAuthRedirectUrlProvider: OAuthRedirectUrlProvider,
+    private val oAuthStaticClientProvider: OAuthStaticClientProvider,
 ) : OAuthUrlParser {
     /**
      * Return a [OAuthAction], or null if the url is not an OAuth url.
@@ -35,12 +37,18 @@ class DefaultOAuthUrlParser(
      * `io.element.android:/?state=IFF1UETGye2ZA8pO&code=y6X1GZeqA3xxOWcTeShgv8nkgFJXyzWB`
      */
     override fun parse(url: String): OAuthAction? {
-        if (url.startsWith(oAuthRedirectUrlProvider.provide()).not()) return null
+        if (url.startsWith(oAuthRedirectUrlProvider.provide()).not() && !isStaticClientRedirect(url)) return null
         if (url.contains("error=access_denied")) return OAuthAction.GoBack()
         if (url.contains("code=")) return OAuthAction.Success(url)
 
         // Other cases are not supported, log an error and return null
         Timber.w("Unsupported OAuth url")
         return null
+    }
+
+    // Artise: a workspace's own client returns to an https App Link (e.g. https://join.artise.co/oauth?code=…), only its query may follow.
+    private fun isStaticClientRedirect(url: String): Boolean {
+        val redirectUri = oAuthStaticClientProvider.pendingRedirectUri ?: return false
+        return url.startsWith("$redirectUri?") || url.startsWith("$redirectUri#")
     }
 }

@@ -9,6 +9,7 @@ package co.artise.android.workspace.impl
 
 import co.artise.android.workspace.api.WorkspaceConfig
 import co.artise.android.workspace.api.WorkspaceLinks
+import co.artise.android.workspace.api.WorkspaceOAuth
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
@@ -60,6 +61,23 @@ class WorkspaceFileParserTest {
         )
         assertThat(config?.links).isEqualTo(WorkspaceLinks("https://chat.artise.co", "https://chat.artise.co/api/notes/v1", null))
         assertThat(WorkspaceFileParser.parse("""{"co.artise.workspace": {"name": "Acme"}}""")?.links).isNull()
+    }
+
+    /** `oauth` gives the android client and its https redirect; without either (or with an http redirect) there's none. */
+    @Test
+    fun `oauth is read`() {
+        val config = WorkspaceFileParser.parse(
+            """
+            {"co.artise.workspace": {"oauth": {"ios": "01K7ARTSEAPP1PH0NE00000000", "android": "01K7ARTSEAPPANDR0D00000000",
+            "redirect_uri": "https://join.artise.co/oauth"}}}
+            """.trimIndent()
+        )
+        assertThat(config?.oauth).isEqualTo(WorkspaceOAuth("01K7ARTSEAPPANDR0D00000000", "https://join.artise.co/oauth"))
+        assertThat(WorkspaceFileParser.parse("""{"co.artise.workspace": {"name": "Acme"}}""")?.oauth).isNull()
+        val noAndroidClient = """{"co.artise.workspace": {"oauth": {"ios": "x", "redirect_uri": "https://join.artise.co/oauth"}}}"""
+        assertThat(WorkspaceFileParser.parse(noAndroidClient)?.oauth).isNull()
+        val httpRedirect = """{"co.artise.workspace": {"oauth": {"android": "x", "redirect_uri": "http://join.artise.co/oauth"}}}"""
+        assertThat(WorkspaceFileParser.parse(httpRedirect)?.oauth).isNull()
     }
 
     /** Only some fields: the rest stay at Artise's defaults. */

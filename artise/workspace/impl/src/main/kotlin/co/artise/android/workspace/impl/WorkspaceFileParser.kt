@@ -9,6 +9,7 @@ package co.artise.android.workspace.impl
 
 import co.artise.android.workspace.api.WorkspaceConfig
 import co.artise.android.workspace.api.WorkspaceLinks
+import co.artise.android.workspace.api.WorkspaceOAuth
 import io.element.android.libraries.core.extensions.runCatchingExceptions
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -52,6 +53,11 @@ object WorkspaceFileParser {
                 notesApi = links.httpsUrl("notes_api"),
                 deleteAccount = links.httpsUrl("delete_account"),
             )
+        },
+        oauth = (section["oauth"] as? JsonObject)?.let { oauth ->
+            val clientId = oauth.string("android") ?: return@let null
+            val redirectUri = oauth.httpsUrl("redirect_uri") ?: return@let null
+            WorkspaceOAuth(androidClientId = clientId, redirectUri = redirectUri)
         },
     )
 

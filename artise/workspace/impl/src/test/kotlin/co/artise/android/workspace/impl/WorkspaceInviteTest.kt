@@ -25,6 +25,8 @@ class WorkspaceInviteTest {
     @Test
     fun `not invite links`() {
         listOf(
+            // A workspace client's sign-in result, which goes to OAuth.
+            "https://join.artise.co/oauth?code=y6X1GZeqA3xxOWcTeShgv8nkgFJXyzWB&state=IFF1UETGye2ZA8pO",
             "https://evil.example/acme/abc123",
             "http://join.artise.co/acme/abc123",
             "https://join.artise.co/ab/abc123",
