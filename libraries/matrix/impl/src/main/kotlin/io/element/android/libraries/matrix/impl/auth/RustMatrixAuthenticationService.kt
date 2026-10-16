@@ -27,6 +27,7 @@ import io.element.android.libraries.matrix.api.auth.MatrixAuthenticationService
 import io.element.android.libraries.matrix.api.auth.MatrixHomeServerDetails
 import io.element.android.libraries.matrix.api.auth.OAuthDetails
 import io.element.android.libraries.matrix.api.auth.OAuthPrompt
+import io.element.android.libraries.matrix.api.auth.OAuthStaticClientProvider
 import io.element.android.libraries.matrix.api.auth.SessionRestorationException
 import io.element.android.libraries.matrix.api.auth.qrlogin.MatrixQrCodeLoginData
 import io.element.android.libraries.matrix.api.auth.qrlogin.QrCodeLoginStep
@@ -75,6 +76,7 @@ class RustMatrixAuthenticationService(
     private val enterpriseService: EnterpriseService,
     private val featureFlagService: FeatureFlagService,
     private val clientEnterpriseHook: ClientEnterpriseHook,
+    private val oAuthStaticClientProvider: OAuthStaticClientProvider,
 ) : MatrixAuthenticationService {
     // Any existing Element Classic session that we want to try to import secrets from during login.
     private var elementClassicSession: ElementClassicSession? = null
@@ -234,8 +236,12 @@ class RustMatrixAuthenticationService(
         return withContext(coroutineDispatchers.io) {
             runCatchingExceptions {
                 val client = currentClient ?: error("You need to call `setHomeserver()` first")
+                // Artise: the workspace's own client when it has one, so its sign-in service skips the consent page.
+                val staticClient = client.server()?.let { server ->
+                    oAuthStaticClientProvider.get(serverName = server.substringAfter("://").trimEnd('/'), homeserverUrl = client.homeserver())
+                }
                 val oAuthAuthorizationData = client.urlForOauth(
-                    oauthConfiguration = oAuthConfigurationProvider.get(),
+                    oauthConfiguration = oAuthConfigurationProvider.get(staticClient),
                     prompt = prompt.toRustPrompt(),
                     loginHint = loginHint,
                     // If we want to restore a previous session for which we have encryption keys, we can pass the deviceId here. At the moment, we don't
