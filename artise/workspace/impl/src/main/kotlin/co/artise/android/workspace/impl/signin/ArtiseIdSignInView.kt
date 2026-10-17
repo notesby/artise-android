@@ -52,6 +52,7 @@ import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TextButton
 import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableSet
 import co.artise.android.appicon.R as AppIconR
 
 /**
@@ -89,6 +90,7 @@ fun ArtiseIdSignInView(
                 )
                 is ArtiseIdScreen.Workspaces -> Workspaces(
                     workspaces = screen.workspaces,
+                    openServerNames = screen.openServerNames,
                     isOpening = isOpening,
                     problem = openingProblem,
                     onChoose = { state.eventSink(ArtiseIdSignInEvent.Choose(it)) },
@@ -182,6 +184,7 @@ private fun ColumnScope.Providers(
 @Composable
 private fun ColumnScope.Workspaces(
     workspaces: ImmutableList<ArtiseIdWorkspace>,
+    openServerNames: ImmutableSet<String>,
     isOpening: Boolean,
     problem: String?,
     onChoose: (ArtiseIdWorkspace) -> Unit,
@@ -193,9 +196,15 @@ private fun ColumnScope.Workspaces(
         subTitle = null,
     )
     workspaces.forEach { workspace ->
+        val isOpen = workspace.serverName in openServerNames
         ListItem(
-            supportingContent = { Text(workspace.serverName, style = ElementTheme.typography.fontBodySmRegular) },
-            enabled = !isOpening,
+            supportingContent = {
+                Text(
+                    if (isOpen) stringResource(R.string.screen_artise_id_already_open) else workspace.serverName,
+                    style = ElementTheme.typography.fontBodySmRegular,
+                )
+            },
+            enabled = !isOpening && !isOpen,
             onClick = { onChoose(workspace) },
         ) {
             Text(workspace.name)
