@@ -24,6 +24,8 @@
     <string name="screen_signout_key_backup_offline_subtitle">As chaves das suas mensagens ainda estavam sendo salvas quando você ficou sem conexão. Conecte-se de novo para que sejam salvas antes de sair.</string>
     <string name="screen_signout_key_backup_ongoing_subtitle">Espere terminar antes de sair.</string>
     <string name="common_add_another_account">Adicionar um espaço de trabalho</string>
+    <string name="common_link_new_device">Conectar um celular</string>
+    <string name="screen_onboarding_sign_in_with_qr_code">Escanear com meu outro celular</string>
     <string name="screen_roomlist_a11y_create_message">Começar uma conversa nova</string>
     <string name="screen_roomlist_filter_rooms">Grupos</string>
     <string name="screen_roomlist_filter_rooms_empty_state_title">Você ainda não está em nenhuma conversa em grupo</string>

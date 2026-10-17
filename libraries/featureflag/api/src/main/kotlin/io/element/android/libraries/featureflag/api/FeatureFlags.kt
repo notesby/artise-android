@@ -84,7 +84,8 @@ enum class FeatureFlags(
         key = "feature.qr_code_login",
         title = "QR Code Login",
         description = "Allow logging in on other devices using a QR code.",
-        defaultValue = { false },
+        // Artise: on, so a new phone can be signed in from the old one (the screen says when the workspace doesn't support it yet).
+        defaultValue = { true },
         isFinished = false,
     ),
     AllowBlackTheme(
