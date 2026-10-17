@@ -15,6 +15,9 @@ sealed interface RoomListEvent {
     data class UpdateVisibleRange(val range: IntRange) : RoomListEvent
     data object DismissRequestVerificationPrompt : RoomListEvent
     data object DismissBanner : RoomListEvent
+
+    /** Artise: back to identity confirmation, which was put off with "Hacerlo después". */
+    data object UnlockMessages : RoomListEvent
     data object DismissNewNotificationSoundBanner : RoomListEvent
     data object ToggleSearchResults : RoomListEvent
     data class ShowContextMenu(val roomSummary: RoomListRoomSummary) : RoomListEvent

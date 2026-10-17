@@ -14,6 +14,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import dev.zacsweers.metro.Inject
 import io.element.android.features.logout.api.direct.DirectLogoutEvent
 import io.element.android.features.logout.api.direct.DirectLogoutState
@@ -22,11 +23,14 @@ import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.core.coroutine.mapState
 import io.element.android.libraries.matrix.api.encryption.EncryptionService
 import io.element.android.libraries.matrix.api.encryption.RecoveryState
+import io.element.android.libraries.preferences.api.store.SessionPreferencesStore
+import kotlinx.coroutines.launch
 
 @Inject
 class ChooseSelfVerificationModePresenter(
     private val encryptionService: EncryptionService,
     private val directLogoutPresenter: Presenter<DirectLogoutState>,
+    private val sessionPreferencesStore: SessionPreferencesStore,
 ) : Presenter<ChooseSelfVerificationModeState> {
     @Composable
     override fun present(): ChooseSelfVerificationModeState {
@@ -64,10 +68,13 @@ class ChooseSelfVerificationModePresenter(
         }
 
         val directLogoutState = directLogoutPresenter.present()
+        val coroutineScope = rememberCoroutineScope()
 
         fun handleEvent(event: ChooseSelfVerificationModeEvent) {
             when (event) {
                 ChooseSelfVerificationModeEvent.SignOut -> directLogoutState.eventSink(DirectLogoutEvent.Logout(ignoreSdkError = false))
+                // Artise: skipping is remembered per account; the chat list's banner turns it back off.
+                ChooseSelfVerificationModeEvent.Later -> coroutineScope.launch { sessionPreferencesStore.setSkipSessionVerification(true) }
             }
         }
 

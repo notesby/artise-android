@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<resources>
+    <string name="artise_recovery_later">Do it later</string>
+    <string name="artise_recovery_locked_title">Your earlier messages are locked</string>
+    <string name="artise_recovery_locked_message">Confirm it’s you, with your other phone or your recovery key, to read them on this phone.</string>
+    <string name="artise_recovery_locked_action">Unlock</string>
+</resources>

@@ -51,6 +51,7 @@ dependencies {
     implementation(projects.libraries.permissions.api)
     implementation(projects.libraries.permissions.noop)
     implementation(projects.libraries.preferences.api)
+    implementation(projects.artise.recovery.api) // Artise: the unlock banner's texts
     implementation(projects.libraries.push.api)
     implementation(projects.libraries.sessionStorage.api)
     implementation(projects.features.announcement.api)

@@ -284,6 +284,148 @@ WORDING = {
     ),
     "state_event_room_topic_removed": ("%1$s removed the chat’s description", "%1$s quitó la descripción del chat", "%1$s removeu a descrição da conversa"),
     "state_event_room_topic_removed_by_you": ("You removed the chat’s description", "Quitaste la descripción del chat", "Você removeu a descrição da conversa"),
+    # Confirming it's you on a new phone, and the recovery key (plain words instead of "digital identity" and "device")
+    "screen_identity_confirmation_title": ("Confirm it’s you", "Confirma que eres tú", "Confirme que é você"),
+    "screen_identity_confirmation_subtitle": (
+        "To read your earlier messages on this phone, confirm with your other phone or your recovery key.",
+        "Para leer tus mensajes anteriores en este teléfono, confírmalo con tu otro teléfono o tu clave de recuperación.",
+        "Para ler suas mensagens anteriores neste celular, confirme com seu outro celular ou sua chave de recuperação.",
+    ),
+    "screen_identity_confirmation_use_another_device": ("Use my other phone", "Usar mi otro teléfono", "Usar meu outro celular"),
+    "screen_identity_use_another_device": ("Use my other phone", "Usar mi otro teléfono", "Usar meu outro celular"),
+    "screen_identity_confirmation_use_recovery_key": ("Use my recovery key", "Usar mi clave de recuperación", "Usar minha chave de recuperação"),
+    "screen_identity_confirmation_cannot_confirm": ("Don’t have either?", "¿No tienes ninguno?", "Não tem nenhum dos dois?"),
+    "screen_identity_confirmed_title": ("This phone is confirmed", "Este teléfono está confirmado", "Este celular está confirmado"),
+    "screen_identity_confirmed_subtitle": (
+        "Your messages can be read on this phone, and the people you chat with can trust it.",
+        "Tus mensajes se pueden leer en este teléfono y las personas con las que chateas pueden confiar en él.",
+        "Suas mensagens podem ser lidas neste celular e as pessoas com quem você conversa podem confiar nele.",
+    ),
+    "screen_identity_waiting_on_other_device": ("Waiting for your other phone…", "Esperando a tu otro teléfono…", "Aguardando seu outro celular…"),
+    "screen_session_verification_use_another_device_title": ("Open Artise on your other phone", "Abre Artise en tu otro teléfono", "Abra o Artise no seu outro celular"),
+    "screen_session_verification_use_another_device_subtitle": (
+        "Keep it open there before you start here.",
+        "Déjalo abierto allí antes de empezar aquí.",
+        "Deixe-o aberto lá antes de começar aqui.",
+    ),
+    "screen_session_verification_waiting_another_device_title": ("Start on your other phone", "Empieza en tu otro teléfono", "Comece no seu outro celular"),
+    "screen_session_verification_waiting_other_device_title": ("Start on your other phone", "Empieza en tu otro teléfono", "Comece no seu outro celular"),
+    "screen_session_verification_waiting_another_device_subtitle": (
+        "A message should appear on your other phone. Start from there.",
+        "Debería aparecer un aviso en tu otro teléfono. Empieza desde ahí.",
+        "Deve aparecer um aviso no seu outro celular. Comece por lá.",
+    ),
+    "screen_session_verification_compare_emojis_subtitle": (
+        "Check that these emojis are the same as on your other phone.",
+        "Comprueba que estos emojis son los mismos que en tu otro teléfono.",
+        "Confira se estes emojis são os mesmos do seu outro celular.",
+    ),
+    "screen_session_verification_compare_numbers_subtitle": (
+        "Check that these numbers are the same as on your other phone.",
+        "Comprueba que estos números son los mismos que en tu otro teléfono.",
+        "Confira se estes números são os mesmos do seu outro celular.",
+    ),
+    "screen_session_verification_device_verified": ("Phone confirmed", "Teléfono confirmado", "Celular confirmado"),
+    "screen_session_verification_request_success_title": ("Phone confirmed", "Teléfono confirmado", "Celular confirmado"),
+    "screen_session_verification_complete_subtitle": (
+        "Your other phone can now read and send messages.",
+        "Tu otro teléfono ya puede leer y enviar mensajes.",
+        "Seu outro celular já pode ler e enviar mensagens.",
+    ),
+    "screen_session_verification_request_success_subtitle": (
+        "Your other phone can now read and send messages.",
+        "Tu otro teléfono ya puede leer y enviar mensajes.",
+        "Seu outro celular já pode ler e enviar mensagens.",
+    ),
+    "screen_session_verification_request_title": (
+        "Another phone wants to confirm it’s you",
+        "Otro teléfono quiere confirmar que eres tú",
+        "Outro celular quer confirmar que é você",
+    ),
+    "screen_session_verification_request_subtitle": (
+        "Confirm it so it can read your messages.",
+        "Confírmalo para que pueda leer tus mensajes.",
+        "Confirme para que ele possa ler suas mensagens.",
+    ),
+    "screen_session_verification_request_footer": (
+        "Only continue if you started this on your other phone.",
+        "Continúa solo si lo empezaste tú en tu otro teléfono.",
+        "Continue só se você começou isso no seu outro celular.",
+    ),
+    "screen_session_verification_open_existing_session_title": (
+        "Open Artise on a phone you already use",
+        "Abre Artise en un teléfono que ya usas",
+        "Abra o Artise num celular que você já usa",
+    ),
+    "screen_session_verification_open_existing_session_subtitle": (
+        "To show it’s you and read your earlier messages.",
+        "Para confirmar que eres tú y leer tus mensajes anteriores.",
+        "Para confirmar que é você e ler suas mensagens anteriores.",
+    ),
+    "screen_session_verification_unavailable_title": (
+        "You can’t confirm with this phone right now",
+        "Ahora no puedes confirmar con este teléfono",
+        "Agora você não pode confirmar com este celular",
+    ),
+    "screen_session_verification_unavailable_subtitle": (
+        "Use your other phone or your recovery key.",
+        "Usa tu otro teléfono o tu clave de recuperación.",
+        "Use seu outro celular ou sua chave de recuperação.",
+    ),
+    "confirm_recovery_key_banner_title": (
+        "Your earlier messages are locked",
+        "Tus mensajes anteriores están bloqueados",
+        "Suas mensagens anteriores estão bloqueadas",
+    ),
+    "confirm_recovery_key_banner_message": (
+        "Enter your recovery key to read them on this phone.",
+        "Escribe tu clave de recuperación para leerlos en este teléfono.",
+        "Digite sua chave de recuperação para lê-las neste celular.",
+    ),
+    "banner_set_up_recovery_title": (
+        "Keep your messages if you lose this phone",
+        "Conserva tus mensajes si pierdes este teléfono",
+        "Guarde suas mensagens se perder este celular",
+    ),
+    "banner_set_up_recovery_content": (
+        "Get a recovery key, so you can read your messages on a new phone.",
+        "Obtén una clave de recuperación para leer tus mensajes en un teléfono nuevo.",
+        "Obtenha uma chave de recuperação para ler suas mensagens num celular novo.",
+    ),
+    "screen_recovery_key_confirm_error_content": ("Check the key and try again.", "Revisa la clave e inténtalo de nuevo.", "Confira a chave e tente de novo."),
+    "screen_encryption_reset_title": (
+        "No other phone and no recovery key? Start fresh.",
+        "¿Sin otro teléfono ni clave de recuperación? Empieza de nuevo.",
+        "Sem outro celular nem chave de recuperação? Comece de novo.",
+    ),
+    "screen_encryption_reset_bullet_2": (
+        "Messages from before won’t be readable",
+        "Los mensajes de antes no se podrán leer",
+        "As mensagens de antes não poderão ser lidas",
+    ),
+    "screen_encryption_reset_bullet_3": (
+        "Your other phones and contacts will need to confirm you again",
+        "Tus otros teléfonos y contactos tendrán que confirmarte de nuevo",
+        "Seus outros celulares e contatos precisarão confirmar você de novo",
+    ),
+    "screen_encryption_reset_footer": (
+        "Only start fresh if you have no other phone signed in and no recovery key.",
+        "Empieza de nuevo solo si no tienes otro teléfono con tu sesión abierta ni tu clave de recuperación.",
+        "Só comece de novo se não tiver outro celular com sua sessão aberta nem sua chave de recuperação.",
+    ),
+    "screen_reset_encryption_confirmation_alert_title": ("Start fresh?", "¿Empezar de nuevo?", "Começar de novo?"),
+    "screen_reset_encryption_confirmation_alert_subtitle": ("This can’t be undone.", "No se puede deshacer.", "Não dá para desfazer."),
+    "screen_reset_encryption_confirmation_alert_action": ("Yes, start fresh", "Sí, empezar de nuevo", "Sim, começar de novo"),
+    "screen_reset_identity_confirmation_title": (
+        "Can’t confirm? Start fresh from your account.",
+        "¿No puedes confirmar? Empieza de nuevo desde tu cuenta.",
+        "Não consegue confirmar? Comece de novo pela sua conta.",
+    ),
+    "screen_reset_identity_confirmation_subtitle": (
+        "You’ll go to your %1$s account to start fresh, then come back to the app.",
+        "Irás a tu cuenta de %1$s para empezar de nuevo y luego volverás a la app.",
+        "Você vai para sua conta %1$s para começar de novo e depois volta ao app.",
+    ),
 }
 
 HEADER = """<?xml version="1.0" encoding="utf-8"?>

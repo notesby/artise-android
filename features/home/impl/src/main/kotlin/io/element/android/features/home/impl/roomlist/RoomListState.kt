@@ -57,6 +57,9 @@ data class RoomListState(
 
 enum class SecurityBannerState {
     None,
+
+    /** Artise: identity confirmation was put off ("Hacerlo después"), so earlier encrypted messages can't be read yet. */
+    UnlockMessages,
     SetUpRecovery,
     RecoveryKeyConfirmation,
 }
