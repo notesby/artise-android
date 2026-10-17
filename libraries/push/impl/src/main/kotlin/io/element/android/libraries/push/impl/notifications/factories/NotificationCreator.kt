@@ -573,7 +573,7 @@ private fun NotificationCompat.Builder.configureWith(notificationAccountParams: 
     setColor(notificationAccountParams.color)
     setGroup(notificationAccountParams.user.userId.value)
     if (notificationAccountParams.showSessionId) {
-        setSubText(notificationAccountParams.user.userId.value)
+        setSubText(notificationAccountParams.accountName)
     }
 }
 

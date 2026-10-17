@@ -15,4 +15,6 @@ data class NotificationAccountParams(
     val user: MatrixUser,
     @ColorInt val color: Int,
     val showSessionId: Boolean,
+    // Artise: shown as the account when [showSessionId]; the workspace's name, or the Matrix ID.
+    val accountName: String = user.userId.value,
 )
