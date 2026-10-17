@@ -22,7 +22,7 @@ import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Test
 
-class WorkspaceOAuthStaticClientProviderTest {
+class DefaultOAuthStaticClientProviderTest {
     private val server = MockWebServer().apply { start() }
     private val oauth = WorkspaceOAuth(androidClientId = "01K7ARTSEAPPANDR0D00000000", redirectUri = "https://join.artise.co/oauth")
 
@@ -30,7 +30,7 @@ class WorkspaceOAuthStaticClientProviderTest {
     fun tearDown() = server.shutdown()
 
     private fun TestScope.provider(applicationId: String = "co.artise.app", config: WorkspaceConfig? = WorkspaceConfig(oauth = oauth)) =
-        WorkspaceOAuthStaticClientProvider(
+        DefaultOAuthStaticClientProvider(
             buildMeta = aBuildMeta(applicationId = applicationId),
             workspaceConfigRepository = FakeWorkspaceConfigRepository(fetchResult = { if (it == "acme.artise.co") config else null }),
             okHttpClient = OkHttpClient(),

@@ -36,7 +36,7 @@ import java.io.IOException
  */
 @SingleIn(AppScope::class)
 @ContributesBinding(AppScope::class)
-class WorkspaceOAuthStaticClientProvider(
+class DefaultOAuthStaticClientProvider(
     private val buildMeta: BuildMeta,
     private val workspaceConfigRepository: WorkspaceConfigRepository,
     private val okHttpClient: OkHttpClient,
