@@ -104,4 +104,9 @@ interface EnterpriseService {
      * @param sessionId the session whose channel is requested.
      */
     fun getNoisyNotificationChannelId(sessionId: SessionId): String?
+
+    /**
+     * Artise: what notifications show as their account when several are signed in (the workspace's name), or null for the Matrix ID.
+     */
+    fun notificationAccountName(sessionId: SessionId): String? = null
 }

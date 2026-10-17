@@ -68,4 +68,7 @@ class ArtiseEnterpriseService(
     override fun bugReportUrlFlow(sessionId: SessionId?): Flow<BugReportUrl> = flowOf(BugReportUrl.Disabled)
 
     override fun getNoisyNotificationChannelId(sessionId: SessionId): String? = null
+
+    // The workspace's name ("Panadería Sol") rather than the account's Matrix ID.
+    override fun notificationAccountName(sessionId: SessionId): String? = workspaceConfigRepository.cached(sessionId)?.name
 }
