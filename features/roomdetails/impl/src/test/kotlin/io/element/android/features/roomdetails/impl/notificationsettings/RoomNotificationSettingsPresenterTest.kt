@@ -8,6 +8,7 @@
 
 package io.element.android.features.roomdetails.impl.notificationsettings
 
+import co.artise.android.sounds.test.aChatSoundState
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.roomdetails.impl.aJoinedRoom
 import io.element.android.libraries.matrix.api.room.RoomNotificationMode
@@ -170,6 +171,7 @@ class RoomNotificationSettingsPresenterTest {
             room = room,
             notificationSettingsService = notificationSettingsService,
             showUserDefinedSettingStyle = false,
+            chatSoundPresenter = { aChatSoundState() },
         )
     }
 }

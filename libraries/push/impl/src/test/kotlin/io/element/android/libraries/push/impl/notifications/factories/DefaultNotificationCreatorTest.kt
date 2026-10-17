@@ -13,6 +13,7 @@ import android.content.Context
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import co.artise.android.sounds.test.FakeChatSounds
 import com.google.common.truth.Truth.assertThat
 import io.element.android.appconfig.NotificationConfig
 import io.element.android.features.enterprise.api.EnterpriseService
@@ -494,6 +495,7 @@ fun createNotificationCreator(
             stringProvider = FakeStringProvider(REJECT_INVITATION_ACTION_TITLE),
             clock = FakeSystemClock(),
         ),
+        chatSounds = FakeChatSounds(),
     )
 }
 

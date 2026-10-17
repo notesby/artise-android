@@ -8,6 +8,7 @@
 
 package io.element.android.features.roomdetails.impl.notificationsettings
 
+import co.artise.android.sounds.api.ChatSoundState
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.matrix.api.room.RoomNotificationMode
@@ -23,7 +24,9 @@ data class RoomNotificationSettingsState(
     val setNotificationSettingAction: AsyncAction<Unit>,
     val restoreDefaultAction: AsyncAction<Unit>,
     val displayMentionsOnlyDisclaimer: Boolean,
-    val eventSink: (RoomNotificationSettingsEvent) -> Unit
+    val eventSink: (RoomNotificationSettingsEvent) -> Unit,
+    // Artise: the chat's own sound (artise/sounds).
+    val chatSoundState: ChatSoundState?,
 )
 
 val RoomNotificationSettingsState.displayNotificationMode: RoomNotificationMode? get() {

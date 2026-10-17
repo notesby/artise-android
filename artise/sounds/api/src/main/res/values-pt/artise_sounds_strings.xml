@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<resources>
+    <string name="artise_sound_title">Som</string>
+    <string name="artise_sound_default">Padrão</string>
+    <string name="artise_sound_default_description">O de Configurações → Notificações</string>
+    <string name="artise_sound_silent">Sem som</string>
+    <string name="artise_sound_phone">Sons do celular…</string>
+    <string name="artise_sound_phone_chosen">Um som do celular</string>
+    <string name="artise_sound_yours">Seus sons</string>
+    <string name="artise_sound_pick_file">Escolher um arquivo de áudio</string>
+    <string name="artise_sound_remove">Remover</string>
+    <string name="artise_sound_changed_in_phone_settings">Escolhido nas Configurações do celular</string>
+    <string name="artise_sound_problem_too_long">Este som dura %1$d segundos. Escolha um de 30 segundos ou menos.</string>
+    <string name="artise_sound_problem_too_big">Este arquivo tem mais de 10 MB. Escolha um menor.</string>
+    <string name="artise_sound_problem_not_audio">Este arquivo não é um som que o celular consiga tocar.</string>
+    <string name="artise_sound_problem_failed">Não foi possível adicionar este som. Tente de novo.</string>
+    <string name="artise_sound_channel_group">Sons das conversas</string>
+    <string name="artise_sound_channel_name">Som: %1$s</string>
+</resources>

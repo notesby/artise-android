@@ -31,6 +31,7 @@ dependencies {
     implementation(projects.artise.workspace.api)
     implementation(projects.appconfig)
     implementation(projects.libraries.core)
+    implementation(projects.artise.sounds.api) // Artise: a chat's own notification sound
     implementation(projects.libraries.architecture)
     implementation(projects.libraries.matrix.api)
     implementation(projects.libraries.matrixui)
@@ -68,6 +69,7 @@ dependencies {
 
     testCommonDependencies(libs, true)
     testImplementation(projects.libraries.matrix.test)
+    testImplementation(projects.artise.sounds.test)
     testImplementation(projects.libraries.mediaupload.test)
     testImplementation(projects.libraries.mediapickers.test)
     testImplementation(projects.libraries.mediaviewer.test)

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<resources>
+    <string name="artise_sound_title">Sonido</string>
+    <string name="artise_sound_default">Predeterminado</string>
+    <string name="artise_sound_default_description">El de Ajustes → Notificaciones</string>
+    <string name="artise_sound_silent">Sin sonido</string>
+    <string name="artise_sound_phone">Sonidos del teléfono…</string>
+    <string name="artise_sound_phone_chosen">Un sonido del teléfono</string>
+    <string name="artise_sound_yours">Tus sonidos</string>
+    <string name="artise_sound_pick_file">Elegir un archivo de audio</string>
+    <string name="artise_sound_remove">Quitar</string>
+    <string name="artise_sound_changed_in_phone_settings">Elegido en Ajustes del teléfono</string>
+    <string name="artise_sound_problem_too_long">Este sonido dura %1$d segundos. Elige uno de 30 segundos o menos.</string>
+    <string name="artise_sound_problem_too_big">Este archivo pesa más de 10 MB. Elige uno más pequeño.</string>
+    <string name="artise_sound_problem_not_audio">Este archivo no es un sonido que el teléfono pueda reproducir.</string>
+    <string name="artise_sound_problem_failed">No se pudo añadir este sonido. Inténtalo de nuevo.</string>
+    <string name="artise_sound_channel_group">Sonidos de chats</string>
+    <string name="artise_sound_channel_name">Sonido: %1$s</string>
+</resources>
