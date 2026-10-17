@@ -711,7 +711,11 @@ class LoggedInFlowNode(
                     Box(modifier = contentModifier) {
                         val ftueState by ftueService.state.collectAsState()
                         // Artise: the workspace's look for Artise screens, and its welcome once onboarding is done.
-                        workspaceBrandingRenderer.Render(matrixClient.sessionId, canWelcome = ftueState is FtueState.Complete) {
+                        workspaceBrandingRenderer.Render(
+                            sessionId = matrixClient.sessionId,
+                            canWelcome = ftueState is FtueState.Complete,
+                            onAddWorkspace = { callback.navigateToAddAccount() },
+                        ) {
                             BackstackView(transitionHandler = rememberLoggedInFlowTransitionHandler(backstack))
                             if (ftueState is FtueState.Complete) {
                                 PermanentChild(permanentNavModel = permanentNavModel, navTarget = NavTarget.LoggedInPermanent)
