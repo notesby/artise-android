@@ -24,6 +24,8 @@
     <string name="screen_signout_key_backup_offline_subtitle">Your messages’ keys were still being saved when you went offline. Reconnect so they’re saved before you sign out.</string>
     <string name="screen_signout_key_backup_ongoing_subtitle">Please wait for this to finish before signing out.</string>
     <string name="common_add_another_account">Add a workspace</string>
+    <string name="common_link_new_device">Connect a phone</string>
+    <string name="screen_onboarding_sign_in_with_qr_code">Scan with my other phone</string>
     <string name="screen_roomlist_a11y_create_message">Start a new chat</string>
     <string name="screen_roomlist_filter_rooms">Groups</string>
     <string name="screen_roomlist_filter_rooms_empty_state_title">You’re not in any group chat yet</string>

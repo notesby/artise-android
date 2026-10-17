@@ -24,6 +24,8 @@
     <string name="screen_signout_key_backup_offline_subtitle">Las claves de tus mensajes se estaban guardando cuando perdiste la conexión. Vuelve a conectarte para que se guarden antes de cerrar sesión.</string>
     <string name="screen_signout_key_backup_ongoing_subtitle">Espera a que termine antes de cerrar sesión.</string>
     <string name="common_add_another_account">Añadir un espacio de trabajo</string>
+    <string name="common_link_new_device">Conectar un teléfono</string>
+    <string name="screen_onboarding_sign_in_with_qr_code">Escanear con mi otro teléfono</string>
     <string name="screen_roomlist_a11y_create_message">Empezar un chat nuevo</string>
     <string name="screen_roomlist_filter_rooms">Grupos</string>
     <string name="screen_roomlist_filter_rooms_empty_state_title">Todavía no estás en ningún chat de grupo</string>
