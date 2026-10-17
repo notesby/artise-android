@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<resources>
+    <!-- %1$s: the workspace's name -->
+    <string name="artise_sign_out_from">Sign out of %1$s</string>
+    <string name="artise_sign_out_title">Sign out of %1$s?</string>
+    <string name="artise_sign_out_content">Your chats in %1$s will no longer show on this phone. You can sign back in anytime.</string>
+    <string name="artise_sign_out_content_unnamed">Your chats will no longer show on this phone. You can sign back in anytime.</string>
+    <string name="artise_sign_out_artise_id">You’ll also be signed out of Artise ID on this phone.</string>
+</resources>

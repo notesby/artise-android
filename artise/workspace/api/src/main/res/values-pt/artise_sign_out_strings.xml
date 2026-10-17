@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<resources>
+    <string name="artise_sign_out_from">Sair de %1$s</string>
+    <string name="artise_sign_out_title">Sair de %1$s?</string>
+    <string name="artise_sign_out_content">Suas conversas de %1$s deixarão de aparecer neste celular. Você pode entrar de novo quando quiser.</string>
+    <string name="artise_sign_out_content_unnamed">Suas conversas deixarão de aparecer neste celular. Você pode entrar de novo quando quiser.</string>
+    <string name="artise_sign_out_artise_id">Você também vai sair do Artise ID neste celular.</string>
+</resources>

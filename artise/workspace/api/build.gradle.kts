@@ -19,4 +19,5 @@ dependencies {
     api(projects.libraries.architecture)
     implementation(libs.coil.compose)
     implementation(projects.libraries.designsystem)
+    implementation(projects.libraries.uiStrings)
 }

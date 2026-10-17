@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
+import co.artise.android.workspace.api.signOutLabel
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.preferences.impl.R
 import io.element.android.libraries.designsystem.components.list.ListItemContent
@@ -135,7 +136,8 @@ private fun ColumnScope.GeneralSection(
     }
     HorizontalDivider()
     ListItem(
-        content = { Text(stringResource(id = CommonStrings.action_signout)) },
+        // Artise: names the workspace ("Cerrar sesión en Panadería Sol").
+        content = { Text(signOutLabel()) },
         leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Close())),
         style = ListItemStyle.Destructive,
         onClick = onSignOutClick,

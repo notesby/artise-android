@@ -9,20 +9,20 @@
 package io.element.android.features.logout.impl.ui
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.res.stringResource
-import io.element.android.features.logout.impl.R
+import co.artise.android.workspace.api.signOutConfirmationTexts
 import io.element.android.libraries.designsystem.components.dialogs.ConfirmationDialog
-import io.element.android.libraries.ui.strings.CommonStrings
 
 @Composable
 fun LogoutConfirmationDialog(
     onSubmitClick: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    // Artise: names the workspace, and says when Artise ID is signed out too.
+    val texts = signOutConfirmationTexts()
     ConfirmationDialog(
-        title = stringResource(id = CommonStrings.action_signout),
-        content = stringResource(id = R.string.screen_signout_confirmation_dialog_content),
-        submitText = stringResource(id = CommonStrings.action_signout),
+        title = texts.title,
+        content = texts.content,
+        submitText = texts.submit,
         onSubmitClick = onSubmitClick,
         onDismiss = onDismiss,
     )
