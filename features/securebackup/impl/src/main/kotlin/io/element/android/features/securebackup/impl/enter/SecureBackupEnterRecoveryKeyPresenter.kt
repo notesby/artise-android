@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import co.artise.android.recovery.api.RecoveryKeyVault
 import dev.zacsweers.metro.Inject
 import io.element.android.features.securebackup.impl.setup.views.RecoveryKeyUserStory
 import io.element.android.features.securebackup.impl.setup.views.RecoveryKeyViewState
@@ -31,6 +32,8 @@ import kotlinx.coroutines.launch
 class SecureBackupEnterRecoveryKeyPresenter(
     private val encryptionService: EncryptionService,
     private val recoveryKeyTools: RecoveryKeyTools,
+    // Artise: a key that worked is kept in the phone's encrypted backup, so this phone's next reinstall doesn't ask (artise/recovery).
+    private val recoveryKeyVault: RecoveryKeyVault,
 ) : Presenter<SecureBackupEnterRecoveryKeyState> {
     @Composable
     override fun present(): SecureBackupEnterRecoveryKeyState {
@@ -89,6 +92,7 @@ class SecureBackupEnterRecoveryKeyPresenter(
     ) = launch {
         suspend {
             encryptionService.recover(recoveryKey).getOrThrow()
+            recoveryKeyVault.save(recoveryKey)
         }.runCatchingUpdatingState(action)
     }
 }

@@ -11,6 +11,8 @@ package io.element.android.features.securebackup.impl.enter
 import app.cash.molecule.RecompositionMode
 import app.cash.molecule.moleculeFlow
 import app.cash.turbine.test
+import co.artise.android.recovery.api.RecoveryKeyVault
+import co.artise.android.recovery.test.FakeRecoveryKeyVault
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.securebackup.impl.setup.views.RecoveryKeyUserStory
 import io.element.android.features.securebackup.impl.setup.views.RecoveryKeyViewState
@@ -92,8 +94,10 @@ class SecureBackupEnterRecoveryKeyPresenterTest {
 
     private fun createPresenter(
         encryptionService: EncryptionService = FakeEncryptionService(),
+        recoveryKeyVault: RecoveryKeyVault = FakeRecoveryKeyVault(),
     ) = SecureBackupEnterRecoveryKeyPresenter(
         encryptionService = encryptionService,
         recoveryKeyTools = RecoveryKeyTools(),
+        recoveryKeyVault = recoveryKeyVault,
     )
 }

@@ -8,6 +8,7 @@
 package io.element.android.features.securebackup.impl
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
+import co.artise.android.recovery.test.FakeRecoveryKeyVault
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.testing.junit4.util.MainDispatcherRule
 import com.google.common.truth.Truth.assertThat
@@ -40,6 +41,7 @@ class DefaultSecureBackupSetupEntryPointTest {
                         isChangeRecoveryKeyUserStory = isChangeRecoveryKeyUserStory,
                         stateMachine = SecureBackupSetupStateMachine(),
                         encryptionService = FakeEncryptionService(),
+                        recoveryKeyVault = FakeRecoveryKeyVault(),
                     )
                 },
                 snackbarDispatcher = SnackbarDispatcher(),
