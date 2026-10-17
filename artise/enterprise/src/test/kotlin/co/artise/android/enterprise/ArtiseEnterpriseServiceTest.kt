@@ -58,11 +58,11 @@ class ArtiseEnterpriseServiceTest {
         }
     }
 
-    /** Bug reports are off, so nothing is ever sent to Element's rageshake server. */
+    /** Problem reports go to Artise's own rageshake server (BUG_REPORT_URL), never Element's. */
     @Test
-    fun `bug reports are disabled`() = runTest {
+    fun `bug reports use artise's own server`() = runTest {
         service.bugReportUrlFlow(A_SESSION_ID).test {
-            assertThat(awaitItem()).isEqualTo(BugReportUrl.Disabled)
+            assertThat(awaitItem()).isEqualTo(BugReportUrl.UseDefault)
             awaitComplete()
         }
     }

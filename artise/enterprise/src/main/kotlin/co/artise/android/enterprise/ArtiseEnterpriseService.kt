@@ -65,7 +65,8 @@ class ArtiseEnterpriseService(
     override fun firebasePushGateway(sessionId: SessionId): String = WorkspaceConfig.pushGatewayFor(workspaceConfigRepository.cached(sessionId))
     override fun unifiedPushDefaultPushGateway(): String? = null
 
-    override fun bugReportUrlFlow(sessionId: SessionId?): Flow<BugReportUrl> = flowOf(BugReportUrl.Disabled)
+    // Problem reports go to Artise's own rageshake server (BUG_REPORT_URL).
+    override fun bugReportUrlFlow(sessionId: SessionId?): Flow<BugReportUrl> = flowOf(BugReportUrl.UseDefault)
 
     override fun getNoisyNotificationChannelId(sessionId: SessionId): String? = null
 
