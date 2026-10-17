@@ -18,6 +18,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.edit
 import co.artise.android.workspace.api.LocalSignOutEndsArtiseId
 import co.artise.android.workspace.api.LocalWorkspaceBranding
@@ -33,12 +35,15 @@ import co.artise.android.workspace.api.serverName
 import co.artise.android.workspace.impl.artiseid.ArtiseIdAuth
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
+import io.element.android.libraries.core.meta.BuildMeta
 import io.element.android.libraries.designsystem.components.dialogs.AlertDialog
+import io.element.android.libraries.designsystem.components.dialogs.ConfirmationDialog
 import io.element.android.libraries.di.annotations.ApplicationContext
 import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.sessionstorage.api.SessionStore
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
+import co.artise.android.workspace.api.R as ApiR
 
 @ContributesBinding(AppScope::class)
 class DefaultWorkspaceBrandingRenderer(
@@ -47,6 +52,7 @@ class DefaultWorkspaceBrandingRenderer(
     private val signInWorkspaceHolder: SignInWorkspaceHolder,
     private val artiseIdAuth: ArtiseIdAuth,
     private val sessionStore: SessionStore,
+    private val buildMeta: BuildMeta,
 ) : WorkspaceBrandingRenderer {
     private val signOutEndsArtiseId: suspend () -> Boolean = { signOutEndsArtiseId(sessionStore, artiseIdAuth) }
 
@@ -79,6 +85,7 @@ class DefaultWorkspaceBrandingRenderer(
         ) {
             content()
             if (canWelcome) Welcome(sessionId, config)
+            UpdateNotice(config)
         }
     }
 
@@ -104,10 +111,28 @@ class DefaultWorkspaceBrandingRenderer(
         )
     }
 
+    /** When this app is older than the workspace's minimum: "Actualiza Artise para seguir usando {espacio}", with the store link. */
+    @Composable
+    private fun UpdateNotice(config: WorkspaceConfig?) {
+        if (config == null || !config.needsAppUpdate(buildMeta.versionCode)) return
+        var dismissed by remember(config.minAndroidVersionCode) { mutableStateOf(false) }
+        if (dismissed) return
+        val uriHandler = LocalUriHandler.current
+        val storeLink = config.androidStoreLink ?: PLAY_STORE_LINK
+        ConfirmationDialog(
+            title = stringResource(ApiR.string.artise_update_title),
+            content = stringResource(ApiR.string.artise_update_message, config.name ?: "Artise"),
+            submitText = stringResource(ApiR.string.artise_update_action),
+            onSubmitClick = { uriHandler.openUri(storeLink) },
+            onDismiss = { dismissed = true },
+        )
+    }
+
     private fun SessionId.welcomedKey() = "$value.welcomed"
 
     private companion object {
         const val PREFERENCES = "artise_workspace_welcome"
+        const val PLAY_STORE_LINK = "https://play.google.com/store/apps/details?id=co.artise.app"
     }
 }
 

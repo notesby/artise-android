@@ -30,12 +30,23 @@ data class WorkspaceConfig(
     val links: WorkspaceLinks? = null,
     /** The workspace's own sign-in clients; null when its sign-in service doesn't have them (then the app registers itself). */
     val oauth: WorkspaceOAuth? = null,
+    /** Ari's Matrix account, to pin its chat; null when the workspace didn't say. */
+    val assistantUserId: String? = null,
+    /** Whom to write to for help: the workspace's first admin. */
+    val contactUserId: String? = null,
+    /** The lowest Android version code that still works with this workspace; null means no minimum. */
+    val minAndroidVersionCode: Long? = null,
+    /** Where to update the app (Play). */
+    val androidStoreLink: String? = null,
 ) {
     /** False only when the workspace lists its features and [feature] isn't one of them. */
     fun hasFeature(feature: String): Boolean = features?.contains(feature) ?: true
 
     /** The welcome text in [deviceLanguage], else in the workspace's language, else none. */
     fun welcomeFor(deviceLanguage: String): String? = welcome[deviceLanguage] ?: language?.let { welcome[it] }
+
+    /** True when this app (its [androidVersionCode]) is older than the workspace's minimum; no minimum never asks. */
+    fun needsAppUpdate(androidVersionCode: Long): Boolean = minAndroidVersionCode?.let { androidVersionCode < it } ?: false
 
     companion object {
         /** Artise's shared push gateway, for every workspace that doesn't name its own. */
@@ -56,6 +67,8 @@ data class WorkspaceLinks(
     /** The Notes API base; the paths in family-wiki docs/notes-api.md are relative to it. */
     val notesApi: String?,
     val deleteAccount: String?,
+    /** The workspace's help page. */
+    val help: String? = null,
 )
 
 /**
