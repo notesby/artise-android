@@ -23,6 +23,7 @@
     <string name="screen_signout_key_backup_disabled_subtitle">Este é o único celular com sua sessão aberta. Depois de sair, você vai precisar da sua chave de recuperação para ler suas mensagens anteriores quando entrar de novo.</string>
     <string name="screen_signout_key_backup_offline_subtitle">As chaves das suas mensagens ainda estavam sendo salvas quando você ficou sem conexão. Conecte-se de novo para que sejam salvas antes de sair.</string>
     <string name="screen_signout_key_backup_ongoing_subtitle">Espere terminar antes de sair.</string>
+    <string name="common_add_another_account">Adicionar um espaço de trabalho</string>
     <string name="screen_roomlist_a11y_create_message">Começar uma conversa nova</string>
     <string name="screen_roomlist_filter_rooms">Grupos</string>
     <string name="screen_roomlist_filter_rooms_empty_state_title">Você ainda não está em nenhuma conversa em grupo</string>

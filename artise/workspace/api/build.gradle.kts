@@ -18,6 +18,7 @@ dependencies {
     api(projects.libraries.matrix.api)
     api(projects.libraries.architecture)
     implementation(libs.coil.compose)
+    api(libs.kotlinx.collections.immutable)
     implementation(projects.libraries.designsystem)
     implementation(projects.libraries.uiStrings)
 }

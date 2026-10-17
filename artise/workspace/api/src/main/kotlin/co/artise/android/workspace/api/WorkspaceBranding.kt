@@ -74,7 +74,10 @@ val LocalWorkspaceBranding = staticCompositionLocalOf { WorkspaceBranding.Defaul
 
 /** Wraps the signed-in app: provides [LocalWorkspaceBranding] and, once after the first sign-in, shows the workspace's welcome. */
 interface WorkspaceBrandingRenderer {
-    /** [canWelcome] is false while onboarding steps are still showing, so the welcome comes after them. */
+    /**
+     * [canWelcome] is false while onboarding steps are still showing, so the welcome comes after them. [onAddWorkspace] opens sign-in for
+     * another workspace, from the workspace switcher.
+     */
     @Composable
-    fun Render(sessionId: SessionId, canWelcome: Boolean, content: @Composable () -> Unit)
+    fun Render(sessionId: SessionId, canWelcome: Boolean, onAddWorkspace: () -> Unit, content: @Composable () -> Unit)
 }
