@@ -59,12 +59,12 @@ class WorkspaceSignInPresenter(
         var joinPageUrl by remember { mutableStateOf<String?>(null) }
         var awaitingJoinPage by rememberSaveable { mutableStateOf(false) }
 
-        fun submit() {
+        fun submit(resolveWith: suspend () -> Resolved = { resolve(input) }) {
             if (isLoading) return
             isLoading = true
             problem = null
             scope.launch {
-                when (val result = resolve(input)) {
+                when (val result = resolveWith()) {
                     is Resolved.Ready -> {
                         holder.choose(result.workspace)
                         readyServerName = result.workspace.serverName
@@ -103,6 +103,7 @@ class WorkspaceSignInPresenter(
                         problem = null
                     }
                     WorkspaceSignInEvent.Continue -> submit()
+                    is WorkspaceSignInEvent.Open -> submit { resolveServer(typed = event.slug, serverName = event.serverName, lookupName = event.name) }
                     WorkspaceSignInEvent.ReadyHandled -> readyServerName = null
                     WorkspaceSignInEvent.JoinPageOpened -> {
                         joinPageUrl = null
@@ -130,13 +131,18 @@ class WorkspaceSignInPresenter(
             is WorkspaceLookupResult.ServerName -> found.serverName to null
             else -> return Resolved.Problem(problemOf(found, typed))
         }
+        return resolveServer(typed, serverName, lookupName)
+    }
+
+    private suspend fun resolveServer(typed: String, serverName: String, lookupName: String?): Resolved {
         return coroutineScope {
             val config = async { withTimeoutOrNull(BRANDING_TIMEOUT) { configRepository.fetch(serverName) } }
             val details = authenticationService.setHomeserver(serverName)
             val name = config.await()?.name ?: lookupName ?: serverName
             details.fold(
                 onSuccess = {
-                    if (it.supportsPasswordLogin) {
+                    // Password, or the server's own sign-in page (OAuth, e.g. MAS): WorkspaceLoginMode picks.
+                    if (it.isSupported) {
                         Resolved.Ready(SignInWorkspace(typed = typed, name = name, serverName = serverName, logoUrl = config.await()?.logoUrl))
                     } else {
                         Resolved.Problem(WorkspaceProblem.NoPasswordSignIn(name))

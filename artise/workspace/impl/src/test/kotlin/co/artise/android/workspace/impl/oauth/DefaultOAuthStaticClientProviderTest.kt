@@ -12,7 +12,6 @@ import co.artise.android.workspace.api.WorkspaceOAuth
 import co.artise.android.workspace.test.FakeWorkspaceConfigRepository
 import com.google.common.truth.Truth.assertThat
 import io.element.android.libraries.matrix.api.auth.OAuthStaticClient
-import io.element.android.libraries.matrix.test.core.aBuildMeta
 import io.element.android.tests.testutils.testCoroutineDispatchers
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -29,9 +28,9 @@ class DefaultOAuthStaticClientProviderTest {
     @After
     fun tearDown() = server.shutdown()
 
-    private fun TestScope.provider(applicationId: String = "co.artise.app", config: WorkspaceConfig? = WorkspaceConfig(oauth = oauth)) =
+    private fun TestScope.provider(opensJoinLinks: Boolean = true, config: WorkspaceConfig? = WorkspaceConfig(oauth = oauth)) =
         DefaultOAuthStaticClientProvider(
-            buildMeta = aBuildMeta(applicationId = applicationId),
+            joinLinkCheck = { opensJoinLinks },
             workspaceConfigRepository = FakeWorkspaceConfigRepository(fetchResult = { if (it == "acme.artise.co") config else null }),
             okHttpClient = OkHttpClient(),
             dispatchers = testCoroutineDispatchers(),
@@ -39,7 +38,10 @@ class DefaultOAuthStaticClientProviderTest {
 
     private fun homeserverUrl() = server.url("/").toString()
 
-    /** The release app uses the workspace's android client for the issuer in the homeserver's auth metadata, and its https redirect. */
+    /**
+     * When join.artise.co links open the app, it uses the workspace's android client for the issuer in the homeserver's auth metadata,
+     * and its https redirect.
+     */
     @Test
     fun `the release app uses the workspace's client`() = runTest {
         server.enqueue(MockResponse().setBody("""{"issuer": "https://auth.acme.artise.co/", "token_endpoint": "https://auth.acme.artise.co/token"}"""))
@@ -56,14 +58,12 @@ class DefaultOAuthStaticClientProviderTest {
         assertThat(provider.pendingRedirectUri).isEqualTo("https://join.artise.co/oauth")
     }
 
-    /** Debug and nightly builds aren't in join.artise.co's App Link file, so they keep registering themselves (custom scheme). */
+    /** When join.artise.co links don't open the app (debug and nightly builds, or an unverified link), it registers itself (custom scheme). */
     @Test
-    fun `other builds register themselves`() = runTest {
-        for (applicationId in listOf("co.artise.app.debug", "co.artise.app.nightly")) {
-            val provider = provider(applicationId = applicationId)
-            assertThat(provider.get(serverName = "acme.artise.co", homeserverUrl = homeserverUrl())).isNull()
-            assertThat(provider.pendingRedirectUri).isNull()
-        }
+    fun `without join links the app registers itself`() = runTest {
+        val provider = provider(opensJoinLinks = false)
+        assertThat(provider.get(serverName = "acme.artise.co", homeserverUrl = homeserverUrl())).isNull()
+        assertThat(provider.pendingRedirectUri).isNull()
         assertThat(server.requestCount).isEqualTo(0)
     }
 

@@ -17,4 +17,14 @@
     <string name="screen_workspace_error_server_unreachable">No se puede conectar con el servidor de %1$s ahora. Inténtalo de nuevo en un momento.</string>
     <string name="screen_workspace_error_no_password">%1$s no usa usuario y contraseña, así que no puedes entrar desde aquí.</string>
     <string name="screen_workspace_error_invite_unavailable">Esta invitación todavía no se puede abrir en la app. Abre el enlace en tu navegador.</string>
+    <string name="screen_artise_id_subtitle">Inicia sesión una vez y elige tu espacio.</string>
+    <string name="screen_artise_id_continue_apple">Continuar con Apple</string>
+    <string name="screen_artise_id_continue_google">Continuar con Google</string>
+    <string name="screen_artise_id_continue_microsoft">Continuar con Microsoft</string>
+    <string name="screen_artise_id_continue_email">Continuar con correo</string>
+    <string name="screen_artise_id_type_workspace">¿Tienes el nombre de tu espacio? Escríbelo</string>
+    <string name="screen_artise_id_workspaces_title">Elige tu espacio</string>
+    <string name="screen_artise_id_no_workspaces_title">Aún no tienes espacios</string>
+    <string name="screen_artise_id_no_workspaces">Todavía no estás en ningún espacio. Pídele a quien te invitó el enlace de invitación.</string>
+    <string name="screen_artise_id_error_sign_in">No se pudo iniciar sesión con Artise. Inténtalo de nuevo.</string>
 </resources>

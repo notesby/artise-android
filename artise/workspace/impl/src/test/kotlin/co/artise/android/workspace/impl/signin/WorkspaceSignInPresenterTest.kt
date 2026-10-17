@@ -120,11 +120,29 @@ class WorkspaceSignInPresenterTest {
             failed.eventSink(WorkspaceSignInEvent.Continue)
             assertThat(consumeItemsUntilPredicate { it.readyServerName != null && !it.isLoading }.last().readyServerName).isEqualTo("acme.artise.co")
         }
+        // A server with only its own sign-in page (MAS) goes on: the login step opens that page.
         presenter(homeserverResult = { Result.success(passwordServer.copy(supportsPasswordLogin = false, supportsOAuthLogin = true)) }).test {
+            awaitItem().eventSink(WorkspaceSignInEvent.InputChanged("acme"))
+            awaitItem().eventSink(WorkspaceSignInEvent.Continue)
+            assertThat(consumeItemsUntilPredicate { it.readyServerName != null && !it.isLoading }.last().readyServerName).isEqualTo("acme.artise.co")
+        }
+        presenter(homeserverResult = { Result.success(passwordServer.copy(supportsPasswordLogin = false, supportsOAuthLogin = false)) }).test {
             awaitItem().eventSink(WorkspaceSignInEvent.InputChanged("acme"))
             awaitItem().eventSink(WorkspaceSignInEvent.Continue)
             assertThat(consumeItemsUntilPredicate { !it.isLoading && it.problem != null }.last().problem)
                 .isEqualTo(WorkspaceProblem.NoPasswordSignIn("Acme Inc."))
+        }
+    }
+
+    /** A workspace picked from the Artise ID list opens without a lookup: its server is set directly. */
+    @Test
+    fun `a workspace from the Artise ID list opens without a lookup`() = runTest {
+        val holder = FakeSignInWorkspaceHolder()
+        presenter(lookupResult = { error("no lookup expected") }, holder = holder).test {
+            awaitItem().eventSink(WorkspaceSignInEvent.Open(slug = "acme", name = "Acme", serverName = "acme.artise.co"))
+            assertThat(consumeItemsUntilPredicate { it.readyServerName != null && !it.isLoading }.last().readyServerName).isEqualTo("acme.artise.co")
+            assertThat(homeservers).containsExactly("acme.artise.co")
+            assertThat(holder.current.value).isEqualTo(SignInWorkspace("acme", "Acme Inc.", "acme.artise.co", "https://artise.co/brand/logo-1.png"))
         }
     }
 

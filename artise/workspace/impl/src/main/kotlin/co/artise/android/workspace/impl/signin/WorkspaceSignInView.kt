@@ -105,7 +105,7 @@ private fun WorkspaceProblem?.isRetryable() = when (this) {
 }
 
 @Composable
-private fun problemText(problem: WorkspaceProblem): String = when (problem) {
+internal fun problemText(problem: WorkspaceProblem): String = when (problem) {
     WorkspaceProblem.Invalid -> stringResource(R.string.screen_workspace_error_invalid)
     is WorkspaceProblem.NotFound -> stringResource(R.string.screen_workspace_error_not_found, problem.typed)
     WorkspaceProblem.Paused -> stringResource(R.string.screen_workspace_error_paused)

@@ -13,6 +13,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import co.artise.android.accountdeletion.AccountDeletion
+import co.artise.android.workspace.test.FakeArtiseIdCallback
 import co.artise.android.workspace.test.FakeSignInWorkspaceHolder
 import com.bumble.appyx.core.modality.AncestryInfo
 import com.bumble.appyx.core.modality.BuildContext
@@ -181,6 +182,7 @@ class RootFlowNodeTest : RobolectricTest() {
                 oAuthIntentResolver = FakeOAuthIntentResolver { null },
                 permalinkParser = FakePermalinkParser(),
                 shareIntentHandler = FakeShareIntentHandler(),
+                artiseIdCallback = FakeArtiseIdCallback(),
             ),
             oAuthActionFlow = FakeOAuthActionFlow(),
             featureFlagService = FakeFeatureFlagService(),
@@ -196,6 +198,7 @@ class RootFlowNodeTest : RobolectricTest() {
                 override fun consumeStarted() = false
             },
             signInWorkspaceHolder = FakeSignInWorkspaceHolder(),
+            artiseIdCallback = FakeArtiseIdCallback(),
             appCoroutineScope = backgroundScope,
         )
     }
