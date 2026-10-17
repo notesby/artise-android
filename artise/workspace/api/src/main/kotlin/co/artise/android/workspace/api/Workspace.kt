@@ -43,7 +43,7 @@ sealed interface WorkspaceLookupResult {
     data object Unreachable : WorkspaceLookupResult
 }
 
-interface WorkspaceLookup {
+fun interface WorkspaceLookup {
     /** Looks up what the person typed: a workspace name ("acme"), or a server name ("artise.co") when the lookup can't be reached. */
     suspend fun find(input: String): WorkspaceLookupResult
 }

@@ -21,6 +21,9 @@ import co.artise.android.workspace.impl.artiseid.ArtiseIdTokens
 import co.artise.android.workspace.impl.artiseid.ArtiseIdWorkspace
 import co.artise.android.workspace.impl.artiseid.InMemoryArtiseIdTokenStore
 import com.google.common.truth.Truth.assertThat
+import io.element.android.libraries.sessionstorage.api.SessionStore
+import io.element.android.libraries.sessionstorage.test.InMemorySessionStore
+import io.element.android.libraries.sessionstorage.test.aSessionData
 import io.element.android.services.toolbox.test.systemclock.FakeSystemClock
 import io.element.android.tests.testutils.consumeItemsUntilPredicate
 import io.element.android.tests.testutils.test
@@ -44,12 +47,13 @@ class ArtiseIdSignInPresenterTest {
     private fun TestScope.createArtiseIdSignInPresenter(
         params: WorkspaceSignInEntryPoint.Params = WorkspaceSignInEntryPoint.Params(),
         opensJoinLinks: Boolean = true,
+        sessionStore: SessionStore = InMemorySessionStore(),
     ): ArtiseIdSignInPresenter {
         val dispatchers = testCoroutineDispatchers()
         val clock = FakeSystemClock()
         val configClient = ArtiseIdConfigClient(server.okHttpClient, clock, dispatchers)
         auth = ArtiseIdAuth(configClient, store, server.okHttpClient, clock, dispatchers, backgroundScope)
-        return ArtiseIdSignInPresenter(params, configClient, auth, joinLinkCheck = { opensJoinLinks })
+        return ArtiseIdSignInPresenter(params, configClient, auth, joinLinkCheck = { opensJoinLinks }, sessionStore = sessionStore)
     }
 
     /** Signs in through [provider] as if Artise ID's page had answered with a code. */
@@ -108,6 +112,22 @@ class ArtiseIdSignInPresenterTest {
             val chosen = consumeItemsUntilPredicate { it.chosen != null }.last()
             assertThat(chosen.chosen).isEqualTo(masK8s)
             assertThat(store.tokens?.accessToken).isEqualTo("at-1")
+        }
+    }
+
+    /** Adding a workspace: the only one in the list is already open on this phone, so it's marked "Ya abierto" and not opened again. */
+    @Test
+    fun `a workspace already open isn't opened again`() = runTest {
+        server.givenArtiseId()
+        val sessions = InMemorySessionStore(listOf(aSessionData(sessionId = "@ana:" + masK8s.serverName)))
+        createArtiseIdSignInPresenter(sessionStore = sessions).test {
+            val providers = consumeItemsUntilPredicate { it.screen is ArtiseIdScreen.Providers }.last()
+            providers.signInAndAnswer(null) {
+                requireNotNull(consumeItemsUntilPredicate { it.authorizationUrl != null }.last().authorizationUrl)
+            }
+            val listed = consumeItemsUntilPredicate { it.screen is ArtiseIdScreen.Workspaces }.last()
+            assertThat(listed.chosen).isNull()
+            assertThat((listed.screen as ArtiseIdScreen.Workspaces).openServerNames).containsExactly(masK8s.serverName)
         }
     }
 

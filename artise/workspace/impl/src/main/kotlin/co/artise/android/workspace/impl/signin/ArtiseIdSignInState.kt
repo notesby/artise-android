@@ -11,6 +11,8 @@ import androidx.compose.runtime.Immutable
 import co.artise.android.workspace.impl.artiseid.ArtiseIdProvider
 import co.artise.android.workspace.impl.artiseid.ArtiseIdWorkspace
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableSet
+import kotlinx.collections.immutable.persistentSetOf
 
 data class ArtiseIdSignInState(
     val screen: ArtiseIdScreen,
@@ -36,7 +38,11 @@ sealed interface ArtiseIdScreen {
         val problem: ArtiseIdProblem?,
     ) : ArtiseIdScreen
 
-    data class Workspaces(val workspaces: ImmutableList<ArtiseIdWorkspace>) : ArtiseIdScreen
+    /** [openServerNames]: workspaces already signed in on this phone ("Ya abierto"), which can't be opened a second time. */
+    data class Workspaces(
+        val workspaces: ImmutableList<ArtiseIdWorkspace>,
+        val openServerNames: ImmutableSet<String> = persistentSetOf(),
+    ) : ArtiseIdScreen
 
     data object NoWorkspaces : ArtiseIdScreen
 }
