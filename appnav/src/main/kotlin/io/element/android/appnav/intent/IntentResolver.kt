@@ -9,6 +9,7 @@
 package io.element.android.appnav.intent
 
 import android.content.Intent
+import co.artise.android.workspace.api.ArtiseIdCallback
 import co.artise.android.workspace.api.WorkspaceInvite
 import dev.zacsweers.metro.Inject
 import io.element.android.features.login.api.LoginIntentResolver
@@ -32,6 +33,9 @@ sealed interface ResolvedIntent {
 
     // Artise: an invite link to a workspace (https://join.artise.co/{slug}/{code}).
     data class WorkspaceInvite(val invite: co.artise.android.workspace.api.WorkspaceInvite) : ResolvedIntent
+
+    // Artise: the return of an Artise ID sign-in (https://join.artise.co/oauth with its state).
+    data class ArtiseIdReturn(val url: String) : ResolvedIntent
 }
 
 @Inject
@@ -41,6 +45,7 @@ class IntentResolver(
     private val oAuthIntentResolver: OAuthIntentResolver,
     private val permalinkParser: PermalinkParser,
     private val shareIntentHandler: ShareIntentHandler,
+    private val artiseIdCallback: ArtiseIdCallback,
 ) {
     fun resolve(intent: Intent): ResolvedIntent? {
         if (intent.canBeIgnored()) return null
@@ -48,6 +53,10 @@ class IntentResolver(
         // Coming from a notification?
         val deepLinkData = deeplinkParser.getFromIntent(intent)
         if (deepLinkData != null) return ResolvedIntent.Navigation(deepLinkData)
+
+        // Artise: back from Artise ID? Checked before OAuth: a workspace's own client returns to the same address, told apart by state.
+        val artiseIdReturn = intent.takeIf { it.action == Intent.ACTION_VIEW }?.dataString?.takeIf(artiseIdCallback::handles)
+        if (artiseIdReturn != null) return ResolvedIntent.ArtiseIdReturn(artiseIdReturn)
 
         // Coming during login using OAuth?
         val oAuthAction = oAuthIntentResolver.resolve(intent)

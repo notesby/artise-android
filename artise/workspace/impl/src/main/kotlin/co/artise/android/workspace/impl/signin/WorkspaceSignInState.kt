@@ -37,7 +37,7 @@ sealed interface WorkspaceProblem {
     /** The workspace was found but its server didn't answer. */
     data class ServerUnreachable(val name: String) : WorkspaceProblem
 
-    /** The server doesn't take a username and password. */
+    /** The server takes neither a username and password nor its own sign-in page. */
     data class NoPasswordSignIn(val name: String) : WorkspaceProblem
 
     /** The workspace doesn't take invites from the app yet (its server has no join page). */
@@ -48,6 +48,9 @@ sealed interface WorkspaceSignInEvent {
     data class InputChanged(val input: String) : WorkspaceSignInEvent
 
     data object Continue : WorkspaceSignInEvent
+
+    /** A workspace from the person's Artise ID list: its server is known, so there's no lookup. */
+    data class Open(val slug: String, val name: String, val serverName: String) : WorkspaceSignInEvent
 
     /** The node moved on to the password screen. */
     data object ReadyHandled : WorkspaceSignInEvent
