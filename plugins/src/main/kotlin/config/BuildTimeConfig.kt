@@ -28,10 +28,12 @@ object BuildTimeConfig {
     val SERVICES_MAPTILER_DARK_MAPID: String? = null
     val SERVICES_POSTHOG_HOST: String? = null
     val SERVICES_POSTHOG_APIKEY: String? = null
-    val SERVICES_SENTRY_DSN: String? = null
+    // Artise: opt-in crash reports to Artise's own Sentry (crashes.artise.co, EU), asked with "Help improve Artise".
+    val SERVICES_SENTRY_DSN: String? = "https://221f0508bd724639b5a1071c857b89a7@crashes.artise.co/1"
     val SERVICES_SENTRY_DSN_RUST: String? = null
-    val BUG_REPORT_URL: String? = null
-    val BUG_REPORT_APP_NAME: String? = null
+    // Artise: "Reportar un problema" sends logs (no chats) to Artise's own rageshake server.
+    val BUG_REPORT_URL: String? = "https://reports.artise.co/api/submit"
+    val BUG_REPORT_APP_NAME: String? = "artise-android"
     const val PUSH_CONFIG_INCLUDE_FIREBASE: Boolean = true
     const val PUSH_CONFIG_INCLUDE_UNIFIED_PUSH: Boolean = true
     val PUSHER_APP_ID_RELEASE: String? = "co.artise.app.android"

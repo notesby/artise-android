@@ -35,6 +35,7 @@ object ModulesConfig {
     } else {
         // Artise: Google Analytics for Firebase, only for people who say yes on "Help improve Artise".
         println("Analytics enabled with Firebase")
-        AnalyticsConfig.Enabled(withPosthog = false, withSentry = false, withFirebase = true)
+        // Artise: and opt-in crash reports to Artise's own Sentry, behind the same question.
+        AnalyticsConfig.Enabled(withPosthog = false, withSentry = BuildTimeConfig.SERVICES_SENTRY_DSN.isNullOrEmpty().not(), withFirebase = true)
     }
 }

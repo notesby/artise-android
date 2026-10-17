@@ -56,6 +56,10 @@ class SentryAnalyticsProvider(
 
         SentryAndroid.init(context) { options ->
             options.dsn = dsn
+            // Artise: never personal data (IP, user); no screenshots or view hierarchy, which could show messages.
+            options.isSendDefaultPii = false
+            options.isAttachScreenshot = false
+            options.isAttachViewHierarchy = false
             options.beforeSendTransaction = SentryOptions.BeforeSendTransactionCallback { transaction, _ ->
                 prepareTransactionBeforeSend(transaction)
             }
