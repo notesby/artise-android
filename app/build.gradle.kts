@@ -309,6 +309,8 @@ dependencies {
         // Artise: the recovery key kept in the phone's encrypted backup; Google's Block Store in Play builds.
         implementation(projects.artise.recovery.impl)
         "gplayImplementation"(projects.artise.recovery.blockstore)
+        // Artise: notification sounds from the person's own files, per chat.
+        implementation(projects.artise.sounds.impl)
     }
     allFeaturesImpl(project)
     implementation(projects.features.migration.api)
