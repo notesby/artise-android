@@ -29,6 +29,7 @@ setupDependencyInjection()
 dependencies {
     api(projects.features.ftue.api)
     implementation(projects.libraries.androidutils)
+    implementation(projects.artise.recovery.api) // Artise: the saved recovery key
     implementation(projects.libraries.core)
     implementation(projects.libraries.architecture)
     implementation(projects.libraries.matrix.api)
@@ -51,6 +52,7 @@ dependencies {
 
     testCommonDependencies(libs, true)
     testImplementation(projects.libraries.matrix.test)
+    testImplementation(projects.artise.recovery.test)
     testImplementation(projects.services.analytics.test)
     testImplementation(projects.services.analytics.noop)
     testImplementation(projects.libraries.permissions.test)
