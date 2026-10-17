@@ -50,6 +50,7 @@ import io.element.android.libraries.matrix.api.room.RoomNotificationMode
 import io.element.android.libraries.matrix.api.roomlist.RoomList
 import io.element.android.libraries.matrix.api.sync.SyncState
 import io.element.android.libraries.matrix.api.timeline.ReceiptType
+import io.element.android.libraries.matrix.api.verification.SessionVerifiedStatus
 import io.element.android.libraries.matrix.test.A_ROOM_ID
 import io.element.android.libraries.matrix.test.A_ROOM_ID_2
 import io.element.android.libraries.matrix.test.A_ROOM_ID_3
@@ -86,6 +87,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
@@ -158,6 +160,30 @@ class RoomListPresenterTest {
             assertThat(eventWithContentAsRooms.contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.RecoveryKeyConfirmation)
             eventSink(RoomListEvent.DismissRequestVerificationPrompt)
             assertThat(awaitItem().contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.None)
+        }
+    }
+
+    /** Artise: after "Hacerlo después" the phone isn't verified: the unlock banner shows and brings confirmation back. */
+    @Test
+    fun `present - unlock messages banner`() = runTest {
+        val roomList = FakeDynamicRoomList(loadingState = MutableStateFlow(RoomList.LoadingState.Loaded(1)))
+        val sessionPreferencesStore = InMemorySessionPreferencesStore(isSessionVerificationSkipped = true)
+        val presenter = createRoomListPresenter(
+            client = FakeMatrixClient(
+                roomListService = FakeRoomListService(createRoomListLambda = { roomList }),
+                encryptionService = FakeEncryptionService().apply { emitRecoveryState(RecoveryState.INCOMPLETE) },
+                sessionVerificationService = FakeSessionVerificationService(initialSessionVerifiedStatus = SessionVerifiedStatus.NotVerified),
+                syncService = FakeSyncService(initialSyncState = SyncState.Running),
+            ),
+            sessionPreferencesStore = sessionPreferencesStore,
+        )
+        presenter.test {
+            val state = consumeItemsUntilPredicate { it.contentState is RoomListContentState.Rooms }.last()
+            assertThat(state.contentAsRooms().securityBannerState).isEqualTo(SecurityBannerState.UnlockMessages)
+            state.eventSink(RoomListEvent.UnlockMessages)
+            runCurrent()
+            assertThat(sessionPreferencesStore.isSessionVerificationSkipped().first()).isFalse()
+            cancelAndIgnoreRemainingEvents()
         }
     }
 
@@ -696,5 +722,6 @@ class RoomListPresenterTest {
         announcementService = announcementService,
         coldStartWatcher = FakeAnalyticsColdStartWatcher(),
         featureFlagService = featureFlagService,
+        sessionPreferencesStore = sessionPreferencesStore,
     )
 }

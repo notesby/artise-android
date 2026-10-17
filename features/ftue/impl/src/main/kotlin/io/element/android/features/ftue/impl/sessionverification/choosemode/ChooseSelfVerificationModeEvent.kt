@@ -10,4 +10,7 @@ package io.element.android.features.ftue.impl.sessionverification.choosemode
 
 sealed interface ChooseSelfVerificationModeEvent {
     data object SignOut : ChooseSelfVerificationModeEvent
+
+    /** Artise: "Hacerlo después": the chats open now; a banner on the chat list brings this screen back. */
+    data object Later : ChooseSelfVerificationModeEvent
 }

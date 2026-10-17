@@ -70,7 +70,9 @@ class DefaultFtueService(
             },
             userNeedsToConfirmSessionVerificationSuccess,
             analyticsService.didAskUserConsentFlow.distinctUntilChanged(),
-        ) {
+            // Artise: "Hacerlo después" and the chat list's unlock banner change this; the steps follow.
+            sessionPreferencesStore.isSessionVerificationSkipped().distinctUntilChanged(),
+        ) { _, _, _, _ ->
             updateFtueStep()
         }
             .launchIn(sessionCoroutineScope)
@@ -95,7 +97,8 @@ class DefaultFtueService(
                 // Artise: unlocked with the saved key, with nothing to confirm; the verified status follows, then this runs again.
                 userNeedsToConfirmSessionVerificationSuccess.value = false
                 FtueStep.WaitingForInitialState
-            } else if (isSessionNotVerified() || userNeedsToConfirmSessionVerificationSuccess.value) {
+            } else if (isSessionNotVerified() || userNeedsToConfirmSessionVerificationSuccess.value && !canSkipVerification()) {
+                // Artise: after "Hacerlo después" (skipped) there's no success screen to wait for.
                 FtueStep.SessionVerification
             } else {
                 getNextStep(FtueStep.SessionVerification)

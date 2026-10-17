@@ -16,9 +16,13 @@ import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.matrix.api.encryption.RecoveryState
 import io.element.android.libraries.matrix.test.encryption.FakeEncryptionService
+import io.element.android.libraries.preferences.api.store.SessionPreferencesStore
+import io.element.android.libraries.preferences.test.InMemorySessionPreferencesStore
 import io.element.android.tests.testutils.lambda.lambdaRecorder
 import io.element.android.tests.testutils.lambda.value
 import io.element.android.tests.testutils.test
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
@@ -127,9 +131,23 @@ class ChooseSessionVerificationModePresenterTest {
 
     private fun createPresenter(
         encryptionService: FakeEncryptionService = FakeEncryptionService(),
-        directLogoutPresenter: Presenter<DirectLogoutState> = Presenter<DirectLogoutState> { aDirectLogoutState() }
+        directLogoutPresenter: Presenter<DirectLogoutState> = Presenter<DirectLogoutState> { aDirectLogoutState() },
+        sessionPreferencesStore: SessionPreferencesStore = InMemorySessionPreferencesStore(),
     ) = ChooseSelfVerificationModePresenter(
         encryptionService = encryptionService,
         directLogoutPresenter = directLogoutPresenter,
+        sessionPreferencesStore = sessionPreferencesStore,
     )
+
+    /** Artise: "Hacerlo después" remembers that this account skipped identity confirmation for now. */
+    @Test
+    fun `later skips identity confirmation`() = runTest {
+        val store = InMemorySessionPreferencesStore()
+        createPresenter(sessionPreferencesStore = store).test {
+            awaitItem().eventSink(ChooseSelfVerificationModeEvent.Later)
+            runCurrent()
+            assertThat(store.isSessionVerificationSkipped().first()).isTrue()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 }
