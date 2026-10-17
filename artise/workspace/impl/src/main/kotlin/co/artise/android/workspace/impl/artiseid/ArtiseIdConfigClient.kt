@@ -36,6 +36,8 @@ data class ArtiseIdConfig(
     val scopes: List<String>,
     /** The Artise ID identity provider id of each provider offered; one missing has no button. */
     val providers: Map<ArtiseIdProvider, String>,
+    /** Artise ID's own page for the password, passkeys and two-step verification; null when the server didn't say. */
+    val securityUrl: String? = null,
 )
 
 /**
@@ -92,6 +94,7 @@ class ArtiseIdConfigClient(
             providers = ArtiseIdProvider.entries
                 .mapNotNull { provider -> dto.providers[provider.key]?.takeIf { it.isNotBlank() }?.let { provider to it } }
                 .toMap(),
+            securityUrl = dto.securityUrl?.takeIf { it.startsWith("https://") },
         )
     }
 
@@ -102,6 +105,7 @@ class ArtiseIdConfigClient(
         @SerialName("redirect_uri") val redirectUri: String,
         val scopes: List<String> = listOf("openid"),
         val providers: Map<String, String> = emptyMap(),
+        @SerialName("security_url") val securityUrl: String? = null,
     )
 
     companion object {

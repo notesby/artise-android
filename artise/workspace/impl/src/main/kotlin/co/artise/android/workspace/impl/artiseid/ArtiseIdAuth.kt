@@ -9,12 +9,15 @@ package co.artise.android.workspace.impl.artiseid
 
 import co.artise.android.workspace.api.ArtiseIdCallback
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
+import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.services.toolbox.api.systemclock.SystemClock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -50,6 +53,9 @@ sealed interface ArtiseIdSignInStatus {
 /** One of the person's workspaces, from `/v1/me/workspaces`. */
 data class ArtiseIdWorkspace(val slug: String, val name: String, val serverName: String, val homeserverUrl: String)
 
+/** From `GET /v1/me/security`: [twoStep] counts an authenticator app, an email code or a security key; [provider] is google, microsoft, apple or null. */
+data class ArtiseIdSecurity(val twoStep: Boolean, val methods: List<String>, val provider: String?)
+
 sealed interface ArtiseIdWorkspaces {
     data class Found(val workspaces: List<ArtiseIdWorkspace>) : ArtiseIdWorkspaces
 
@@ -72,11 +78,12 @@ class ArtiseIdAuth(
     private val dispatchers: CoroutineDispatchers,
     private val appScope: CoroutineScope,
     private val workspacesUrl: String = WORKSPACES_URL,
+    private val securityUrl: String = SECURITY_URL,
 ) : ArtiseIdCallback {
     private val json = Json { ignoreUnknownKeys = true }
     private val random = SecureRandom()
 
-    private data class Endpoints(val authorization: String, val token: String)
+    private data class Endpoints(val authorization: String, val token: String, val revocation: String?)
 
     private data class Pending(val state: String, val verifier: String, val redirectUri: String, val clientId: String, val tokenEndpoint: String)
 
@@ -103,6 +110,8 @@ class ArtiseIdAuth(
             ?.addQueryParameter("state", state)
             ?.addQueryParameter("code_challenge", challengeOf(verifier))
             ?.addQueryParameter("code_challenge_method", "S256")
+            // After signing out of Artise ID, ask again rather than reuse the browser's session.
+            ?.apply { if (tokenStore.isFreshSignInNeeded()) addQueryParameter("prompt", "login") }
             ?.build()
             ?: return null
         pending = Pending(state, verifier, config.redirectUri, config.clientId, found.token)
@@ -154,7 +163,10 @@ class ArtiseIdAuth(
                     .add("code_verifier", pending.verifier)
                     .build(),
             )
-            if (tokens != null) tokenStore.save(tokens)
+            if (tokens != null) {
+                tokenStore.save(tokens)
+                tokenStore.setFreshSignInNeeded(false)
+            }
             mutableStatus.value = if (tokens != null) ArtiseIdSignInStatus.SignedIn else ArtiseIdSignInStatus.Failed
         }
     }
@@ -181,7 +193,65 @@ class ArtiseIdAuth(
     /** Forgets Artise ID's tokens (at the last workspace's sign-out). */
     suspend fun signOut() {
         pending = null
+        tokenStore.load()?.refreshToken?.let { revoke(it) }
         tokenStore.clear()
+        tokenStore.setFreshSignInNeeded(true)
+    }
+
+    /** Cancels [refreshToken] on Artise ID, so a copy of it is useless; best effort (offline, it simply expires). */
+    private suspend fun revoke(refreshToken: String) {
+        val config = configClient.get() ?: return
+        val revocation = endpointsOf(config.issuer)?.revocation ?: return
+        withContext(dispatchers.io) {
+            runCatchingExceptions {
+                val form = FormBody.Builder()
+                    .add("token", refreshToken)
+                    .add("token_type_hint", "refresh_token")
+                    .add("client_id", config.clientId)
+                    .build()
+                okHttpClient.newCall(Request.Builder().url(revocation).post(form).build()).execute().close()
+            }.onFailure { Timber.w(it, "Couldn't revoke the Artise ID refresh token") }
+        }
+    }
+
+    /** The person's two-step verification and sign-in provider (Seguridad), refreshing the token like [workspaces]; null when unknown. */
+    suspend fun security(): ArtiseIdSecurity? {
+        var tokens = tokenStore.load() ?: return null
+        val expired = tokens.expiresAtMillis?.let { clock.epochMillis() >= it } ?: false
+        if (expired) tokens = refreshed(tokens) ?: return null
+        return when (val answer = requestSecurity(tokens.accessToken)) {
+            SecurityAnswer.Unauthorized -> refreshed(tokens)?.let { (requestSecurity(it.accessToken) as? SecurityAnswer.Done)?.security }
+            is SecurityAnswer.Done -> answer.security
+        }
+    }
+
+    private sealed interface SecurityAnswer {
+        data object Unauthorized : SecurityAnswer
+
+        data class Done(val security: ArtiseIdSecurity?) : SecurityAnswer
+    }
+
+    private suspend fun requestSecurity(accessToken: String): SecurityAnswer = withContext(dispatchers.io) {
+        val request = Request.Builder()
+            .url(securityUrl)
+            .header("Authorization", "Bearer " + accessToken)
+            .cacheControl(CacheControl.FORCE_NETWORK)
+            .get()
+            .build()
+        try {
+            okHttpClient.newCall(request).execute().use { response ->
+                when {
+                    response.code == HTTP_UNAUTHORIZED -> SecurityAnswer.Unauthorized
+                    !response.isSuccessful -> SecurityAnswer.Done(null)
+                    else -> SecurityAnswer.Done(decode<SecurityDto>(response.body.string())?.let {
+                        ArtiseIdSecurity(twoStep = it.twoStep, methods = it.methods, provider = it.provider)
+                    })
+                }
+            }
+        } catch (e: IOException) {
+            Timber.w(e, "Artise ID security unavailable")
+            SecurityAnswer.Done(null)
+        }
     }
 
     private suspend fun signedOut(): ArtiseIdWorkspaces {
@@ -189,7 +259,16 @@ class ArtiseIdAuth(
         return ArtiseIdWorkspaces.SignedOut
     }
 
-    private suspend fun refreshed(tokens: ArtiseIdTokens): ArtiseIdTokens? {
+    // Artise ID rotates refresh tokens: two refreshes at once would make the second one fail, so they wait for each other.
+    private val refreshLock = Mutex()
+
+    private suspend fun refreshed(tokens: ArtiseIdTokens): ArtiseIdTokens? = refreshLock.withLock {
+        // Another caller may have refreshed while this one waited: use its tokens.
+        tokenStore.load()?.takeIf { it.accessToken != tokens.accessToken }?.let { return@withLock it }
+        refreshedLocked(tokens)
+    }
+
+    private suspend fun refreshedLocked(tokens: ArtiseIdTokens): ArtiseIdTokens? {
         val refreshToken = tokens.refreshToken ?: return null
         val config = configClient.get() ?: return null
         val tokenEndpoint = endpointsOf(config.issuer)?.token ?: return null
@@ -275,7 +354,7 @@ class ArtiseIdAuth(
                     // The discovery document must be the issuer's own, with https endpoints.
                     if (dto.issuer.trimEnd('/') != issuer.trimEnd('/')) return@use null
                     if (!dto.authorizationEndpoint.startsWith("https://") || !dto.tokenEndpoint.startsWith("https://")) return@use null
-                    Endpoints(dto.authorizationEndpoint, dto.tokenEndpoint)
+                    Endpoints(dto.authorizationEndpoint, dto.tokenEndpoint, dto.revocationEndpoint?.takeIf { it.startsWith("https://") })
                 }
             } catch (e: IOException) {
                 Timber.w(e, "Artise ID discovery failed")
@@ -304,6 +383,14 @@ class ArtiseIdAuth(
         val issuer: String,
         @SerialName("authorization_endpoint") val authorizationEndpoint: String,
         @SerialName("token_endpoint") val tokenEndpoint: String,
+        @SerialName("revocation_endpoint") val revocationEndpoint: String? = null,
+    )
+
+    @Serializable
+    private data class SecurityDto(
+        @SerialName("two_step") val twoStep: Boolean = false,
+        val methods: List<String> = emptyList(),
+        val provider: String? = null,
     )
 
     @Serializable
@@ -326,6 +413,7 @@ class ArtiseIdAuth(
 
     companion object {
         const val WORKSPACES_URL = "https://api.artise.co/v1/me/workspaces"
+        const val SECURITY_URL = "https://api.artise.co/v1/me/security"
 
         /** Added to the scopes to open one identity provider (Apple, Google, Microsoft) directly. */
         const val PROVIDER_SCOPE_PREFIX = "urn:zitadel:iam:org:idp:id:"
