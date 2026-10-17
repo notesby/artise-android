@@ -8,7 +8,7 @@
 """Writes app/src/main/res/values*/artise_wording_strings.xml: Element's texts reworded in Artise's words.
 
 The words follow the UX plan's word list: chat instead of room, sign out instead of "remove this device", workspace instead of
-server. One table, so English, Spanish and Portuguese stay together; run it after editing the table:
+server; "espacio de trabajo" / "espaço de trabalho" in full, because Element uses "espacio" / "espaço" for Matrix spaces. One table, so English, Spanish and Portuguese stay together; run it after editing the table:
 
     python3 tools/artise/wording_overrides.py
 
@@ -132,13 +132,13 @@ WORDING = {
     ),
     "screen_notification_settings_mentions_only_disclaimer": (
         "This workspace doesn’t support this option in encrypted chats, so you may not be notified in some chats.",
-        "Este espacio no admite esta opción en chats cifrados, así que puede que no te avise de algunos chats.",
-        "Este espaço não aceita esta opção em conversas criptografadas, então você pode não ser avisado de algumas conversas.",
+        "Este espacio de trabajo no admite esta opción en chats cifrados, así que puede que no te avise de algunos chats.",
+        "Este espaço de trabalho não aceita esta opção em conversas criptografadas, então você pode não ser avisado de algumas conversas.",
     ),
     "screen_room_notification_settings_mentions_only_disclaimer": (
         "This workspace doesn’t support this option in encrypted chats, so you won’t be notified in this chat.",
-        "Este espacio no admite esta opción en chats cifrados, así que no te avisará de este chat.",
-        "Este espaço não aceita esta opção em conversas criptografadas, então você não será avisado desta conversa.",
+        "Este espacio de trabajo no admite esta opción en chats cifrados, así que no te avisará de este chat.",
+        "Este espaço de trabalho não aceita esta opção em conversas criptografadas, então você não será avisado desta conversa.",
     ),
     # Joining and inviting
     "screen_room_directory_search_title": ("Public chats", "Chats públicos", "Conversas públicas"),
@@ -193,8 +193,8 @@ WORDING = {
     ),
     "screen_join_room_loading_alert_message": (
         "Check your connection. The workspace may also not be answering.",
-        "Revisa tu conexión. También puede que el espacio no esté respondiendo.",
-        "Confira sua conexão. O espaço também pode não estar respondendo.",
+        "Revisa tu conexión. También puede que el espacio de trabajo no esté respondiendo.",
+        "Confira sua conexão. O espaço de trabalho também pode não estar respondendo.",
     ),
     "screen_join_room_subtitle_no_preview": (
         "You need to be in this chat to see its messages.",
@@ -221,12 +221,12 @@ WORDING = {
     "dialog_room_reported": ("Chat reported", "Chat denunciado", "Conversa denunciada"),
     "dialog_room_reported_and_left": ("Reported and left the chat", "Denunciaste y saliste del chat", "Você denunciou e saiu da conversa"),
     "screen_room_permalink_same_room_android": ("You’re already in this chat", "Ya estás en este chat", "Você já está nesta conversa"),
-    "common_server_unreachable": ("Workspace not answering", "El espacio no responde", "O espaço não está respondendo"),
-    "common_server_not_supported": ("Workspace not supported", "Espacio no compatible", "Espaço não compatível"),
+    "common_server_unreachable": ("Workspace not answering", "El espacio de trabajo no responde", "O espaço de trabalho não está respondendo"),
+    "common_server_not_supported": ("Workspace not supported", "Espacio de trabajo no compatible", "Espaço de trabalho não compatível"),
     "error_network_or_server_issue": (
         "Check your connection. The workspace may also not be answering.",
-        "Revisa tu conexión. También puede que el espacio no esté respondiendo.",
-        "Confira sua conexão. O espaço também pode não estar respondendo.",
+        "Revisa tu conexión. También puede que el espacio de trabajo no esté respondiendo.",
+        "Confira sua conexão. O espaço de trabalho também pode não estar respondendo.",
     ),
     "crypto_history_visible": (
         "This chat lets new members read earlier messages. %1$s",
@@ -243,6 +243,47 @@ WORDING = {
         "%1$s compartió este mensaje porque no estabas en el chat cuando se envió.",
         "%1$s compartilhou esta mensagem porque você não estava na conversa quando ela foi enviada.",
     ),
+    # The lines inside a chat about what changed (Element's event formatter)
+    "state_event_room_avatar_changed": ("%1$s changed the chat picture", "%1$s cambió la foto del chat", "%1$s mudou a foto da conversa"),
+    "state_event_room_avatar_changed_by_you": ("You changed the chat picture", "Cambiaste la foto del chat", "Você mudou a foto da conversa"),
+    "state_event_room_avatar_removed": ("%1$s removed the chat picture", "%1$s quitó la foto del chat", "%1$s removeu a foto da conversa"),
+    "state_event_room_avatar_removed_by_you": ("You removed the chat picture", "Quitaste la foto del chat", "Você removeu a foto da conversa"),
+    "state_event_room_created": ("%1$s created the chat", "%1$s creó el chat", "%1$s criou a conversa"),
+    "state_event_room_created_by_you": ("You created the chat", "Creaste el chat", "Você criou a conversa"),
+    "state_event_room_join": ("%1$s joined the chat", "%1$s se unió al chat", "%1$s entrou na conversa"),
+    "state_event_room_join_by_you": ("You joined the chat", "Te uniste al chat", "Você entrou na conversa"),
+    "state_event_room_leave": ("%1$s left the chat", "%1$s salió del chat", "%1$s saiu da conversa"),
+    "state_event_room_leave_by_you": ("You left the chat", "Saliste del chat", "Você saiu da conversa"),
+    "state_event_room_name_changed": (
+        "%1$s changed the chat’s name to: %2$s",
+        "%1$s cambió el nombre del chat a: %2$s",
+        "%1$s mudou o nome da conversa para: %2$s",
+    ),
+    "state_event_room_name_changed_by_you": (
+        "You changed the chat’s name to: %1$s",
+        "Cambiaste el nombre del chat a: %1$s",
+        "Você mudou o nome da conversa para: %1$s",
+    ),
+    "state_event_room_name_removed": ("%1$s removed the chat’s name", "%1$s quitó el nombre del chat", "%1$s removeu o nome da conversa"),
+    "state_event_room_name_removed_by_you": ("You removed the chat’s name", "Quitaste el nombre del chat", "Você removeu o nome da conversa"),
+    "state_event_room_third_party_invite": (
+        "%1$s invited %2$s to the chat",
+        "%1$s invitó a %2$s al chat",
+        "%1$s convidou %2$s para a conversa",
+    ),
+    "state_event_room_third_party_invite_by_you": ("You invited %1$s to the chat", "Invitaste a %1$s al chat", "Você convidou %1$s para a conversa"),
+    "state_event_room_third_party_revoked_invite": (
+        "%1$s cancelled %2$s’s invite to the chat",
+        "%1$s canceló la invitación de %2$s al chat",
+        "%1$s cancelou o convite de %2$s para a conversa",
+    ),
+    "state_event_room_third_party_revoked_invite_by_you": (
+        "You cancelled %1$s’s invite to the chat",
+        "Cancelaste la invitación de %1$s al chat",
+        "Você cancelou o convite de %1$s para a conversa",
+    ),
+    "state_event_room_topic_removed": ("%1$s removed the chat’s description", "%1$s quitó la descripción del chat", "%1$s removeu a descrição da conversa"),
+    "state_event_room_topic_removed_by_you": ("You removed the chat’s description", "Quitaste la descripción del chat", "Você removeu a descrição da conversa"),
 }
 
 HEADER = """<?xml version="1.0" encoding="utf-8"?>

@@ -89,4 +89,24 @@
     <string name="crypto_history_visible">This chat lets new members read earlier messages. %1$s</string>
     <string name="crypto_event_key_forwarded_known_profile_dialog_content">%1$s (%2$s) shared this message because you weren’t in the chat when it was sent.</string>
     <string name="crypto_event_key_forwarded_unknown_profile_dialog_content">%1$s shared this message because you weren’t in the chat when it was sent.</string>
+    <string name="state_event_room_avatar_changed">%1$s changed the chat picture</string>
+    <string name="state_event_room_avatar_changed_by_you">You changed the chat picture</string>
+    <string name="state_event_room_avatar_removed">%1$s removed the chat picture</string>
+    <string name="state_event_room_avatar_removed_by_you">You removed the chat picture</string>
+    <string name="state_event_room_created">%1$s created the chat</string>
+    <string name="state_event_room_created_by_you">You created the chat</string>
+    <string name="state_event_room_join">%1$s joined the chat</string>
+    <string name="state_event_room_join_by_you">You joined the chat</string>
+    <string name="state_event_room_leave">%1$s left the chat</string>
+    <string name="state_event_room_leave_by_you">You left the chat</string>
+    <string name="state_event_room_name_changed">%1$s changed the chat’s name to: %2$s</string>
+    <string name="state_event_room_name_changed_by_you">You changed the chat’s name to: %1$s</string>
+    <string name="state_event_room_name_removed">%1$s removed the chat’s name</string>
+    <string name="state_event_room_name_removed_by_you">You removed the chat’s name</string>
+    <string name="state_event_room_third_party_invite">%1$s invited %2$s to the chat</string>
+    <string name="state_event_room_third_party_invite_by_you">You invited %1$s to the chat</string>
+    <string name="state_event_room_third_party_revoked_invite">%1$s cancelled %2$s’s invite to the chat</string>
+    <string name="state_event_room_third_party_revoked_invite_by_you">You cancelled %1$s’s invite to the chat</string>
+    <string name="state_event_room_topic_removed">%1$s removed the chat’s description</string>
+    <string name="state_event_room_topic_removed_by_you">You removed the chat’s description</string>
 </resources>
