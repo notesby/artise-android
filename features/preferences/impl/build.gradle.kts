@@ -63,6 +63,7 @@ dependencies {
     implementation(projects.libraries.troubleshoot.api)
     implementation(projects.libraries.testtags)
     implementation(projects.libraries.uiStrings)
+    implementation(projects.artise.workspace.api) // Artise: sign-out names the workspace
     implementation(projects.libraries.matrixui)
     implementation(projects.libraries.mediaviewer.api)
     implementation(projects.libraries.mediapickers.api)

@@ -34,6 +34,7 @@ dependencies {
     implementation(projects.libraries.designsystem)
     implementation(projects.libraries.testtags)
     implementation(projects.libraries.uiStrings)
+    implementation(projects.artise.workspace.api) // Artise: sign-out names the workspace
     implementation(projects.libraries.dateformatter.api)
     implementation(projects.libraries.sessionStorage.api)
     implementation(projects.libraries.workmanager.api)

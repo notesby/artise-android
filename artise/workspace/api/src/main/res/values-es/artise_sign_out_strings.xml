@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<resources>
+    <string name="artise_sign_out_from">Cerrar sesión en %1$s</string>
+    <string name="artise_sign_out_title">¿Cerrar sesión en %1$s?</string>
+    <string name="artise_sign_out_content">Tus chats de %1$s dejarán de verse en este teléfono. Podrás volver a entrar cuando quieras.</string>
+    <string name="artise_sign_out_content_unnamed">Tus chats dejarán de verse en este teléfono. Podrás volver a entrar cuando quieras.</string>
+    <string name="artise_sign_out_artise_id">También cerrarás tu sesión de Artise ID en este teléfono.</string>
+</resources>
