@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<resources>
+    <string name="artise_help">Ajuda</string>
+    <string name="artise_help_write_admin">Escrever para o administrador</string>
+    <string name="artise_update_title">Atualize o Artise</string>
+    <!-- %1$s: the workspace's name -->
+    <string name="artise_update_message">Atualize o Artise para continuar usando %1$s.</string>
+    <string name="artise_update_action">Atualizar</string>
+</resources>

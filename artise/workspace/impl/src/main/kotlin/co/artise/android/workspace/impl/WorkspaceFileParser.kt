@@ -52,6 +52,7 @@ object WorkspaceFileParser {
                 web = links.httpsUrl("web"),
                 notesApi = links.httpsUrl("notes_api"),
                 deleteAccount = links.httpsUrl("delete_account"),
+                help = links.httpsUrl("help"),
             )
         },
         oauth = (section["oauth"] as? JsonObject)?.let { oauth ->
@@ -59,6 +60,11 @@ object WorkspaceFileParser {
             val redirectUri = oauth.httpsUrl("redirect_uri") ?: return@let null
             WorkspaceOAuth(androidClientId = clientId, redirectUri = redirectUri)
         },
+        assistantUserId = section.string("assistant_user_id")?.takeIf { it.startsWith("@") && ':' in it },
+        contactUserId = section.string("contact_user_id")?.takeIf { it.startsWith("@") && ':' in it },
+        minAndroidVersionCode = (section["min_app_version"] as? JsonObject)?.get("android")
+            ?.let { (it as? JsonPrimitive)?.takeIf { primitive -> !primitive.isString }?.content?.toLongOrNull() },
+        androidStoreLink = (section["store_links"] as? JsonObject)?.httpsUrl("android"),
     )
 
     /** `#RRGGBB` as `0xFFRRGGBB`; anything else (names, `#RGB`, alpha) is refused. */
