@@ -7,7 +7,7 @@
   -->
 <resources>
     <string name="artise_help">Help</string>
-    <string name="artise_help_write_admin">Write to the admin</string>
+    <string name="artise_help_write_admin">Write to your workspace\'s admin</string>
     <string name="artise_update_title">Update Artise</string>
     <!-- %1$s: the workspace's name -->
     <string name="artise_update_message">Update Artise to keep using %1$s.</string>

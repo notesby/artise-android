@@ -11,9 +11,9 @@
     <string name="screen_workspace_field_label">Workspace</string>
     <string name="screen_workspace_field_placeholder" translatable="false">acme</string>
     <string name="screen_workspace_error_invalid">That workspace name isn\'t valid. Use 3 to 30 letters, numbers or hyphens.</string>
-    <string name="screen_workspace_error_not_found">No workspace called %1$s</string>
+    <string name="screen_workspace_error_not_found">No workspace called %1$s. Check the name and try again.</string>
     <string name="screen_workspace_error_paused">This workspace is paused. Contact its admin.</string>
-    <string name="screen_workspace_error_too_many_tries">Too many tries, wait a minute and try again.</string>
+    <string name="screen_workspace_error_too_many_tries">Too many tries. Wait a minute and try again.</string>
     <string name="screen_workspace_error_unreachable">Can\'t reach Artise. Check your connection and try again.</string>
     <string name="screen_workspace_error_server_unreachable">Can\'t reach %1$s\'s server right now. Try again in a moment.</string>
     <string name="screen_workspace_error_no_password">%1$s doesn\'t use a username and password, so you can\'t sign in to it here.</string>
@@ -28,6 +28,6 @@
     <string name="screen_artise_id_workspaces_title">Choose your workspace</string>
     <string name="screen_artise_id_no_workspaces_title">No workspaces yet</string>
     <string name="screen_artise_id_no_workspaces">You\'re not in any workspace yet. Ask the person who invited you for the invite link.</string>
-    <string name="screen_artise_id_error_sign_in">Couldn\'t sign in with Artise. Try again.</string>
+    <string name="screen_artise_id_error_sign_in">Couldn\'t sign in with Artise ID. Try again.</string>
     <string name="screen_artise_id_already_open">Already open</string>
 </resources>
