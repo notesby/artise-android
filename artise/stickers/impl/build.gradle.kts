@@ -31,6 +31,7 @@ dependencies {
     implementation(projects.libraries.preferences.api)
     implementation(projects.libraries.featureflag.api)
     implementation(projects.features.enterprise.api)
+    implementation(projects.services.toolbox.api)
     implementation(libs.serialization.json)
     implementation(libs.coil.compose)
     implementation(libs.timber)
@@ -40,4 +41,5 @@ dependencies {
 
     testCommonDependencies(libs, true)
     testImplementation(projects.libraries.matrix.test)
+    testImplementation(projects.services.toolbox.test)
 }
