@@ -17,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import co.artise.android.recovery.api.RecoveryKeyVault
 import com.freeletics.flowredux.compose.StateAndDispatch
 import com.freeletics.flowredux.compose.rememberStateAndDispatch
 import dev.zacsweers.metro.Assisted
@@ -38,6 +39,8 @@ class SecureBackupSetupPresenter(
     @Assisted private val isChangeRecoveryKeyUserStory: Boolean,
     private val stateMachine: SecureBackupSetupStateMachine,
     private val encryptionService: EncryptionService,
+    // Artise: every new key is kept in the phone's encrypted backup too (artise/recovery).
+    private val recoveryKeyVault: RecoveryKeyVault,
 ) : Presenter<SecureBackupSetupState> {
     @AssistedFactory
     interface Factory {
@@ -105,6 +108,7 @@ class SecureBackupSetupPresenter(
             Timber.tag(loggerTagSetup.value).d("Calling encryptionService.resetRecoveryKey()")
             encryptionService.resetRecoveryKey().fold(
                 onSuccess = {
+                    recoveryKeyVault.save(it)
                     stateAndDispatch.dispatchAction(SecureBackupSetupStateMachine.Event.SdkHasCreatedKey(it))
                 },
                 onFailure = {
@@ -136,8 +140,10 @@ class SecureBackupSetupPresenter(
                 is EnableRecoveryProgress.CreatingRecoveryKey,
                 is EnableRecoveryProgress.BackingUp,
                 is EnableRecoveryProgress.RoomKeyUploadError -> Unit
-                is EnableRecoveryProgress.Done ->
+                is EnableRecoveryProgress.Done -> {
+                    recoveryKeyVault.save(enableRecoveryProgress.recoveryKey)
                     stateAndDispatch.dispatchAction(SecureBackupSetupStateMachine.Event.SdkHasCreatedKey(enableRecoveryProgress.recoveryKey))
+                }
             }
         }
     }

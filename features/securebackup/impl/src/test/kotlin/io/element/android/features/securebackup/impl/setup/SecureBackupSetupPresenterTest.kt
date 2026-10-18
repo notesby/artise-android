@@ -11,6 +11,8 @@ package io.element.android.features.securebackup.impl.setup
 import app.cash.molecule.RecompositionMode
 import app.cash.molecule.moleculeFlow
 import app.cash.turbine.test
+import co.artise.android.recovery.api.RecoveryKeyVault
+import co.artise.android.recovery.test.FakeRecoveryKeyVault
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.securebackup.impl.setup.views.RecoveryKeyUserStory
 import io.element.android.features.securebackup.impl.setup.views.RecoveryKeyViewState
@@ -191,11 +193,13 @@ class SecureBackupSetupPresenterTest {
         encryptionService: EncryptionService = FakeEncryptionService(
             enableRecoveryLambda = { _, _ -> Result.success("") },
         ),
+        recoveryKeyVault: RecoveryKeyVault = FakeRecoveryKeyVault(),
     ): SecureBackupSetupPresenter {
         return SecureBackupSetupPresenter(
             isChangeRecoveryKeyUserStory = isChangeRecoveryKeyUserStory,
             stateMachine = SecureBackupSetupStateMachine(),
             encryptionService = encryptionService,
+            recoveryKeyVault = recoveryKeyVault,
         )
     }
 }

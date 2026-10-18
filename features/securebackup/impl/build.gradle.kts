@@ -30,6 +30,7 @@ dependencies {
     implementation(projects.appconfig)
     implementation(projects.features.enterprise.api)
     implementation(projects.libraries.core)
+    implementation(projects.artise.recovery.api) // Artise: keys kept in the phone's encrypted backup
     implementation(projects.libraries.androidutils)
     implementation(projects.libraries.architecture)
     implementation(projects.libraries.matrix.api)
@@ -43,4 +44,5 @@ dependencies {
 
     testCommonDependencies(libs, true)
     testImplementation(projects.libraries.matrix.test)
+    testImplementation(projects.artise.recovery.test)
 }

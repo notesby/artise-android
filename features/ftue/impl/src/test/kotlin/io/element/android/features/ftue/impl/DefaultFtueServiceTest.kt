@@ -10,6 +10,8 @@ package io.element.android.features.ftue.impl
 
 import android.os.Build
 import app.cash.turbine.test
+import co.artise.android.recovery.api.SignInRecovery
+import co.artise.android.recovery.test.FakeSignInRecovery
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.ftue.api.state.FtueState
 import io.element.android.features.ftue.impl.state.DefaultFtueService
@@ -33,6 +35,35 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
 class DefaultFtueServiceTest {
+    /** Artise: with a recovery key saved in the phone's backup, identity confirmation isn't shown; without one, it is. */
+    @Test
+    fun `a saved recovery key skips identity confirmation`() = runTest {
+        val sessionVerificationService = FakeSessionVerificationService().apply { emitVerifiedStatus(SessionVerifiedStatus.NotVerified) }
+        val signInRecovery = FakeSignInRecovery(restoreResult = true)
+        val service = createDefaultFtueService(sessionVerificationService = sessionVerificationService, signInRecovery = signInRecovery)
+        service.ftueStepStateFlow.test {
+            assertThat(awaitItem()).isEqualTo(InternalFtueState.Unknown)
+            assertThat(awaitItem()).isEqualTo(InternalFtueState.Incomplete(FtueStep.WaitingForInitialState))
+            sessionVerificationService.emitVerifiedStatus(SessionVerifiedStatus.Verified)
+            val next = awaitItem()
+            assertThat(next).isNotEqualTo(InternalFtueState.Incomplete(FtueStep.SessionVerification))
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertThat(signInRecovery.restoreCount).isAtLeast(1)
+    }
+
+    @Test
+    fun `without a saved recovery key identity confirmation is shown`() = runTest {
+        val sessionVerificationService = FakeSessionVerificationService().apply { emitVerifiedStatus(SessionVerifiedStatus.NotVerified) }
+        val service =
+            createDefaultFtueService(sessionVerificationService = sessionVerificationService, signInRecovery = FakeSignInRecovery(restoreResult = false))
+        service.ftueStepStateFlow.test {
+            assertThat(awaitItem()).isEqualTo(InternalFtueState.Unknown)
+            assertThat(awaitItem()).isEqualTo(InternalFtueState.Incomplete(FtueStep.SessionVerification))
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     @Test
     fun `given any check being false and session verification state being loaded, FtueState is Incomplete`() = runTest {
         val sessionVerificationService = FakeSessionVerificationService().apply {
@@ -198,6 +229,7 @@ internal fun TestScope.createDefaultFtueService(
     permissionStateProvider: PermissionStateProvider = FakePermissionStateProvider(permissionGranted = false),
     lockScreenService: LockScreenService = FakeLockScreenService(),
     sessionPreferencesStore: SessionPreferencesStore = InMemorySessionPreferencesStore(),
+    signInRecovery: SignInRecovery = FakeSignInRecovery(),
     // First version where notification permission is required
     sdkIntVersion: Int = Build.VERSION_CODES.TIRAMISU,
 ) = DefaultFtueService(
@@ -208,4 +240,5 @@ internal fun TestScope.createDefaultFtueService(
     permissionStateProvider = permissionStateProvider,
     lockScreenService = lockScreenService,
     sessionPreferencesStore = sessionPreferencesStore,
+    signInRecovery = signInRecovery,
 )

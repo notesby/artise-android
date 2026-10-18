@@ -10,6 +10,7 @@ package io.element.android.features.ftue.impl.state
 
 import android.Manifest
 import android.os.Build
+import co.artise.android.recovery.api.SignInRecovery
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.SingleIn
 import io.element.android.features.ftue.api.state.FtueService
@@ -43,6 +44,8 @@ class DefaultFtueService(
     private val lockScreenService: LockScreenService,
     private val sessionVerificationService: SessionVerificationService,
     private val sessionPreferencesStore: SessionPreferencesStore,
+    // Artise: the saved recovery key unlocks the chats without asking (artise/recovery).
+    private val signInRecovery: SignInRecovery,
 ) : FtueService {
     private val userNeedsToConfirmSessionVerificationSuccess = MutableStateFlow(false)
 
@@ -88,15 +91,22 @@ class DefaultFtueService(
             } else {
                 getNextStep(FtueStep.WaitingForInitialState)
             }
-            FtueStep.WaitingForInitialState -> if (isSessionNotVerified() || userNeedsToConfirmSessionVerificationSuccess.value) {
+            FtueStep.WaitingForInitialState -> if (isSessionNotVerified() && signInRecovery.restore()) {
+                // Artise: unlocked with the saved key, with nothing to confirm; the verified status follows, then this runs again.
+                userNeedsToConfirmSessionVerificationSuccess.value = false
+                FtueStep.WaitingForInitialState
+            } else if (isSessionNotVerified() || userNeedsToConfirmSessionVerificationSuccess.value) {
                 FtueStep.SessionVerification
             } else {
                 getNextStep(FtueStep.SessionVerification)
             }
-            FtueStep.SessionVerification -> if (shouldAskNotificationPermissions()) {
-                FtueStep.NotificationsOptIn
-            } else {
-                getNextStep(FtueStep.NotificationsOptIn)
+            FtueStep.SessionVerification -> {
+                setUpRecoveryOnce()
+                if (shouldAskNotificationPermissions()) {
+                    FtueStep.NotificationsOptIn
+                } else {
+                    getNextStep(FtueStep.NotificationsOptIn)
+                }
             }
             FtueStep.NotificationsOptIn -> if (shouldDisplayLockscreenSetup()) {
                 FtueStep.LockscreenSetup
@@ -140,6 +150,15 @@ class DefaultFtueService(
 
     private suspend fun shouldDisplayLockscreenSetup(): Boolean {
         return lockScreenService.isSetupRequired().first()
+    }
+
+    private var recoverySetUpStarted = false
+
+    // Artise: on an account's first phone, recovery is turned on with a key kept in the phone's encrypted backup.
+    private fun setUpRecoveryOnce() {
+        if (recoverySetUpStarted) return
+        recoverySetUpStarted = true
+        sessionCoroutineScope.launch { signInRecovery.setUpIfMissing() }
     }
 
     fun onUserCompletedSessionVerification() {
