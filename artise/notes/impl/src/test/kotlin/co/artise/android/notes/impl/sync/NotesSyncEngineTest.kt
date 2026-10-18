@@ -702,4 +702,82 @@ class NotesSyncEngineTest {
         assertThat(engine.file(room, "Súper.md")).isNull()
         assertThat(engine.file(room, "Mole.md")?.content).isEqualTo("Ver [[Compras]]")
     }
+
+    /** The tree's folders are kept, so empty ones show; folders holding files count too. */
+    @Test
+    fun `tree folders are kept`() = runTest {
+        val engine = engine()
+        server.enqueue(
+            tree,
+            json(
+                body = """{"tree": "t1", "files": [], "folders": ["Viajes", "Viajes/Oaxaca"]}""",
+                headers = mapOf("ETag" to "\"t1\""),
+            ),
+        )
+        engine.sync(room).getOrThrow()
+        assertThat(engine.folders(room)).containsExactly("Viajes", "Viajes/Oaxaca").inOrder()
+        server.enqueue(tree, json(body = """{"tree": "t2", "files": [], "folders": ["Viajes"]}""", headers = mapOf("ETag" to "\"t2\"")))
+        engine.sync(room).getOrThrow()
+        assertThat(engine.folders(room)).containsExactly("Viajes")
+    }
+
+    /** A new folder and its parents show at once, before the next sync. */
+    @Test
+    fun `create a folder`() = runTest {
+        val engine = engine()
+        engine.firstSync()
+        server.enqueue("POST /chats/$A_ROOM_ENCODED/folder", json(201, """{"path": "Recetas/Postres"}"""))
+        engine.createFolder(room, "Recetas/Postres").getOrThrow()
+        assertThat(server.requests.last().body.readUtf8()).contains("Recetas/Postres")
+        assertThat(engine.folders(room)).containsExactly("Recetas", "Recetas/Postres").inOrder()
+        server.enqueue("POST /chats/$A_ROOM_ENCODED/folder", error(409, "exists"))
+        assertThat(engine.createFolder(room, "Recetas").exceptionOrNull()).isInstanceOf(NotesException.Exists::class.java)
+    }
+
+    /** Moving a folder renames everything inside on the phone, keeps it readable, and refuses with unsent edits. */
+    @Test
+    fun `move a folder`() = runTest {
+        val engine = engine()
+        server.enqueue(tree, treeResponse("t1", "Recetas/Mole.md" to "m1", "Recetas/Postres/flan.jpg" to "p1"))
+        server.enqueue(noteKey("Recetas%2FMole.md"), note("Recetas/Mole.md", "m1", "# Mole"))
+        engine.sync(room).getOrThrow()
+        server.enqueue(
+            "POST /chats/$A_ROOM_ENCODED/move",
+            json(
+                body = """
+                    {"from": "Recetas", "to": "Cocina/Recetas", "links_updated": [],
+                     "moved": [{"from": "Recetas/Mole.md", "to": "Cocina/Recetas/Mole.md", "version": "m2"},
+                               {"from": "Recetas/Postres/flan.jpg", "to": "Cocina/Recetas/Postres/flan.jpg", "version": "p2"}]}
+                """.trimIndent(),
+            ),
+        )
+        engine.moveFolder(room, "Recetas", "Cocina/Recetas").getOrThrow()
+        assertThat(server.requests.last().body.readUtf8()).contains("\"folder\":true")
+        assertThat(engine.file(room, "Cocina/Recetas/Mole.md")?.content).isEqualTo("# Mole")
+        assertThat(engine.file(room, "Cocina/Recetas/Mole.md")?.version).isEqualTo("m2")
+        assertThat(engine.file(room, "Recetas/Mole.md")).isNull()
+        assertThat(engine.folders(room)).containsExactly("Cocina", "Cocina/Recetas", "Cocina/Recetas/Postres").inOrder()
+        engine.editNote(room, "Cocina/Recetas/Mole.md", "# Mole negro")
+        assertThat(engine.moveFolder(room, "Cocina", "Comida").exceptionOrNull()).isInstanceOf(NotesException.Conflict::class.java)
+    }
+
+    /** A folder that isn't empty is refused with the server's counts; with recursive, it goes with what's inside. */
+    @Test
+    fun `delete a folder`() = runTest {
+        val engine = engine()
+        server.enqueue(tree, treeResponse("t1", "Viajes/Oaxaca.md" to "o1", "Viajes/mapa.pdf" to "p1"))
+        server.enqueue(noteKey("Viajes%2FOaxaca.md"), note("Viajes/Oaxaca.md", "o1", "# Oaxaca"))
+        engine.sync(room).getOrThrow()
+        server.enqueue("DELETE /chats/$A_ROOM_ENCODED/folder?path=Viajes", error(409, "not_empty", "\"files\": 2, \"folders\": 0"))
+        val refused = engine.deleteFolder(room, "Viajes", recursive = false).exceptionOrNull() as NotesException.NotEmpty
+        assertThat(refused.files).isEqualTo(2)
+        assertThat(engine.files(room)).hasSize(2)
+        server.enqueue(
+            "DELETE /chats/$A_ROOM_ENCODED/folder?path=Viajes&recursive=true",
+            json(body = """{"path": "Viajes", "deleted": true, "notes": 1, "files": 1}"""),
+        )
+        assertThat(engine.deleteFolder(room, "Viajes", recursive = true).getOrThrow().notes).isEqualTo(1)
+        assertThat(engine.files(room)).isEmpty()
+        assertThat(engine.folders(room)).isEmpty()
+    }
 }

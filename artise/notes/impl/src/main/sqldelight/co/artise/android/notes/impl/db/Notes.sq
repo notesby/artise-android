@@ -50,6 +50,13 @@ CREATE TABLE NotesFlagEntity (
     name TEXT NOT NULL PRIMARY KEY
 );
 
+-- Every folder on the server, empty ones included (folders holding files also come from the files' paths).
+CREATE TABLE NotesFolderEntity (
+    room_id TEXT NOT NULL,
+    path TEXT NOT NULL,
+    PRIMARY KEY (room_id, path)
+);
+
 -- Chats
 
 selectChats:
@@ -156,3 +163,17 @@ SELECT content_type FROM NotesEditEntity WHERE id = ?;
 
 renameEdit:
 UPDATE NotesEditEntity SET path = ? WHERE id = ?;
+
+-- Folders
+
+selectFolders:
+SELECT path FROM NotesFolderEntity WHERE room_id = ? ORDER BY path COLLATE NOCASE;
+
+insertFolder:
+INSERT OR IGNORE INTO NotesFolderEntity(room_id, path) VALUES (?, ?);
+
+deleteChatFolders:
+DELETE FROM NotesFolderEntity WHERE room_id = ?;
+
+deleteFolderTree:
+DELETE FROM NotesFolderEntity WHERE room_id = :room_id AND (path = :path OR path LIKE :path || '/%');

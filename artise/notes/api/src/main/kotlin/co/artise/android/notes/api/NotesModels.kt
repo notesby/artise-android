@@ -32,7 +32,20 @@ data class NotesFile(
 data class NotesTree(
     val tree: String,
     val files: List<NotesFile>,
+    /** Every folder on the server, empty ones included ("Recetas", "Recetas/Postres"). */
+    val folders: List<String> = emptyList(),
 )
+
+/** A folder moved or renamed on the server: where each file inside went, and the notes whose links changed. */
+data class MovedFolder(
+    val from: String,
+    val to: String,
+    val moved: List<MovedNote>,
+    val linksUpdated: List<String>,
+)
+
+/** A folder deleted on the server, with how many notes and files went with it. */
+data class DeletedFolder(val path: String, val notes: Int, val files: Int)
 
 /** A note's text at a given [version]. */
 data class Note(

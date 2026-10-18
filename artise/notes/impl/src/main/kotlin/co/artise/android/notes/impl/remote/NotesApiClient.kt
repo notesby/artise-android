@@ -8,6 +8,8 @@
 package co.artise.android.notes.impl.remote
 
 import co.artise.android.notes.api.Backlink
+import co.artise.android.notes.api.DeletedFolder
+import co.artise.android.notes.api.MovedFolder
 import co.artise.android.notes.api.MovedNote
 import co.artise.android.notes.api.Note
 import co.artise.android.notes.api.NoteLinks
@@ -80,7 +82,7 @@ class NotesApiClient(
             } else {
                 val dto = json.decodeFromString<TreeDto>(response.bodyString())
                 TreeResponse.Changed(
-                    tree = NotesTree(dto.tree, dto.files.map { NotesFile(it.path, it.version, it.size, it.modified, it.note) }),
+                    tree = NotesTree(dto.tree, dto.files.map { NotesFile(it.path, it.version, it.size, it.modified, it.note) }, dto.folders),
                     etag = response.header("ETag"),
                 )
             }
@@ -136,6 +138,33 @@ class NotesApiClient(
         val body = json.encodeToString(MoveDto(from, to, baseVersion)).toRequestBody(jsonMediaType)
         return call(request(url(roomId, "move")).post(body).build()) { response ->
             json.decodeFromString<MovedDto>(response).let { MovedNote(it.from, it.to, it.version, it.linksUpdated) }
+        }
+    }
+
+    /** Creates a folder (and any missing parents). */
+    suspend fun createFolder(roomId: RoomId, path: String): Result<Unit> {
+        val body = json.encodeToString(FolderDto(path)).toRequestBody(jsonMediaType)
+        return call(request(url(roomId, "folder")).post(body).build()) { }
+    }
+
+    /** Moves or renames a folder with everything inside; the server rewrites the links to what moved. */
+    suspend fun moveFolder(roomId: RoomId, from: String, to: String): Result<MovedFolder> {
+        val body = json.encodeToString(MoveFolderDto(from, to, folder = true)).toRequestBody(jsonMediaType)
+        return call(request(url(roomId, "move")).post(body).build()) { response ->
+            json.decodeFromString<MovedFolderDto>(response).let { dto ->
+                MovedFolder(dto.from, dto.to, dto.moved.map { MovedNote(it.from, it.to, it.version, emptyList()) }, dto.linksUpdated)
+            }
+        }
+    }
+
+    /** Deletes a folder; one that isn't empty needs [recursive] (else `NotesException.NotEmpty`). */
+    suspend fun deleteFolder(roomId: RoomId, path: String, recursive: Boolean): Result<DeletedFolder> {
+        val url = url(roomId, "folder").newBuilder()
+            .addQueryParameter("path", path)
+            .apply { if (recursive) addQueryParameter("recursive", "true") }
+            .build()
+        return call(request(url).delete().build()) { response ->
+            json.decodeFromString<DeletedFolderDto>(response).let { DeletedFolder(it.path, it.notes, it.files) }
         }
     }
 
@@ -233,6 +262,7 @@ class NotesApiClient(
             "too_big" -> NotesException.TooBig(message)
             "not_a_note" -> NotesException.NotANote(message)
             "in_use" -> NotesException.InUse(message, dto.usedBy)
+            "not_empty" -> NotesException.NotEmpty(message, dto.files, dto.folders)
             else -> if (response.code == HTTP_UNAUTHORIZED) NotesException.Unauthorized(message) else NotesException.Server(response.code, message)
         }
     }

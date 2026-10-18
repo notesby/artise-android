@@ -139,4 +139,49 @@
         <item quantity="many">¿Borrar %1$d archivos sin usar?</item>
         <item quantity="other">¿Borrar %1$d archivos sin usar?</item>
     </plurals>
+    <string name="screen_notes_file_actions">Más acciones</string>
+    <string name="screen_notes_file_open">Abrir</string>
+    <string name="screen_notes_file_move">Mover</string>
+    <string name="screen_notes_file_move_title">Mover “%1$s” a…</string>
+    <string name="screen_notes_file_move_top_level">Notas (nivel principal)</string>
+    <string name="screen_notes_file_move_here">Está aquí ahora</string>
+    <string name="screen_notes_file_move_new_folder">Carpeta nueva…</string>
+    <string name="screen_notes_folder_name_placeholder">Nombre de la carpeta</string>
+    <string name="screen_notes_folder_name_hint">Usa “/” para una carpeta dentro de otra, como Recetas/Postres.</string>
+    <string name="screen_notes_file_delete_title">¿Borrar “%1$s”?</string>
+    <string name="screen_notes_file_delete_note_message">Se borra para todos en este chat. Sus versiones anteriores quedan en el historial de las notas.</string>
+    <string name="screen_notes_file_delete_file_message">Se borra para todos en este chat. Antes de borrarlo, Artise revisa que ninguna nota lo use.</string>
+    <string name="screen_notes_file_problem_offline">Esto necesita conexión. Inténtalo cuando tengas internet.</string>
+    <string name="screen_notes_file_problem_unsent">Tiene cambios que aún no se envían (o todavía se está subiendo). Espera a que se envíen e inténtalo de nuevo.</string>
+    <string name="screen_notes_file_problem_exists">Ya hay una nota o un archivo con ese nombre ahí.</string>
+    <string name="screen_notes_file_problem_failed">No se pudo hacer. Inténtalo de nuevo.</string>
+    <plurals name="screen_notes_folder_file_count">
+        <item quantity="one">%1$d archivo</item>
+        <item quantity="many">%1$d archivos</item>
+        <item quantity="other">%1$d archivos</item>
+    </plurals>
+    <string name="screen_notes_new_folder">Nueva carpeta</string>
+    <string name="screen_notes_folder_create">Crear</string>
+    <string name="screen_notes_folder_delete_empty_message">Está vacía. Se borra para todos en este chat.</string>
+    <string name="screen_notes_folder_delete_message">Todo lo que contiene se borra para todos en este chat: %1$s. Las notas quedan en el historial de notas, y las fotos y archivos en la papelera durante 30 días.</string>
+    <plurals name="screen_notes_folder_delete_notes">
+        <item quantity="one">%1$d nota</item>
+        <item quantity="many">%1$d notas</item>
+        <item quantity="other">%1$d notas</item>
+    </plurals>
+    <plurals name="screen_notes_folder_delete_files">
+        <item quantity="one">%1$d foto o archivo</item>
+        <item quantity="many">%1$d fotos o archivos</item>
+        <item quantity="other">%1$d fotos o archivos</item>
+    </plurals>
+    <plurals name="screen_notes_folder_delete_folders">
+        <item quantity="one">%1$d carpeta</item>
+        <item quantity="many">%1$d carpetas</item>
+        <item quantity="other">%1$d carpetas</item>
+    </plurals>
+    <string name="screen_notes_folder_delete_this">Borrar esta carpeta</string>
+    <string name="screen_notes_folder_is_empty">Esta carpeta está vacía.</string>
+    <string name="screen_notes_file_problem_gone">Alguien más lo borró o lo movió mientras tanto.</string>
+    <string name="screen_notes_folder_problem_exists">Ya hay una carpeta o archivo con ese nombre aquí.</string>
+    <string name="screen_notes_new">Nueva nota o carpeta</string>
 </resources>

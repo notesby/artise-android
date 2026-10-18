@@ -38,6 +38,9 @@ sealed class NotesException(message: String, cause: Throwable? = null) : Excepti
     /** The server keeps a photo or file that notes use ([usedBy]); take it out of them first. */
     class InUse(message: String, val usedBy: List<String>) : NotesException(message)
 
+    /** A folder isn't empty: deleting it needs a confirmation ([files] files and [folders] folders inside). */
+    class NotEmpty(message: String, val files: Int, val folders: Int) : NotesException(message)
+
     /** A photo or document: use the raw endpoints. */
     class NotANote(message: String) : NotesException(message)
 

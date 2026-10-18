@@ -7,8 +7,10 @@
 
 package co.artise.android.notes.impl.ui
 
+import co.artise.android.notes.api.DeletedFolder
 import co.artise.android.notes.api.LocalFile
 import co.artise.android.notes.api.MediaFile
+import co.artise.android.notes.api.MovedFolder
 import co.artise.android.notes.api.MovedNote
 import co.artise.android.notes.api.Note
 import co.artise.android.notes.api.NoteLinks
@@ -93,6 +95,42 @@ class FakeNotesRepository(
     }
 
     override suspend fun moveNote(roomId: RoomId, from: String, to: String) = moveResult(from, to)
+
+    /** Folders kept by the server, empty ones included; folders holding files count too, as on the server. */
+    val folders = mutableMapOf<RoomId, List<String>>()
+    val createdFolders = mutableListOf<String>()
+    val movedFolders = mutableListOf<Pair<String, String>>()
+    val deletedFolders = mutableListOf<Pair<String, Boolean>>()
+    var createFolderResult: (String) -> Result<Unit> = { Result.success(Unit) }
+    var moveFolderResult: (String, String) -> Result<MovedFolder> = { from, to -> Result.success(MovedFolder(from, to, emptyList(), emptyList())) }
+    var deleteFolderResult: (String, Boolean) -> Result<DeletedFolder> = { path, _ -> Result.success(DeletedFolder(path, 0, 0)) }
+
+    override suspend fun folders(roomId: RoomId): List<String> {
+        val fromFiles = files[roomId].orEmpty().flatMap { file ->
+            val parts = file.path.split('/').dropLast(1)
+            parts.indices.map { parts.subList(0, it + 1).joinToString("/") }
+        }
+        return (folders[roomId].orEmpty() + fromFiles).distinct().sorted()
+    }
+
+    override suspend fun createFolder(roomId: RoomId, path: String): Result<Unit> = createFolderResult(path).onSuccess {
+        createdFolders += path
+        folders[roomId] = folders[roomId].orEmpty() + path
+        changesFlow.tryEmit(Unit)
+    }
+
+    override suspend fun moveFolder(roomId: RoomId, from: String, to: String): Result<MovedFolder> = moveFolderResult(from, to).onSuccess {
+        movedFolders += from to to
+        changesFlow.tryEmit(Unit)
+    }
+
+    override suspend fun deleteFolder(roomId: RoomId, path: String, recursive: Boolean): Result<DeletedFolder> =
+        deleteFolderResult(path, recursive).onSuccess {
+            deletedFolders += path to recursive
+            folders[roomId] = folders[roomId].orEmpty().filterNot { it == path || it.startsWith("$path/") }
+            files[roomId] = files[roomId].orEmpty().filterNot { it.path.startsWith("$path/") }
+            changesFlow.tryEmit(Unit)
+        }
 
     val attachments = mutableListOf<Pair<String, ByteArray>>()
     var addAttachmentResult: (String) -> Result<String> = { name -> Result.success("attachments/$name") }
