@@ -9,11 +9,16 @@ package co.artise.android.accountdeletion
 
 import android.content.Context
 import androidx.core.content.edit
+import co.artise.android.workspace.api.WorkspaceConfig
+import co.artise.android.workspace.api.WorkspaceConfigRepository
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.SingleIn
 import io.element.android.libraries.di.annotations.ApplicationContext
+import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.services.toolbox.api.systemclock.SystemClock
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 /**
  * Deleting the account happens on Artise's web page (Google Play requires a way from inside the app). The page does
@@ -21,8 +26,11 @@ import io.element.android.services.toolbox.api.systemclock.SystemClock
  * sign-in instead of explaining why it was signed out.
  */
 interface AccountDeletion {
-    /** The page, in Spanish when the app is. */
-    fun pageUrl(language: String): String
+    /** The account's workspace page (its `links.delete_account`), in Spanish when the app is; null when its server has none. */
+    fun pageUrl(sessionId: SessionId, language: String): String?
+
+    /** Whether the account's workspace has the page, so Settings offers "Delete account". */
+    fun hasPageFlow(sessionId: SessionId): Flow<Boolean>
 
     /** The page was opened: a sign-out that follows soon is the deletion. */
     fun markStarted()
@@ -31,8 +39,6 @@ interface AccountDeletion {
     fun consumeStarted(): Boolean
 
     companion object {
-        const val PAGE_URL = "https://chat.artise.co/account/delete"
-
         /** Long enough to read the page and confirm; a later sign-out has another cause. */
         const val STARTED_VALID_MILLIS = 60 * 60 * 1000L
     }
@@ -48,8 +54,17 @@ interface AccountDeletionStore {
 class DefaultAccountDeletion(
     private val store: AccountDeletionStore,
     private val clock: SystemClock,
+    private val workspaceConfigRepository: WorkspaceConfigRepository,
 ) : AccountDeletion {
-    override fun pageUrl(language: String): String = if (language == "es") "${AccountDeletion.PAGE_URL}?lang=es" else AccountDeletion.PAGE_URL
+    override fun pageUrl(sessionId: SessionId, language: String): String? =
+        pageOf(workspaceConfigRepository.cached(sessionId))?.let { page ->
+            if (language == "es") page + (if ('?' in page) "&" else "?") + "lang=es" else page
+        }
+
+    override fun hasPageFlow(sessionId: SessionId): Flow<Boolean> =
+        workspaceConfigRepository.configFlow(sessionId).map { pageOf(it) != null }
+
+    private fun pageOf(config: WorkspaceConfig?): String? = config?.links?.deleteAccount
 
     override fun markStarted() {
         store.startedAt = clock.epochMillis()

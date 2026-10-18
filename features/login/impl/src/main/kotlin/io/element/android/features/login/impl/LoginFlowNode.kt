@@ -15,6 +15,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
+import co.artise.android.workspace.api.SignInWorkspaceHolder
+import co.artise.android.workspace.api.WorkspaceInvite
+import co.artise.android.workspace.api.WorkspaceSignInEntryPoint
 import com.bumble.appyx.core.lifecycle.subscribe
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.Node
@@ -51,6 +54,10 @@ import io.element.android.libraries.oauth.api.OAuthAction
 import io.element.android.libraries.oauth.api.OAuthActionFlow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.parcelize.Parcelize
 
@@ -65,6 +72,9 @@ class LoginFlowNode(
     private val appCoroutineScope: CoroutineScope,
     private val elementClassicConnection: ElementClassicConnection,
     private val preferencesEntryPoint: PreferencesEntryPoint,
+    // Artise: signing in starts with the workspace's name.
+    private val workspaceSignInEntryPoint: WorkspaceSignInEntryPoint,
+    private val signInWorkspaceHolder: SignInWorkspaceHolder,
 ) : BaseFlowNode<LoginFlowNode.NavTarget>(
     backstack = BackStack(
         initialElement = NavTarget.CheckClassicFlow,
@@ -86,6 +96,16 @@ class LoginFlowNode(
 
     override fun onBuilt() {
         super.onBuilt()
+        // Artise: an invite link opened while signed out goes to the workspace step, once the welcome screen is showing.
+        combine(backstack.elements, signInWorkspaceHolder.pendingInvite) { elements, invite ->
+            val active = elements.lastOrNull { it.targetState == BackStack.State.ACTIVE }?.key?.navTarget
+            invite.takeIf { active is NavTarget.OnBoarding || active is NavTarget.Workspace }
+        }
+            .filterNotNull()
+            .onEach {
+                signInWorkspaceHolder.takeInvite()?.let { invite -> backstack.push(NavTarget.Workspace(invite.slug, invite.code)) }
+            }
+            .launchIn(lifecycleScope)
         lifecycle.subscribe(
             onResume = {
                 if (externalAppStarted) {
@@ -126,6 +146,10 @@ class LoginFlowNode(
         @Parcelize
         data object ChooseAccountProvider : NavTarget
 
+        // Artise: "Your workspace", before the password screen; with an invite link's workspace and code when there's one.
+        @Parcelize
+        data class Workspace(val inviteSlug: String? = null, val inviteCode: String? = null) : NavTarget
+
         @Parcelize
         data class LoginPassword(
             val initialLogin: String = "",
@@ -163,13 +187,8 @@ class LoginFlowNode(
                     }
 
                     override fun navigateToSignInFlow(mustChooseAccountProvider: Boolean) {
-                        backstack.push(
-                            if (mustChooseAccountProvider) {
-                                NavTarget.ChooseAccountProvider
-                            } else {
-                                NavTarget.ConfirmAccountProvider(isAccountCreation = false)
-                            }
-                        )
+                        // Artise: every sign-in starts with the workspace's name, instead of choosing or confirming a server.
+                        backstack.push(NavTarget.Workspace())
                     }
 
                     override fun navigateToQrCode() {
@@ -254,6 +273,22 @@ class LoginFlowNode(
                     }
                 }
                 createNode<ConfirmAccountProviderNode>(buildContext, plugins = listOf(inputs, callback))
+            }
+            is NavTarget.Workspace -> {
+                val callback = object : WorkspaceSignInEntryPoint.Callback {
+                    override fun onWorkspaceReady(serverName: String) {
+                        lifecycleScope.launch {
+                            accountProviderDataSource.setUrl(serverName)
+                            backstack.push(NavTarget.LoginPassword())
+                        }
+                    }
+                }
+                val invite = if (navTarget.inviteSlug != null && navTarget.inviteCode != null) {
+                    WorkspaceInvite(navTarget.inviteSlug, navTarget.inviteCode)
+                } else {
+                    null
+                }
+                workspaceSignInEntryPoint.createNode(this, buildContext, WorkspaceSignInEntryPoint.Params(invite = invite), callback)
             }
             is NavTarget.LoginPassword -> {
                 val inputs = LoginPasswordNode.Inputs(

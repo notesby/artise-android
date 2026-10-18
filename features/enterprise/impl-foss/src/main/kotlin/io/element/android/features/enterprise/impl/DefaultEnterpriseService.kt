@@ -64,7 +64,7 @@ class DefaultEnterpriseService(
         return flowOf(SemanticColorsLightDark.default)
     }
 
-    override fun firebasePushGateway(): String? = null
+    override fun firebasePushGateway(sessionId: SessionId): String? = null
     override fun unifiedPushDefaultPushGateway(): String? = null
 
     override fun bugReportUrlFlow(sessionId: SessionId?): Flow<BugReportUrl> {

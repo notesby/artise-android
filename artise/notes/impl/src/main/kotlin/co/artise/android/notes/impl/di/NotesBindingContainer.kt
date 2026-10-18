@@ -16,6 +16,7 @@ import co.artise.android.notes.impl.db.NotesDatabase
 import co.artise.android.notes.impl.local.NotesLocalStore
 import co.artise.android.notes.impl.remote.NotesApiClient
 import co.artise.android.notes.impl.sync.NotesSyncEngine
+import co.artise.android.workspace.api.WorkspaceConfigRepository
 import dev.zacsweers.metro.BindingContainer
 import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.Provides
@@ -70,8 +71,12 @@ object NotesBindingContainer {
         photoConverter: PhotoConverter,
         prefetchPolicy: PrefetchPolicy,
         analyticsService: AnalyticsService,
+        workspaceConfigRepository: WorkspaceConfigRepository,
     ): NotesRepository = NotesSyncEngine(
-        api = NotesApiClient(okHttpClient.withoutBodyLogging(), tokenSource, dispatchers),
+        // The workspace's own Notes API (its web host is a per-server setting), read at each call so a change applies right away.
+        api = NotesApiClient(okHttpClient.withoutBodyLogging(), tokenSource, dispatchers) {
+            workspaceConfigRepository.cached(matrixClient.sessionId)?.links?.notesApi
+        },
         store = NotesLocalStore(database),
         clock = systemClock,
         dispatchers = dispatchers,

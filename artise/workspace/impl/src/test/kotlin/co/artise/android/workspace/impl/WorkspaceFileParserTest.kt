@@ -1,0 +1,102 @@
+/*
+ * Copyright 2026 Artise.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only.
+ * Please see LICENSE files in the repository root for full details.
+ */
+
+package co.artise.android.workspace.impl
+
+import co.artise.android.workspace.api.WorkspaceConfig
+import co.artise.android.workspace.api.WorkspaceLinks
+import com.google.common.truth.Truth.assertThat
+import org.junit.Test
+
+class WorkspaceFileParserTest {
+    /** Every field of the section is read, next to the standard Matrix keys. */
+    @Test
+    fun `full section`() {
+        val config = WorkspaceFileParser.parse(
+            """
+            {
+              "m.homeserver": {"base_url": "https://matrix.artise.co"},
+              "org.matrix.msc4143.rtc_foci": [{"type": "livekit"}],
+              "co.artise.workspace": {
+                "version": 1,
+                "name": "Acme",
+                "logo": "https://artise.co/brand/logo-abc.png",
+                "colors": {"accent": "#1F6FEB"},
+                "assistant_name": "Ari",
+                "welcome": {"en": "Welcome to Acme", "es": "Bienvenido"},
+                "language": "es",
+                "features": ["booking", "tasks"],
+                "push_gateway": "https://push.artise.co/_matrix/push/v1/notify"
+              }
+            }
+            """.trimIndent()
+        )
+        assertThat(config).isEqualTo(
+            WorkspaceConfig(
+                name = "Acme",
+                logoUrl = "https://artise.co/brand/logo-abc.png",
+                accentColor = 0xFF1F6FEB,
+                assistantName = "Ari",
+                welcome = mapOf("en" to "Welcome to Acme", "es" to "Bienvenido"),
+                language = "es",
+                features = setOf("booking", "tasks"),
+                pushGateway = "https://push.artise.co/_matrix/push/v1/notify",
+            )
+        )
+    }
+
+    /** `links` gives full URLs (only https ones are kept); a server without a web host sends none. */
+    @Test
+    fun `links are read`() {
+        val config = WorkspaceFileParser.parse(
+            """
+            {"co.artise.workspace": {"links": {"web": "https://chat.artise.co", "notes_api": "https://chat.artise.co/api/notes/v1",
+            "delete_account": "http://chat.artise.co/account/delete", "status": "https://status.artise.co"}}}
+            """.trimIndent()
+        )
+        assertThat(config?.links).isEqualTo(WorkspaceLinks("https://chat.artise.co", "https://chat.artise.co/api/notes/v1", null))
+        assertThat(WorkspaceFileParser.parse("""{"co.artise.workspace": {"name": "Acme"}}""")?.links).isNull()
+    }
+
+    /** Only some fields: the rest stay at Artise's defaults. */
+    @Test
+    fun `partial section`() {
+        val config = WorkspaceFileParser.parse("""{"co.artise.workspace": {"name": "Acme"}}""")
+        assertThat(config).isEqualTo(WorkspaceConfig(name = "Acme"))
+        assertThat(config?.hasFeature("booking")).isTrue()
+    }
+
+    /** No section, or a file that isn't JSON: no settings, so the default look (sign-in still works). */
+    @Test
+    fun `missing section or broken file`() {
+        assertThat(WorkspaceFileParser.parse("""{"m.homeserver": {"base_url": "https://matrix.acme.example"}}""")).isNull()
+        assertThat(WorkspaceFileParser.parse("<html>not found</html>")).isNull()
+        assertThat(WorkspaceFileParser.parse("""{"co.artise.workspace": "oops"}""")).isNull()
+    }
+
+    /** A newer version with fields this app doesn't know: the known ones are still read. */
+    @Test
+    fun `version 2 with unknown fields`() {
+        val config = WorkspaceFileParser.parse(
+            """{"co.artise.workspace": {"version": 2, "name": "Acme", "hologram": {"x": 1}, "colors": {"accent": "#1F6FEB", "glow": "#FFFFFF"}}}"""
+        )
+        assertThat(config).isEqualTo(WorkspaceConfig(name = "Acme", accentColor = 0xFF1F6FEB))
+    }
+
+    /** Wrong types and bad values are skipped one by one: a colour that isn't #RRGGBB, a logo that isn't https, a number as a name. */
+    @Test
+    fun `malformed fields are skipped`() {
+        val config = WorkspaceFileParser.parse(
+            """
+            {"co.artise.workspace": {"name": 7, "logo": "http://insecure.example/logo.png", "colors": {"accent": "blue"},
+            "welcome": {"en": 3, "es": "Hola"}, "features": "booking"}}
+            """.trimIndent()
+        )
+        assertThat(config).isEqualTo(WorkspaceConfig(welcome = mapOf("es" to "Hola")))
+        listOf("#FFF", "#1F6FEB80", "1F6FEB", "#GGGGGG").forEach { assertThat(WorkspaceFileParser.parseColor(it)).isNull() }
+    }
+}

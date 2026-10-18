@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import co.artise.android.notes.impl.R
 import co.artise.android.notes.impl.ui.common.NoteNameProblem
 import co.artise.android.notes.impl.ui.common.NotesScaffold
+import co.artise.android.workspace.api.LocalWorkspaceBranding
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.libraries.designsystem.components.Announcement
@@ -103,7 +104,7 @@ fun NotesFolderView(
                 item {
                     Announcement(
                         title = stringResource(R.string.screen_notes_privacy_title),
-                        description = stringResource(R.string.screen_notes_privacy_body),
+                        description = stringResource(R.string.screen_notes_privacy_body, LocalWorkspaceBranding.current.assistantName),
                         type = AnnouncementType.Actionable(
                             actionText = stringResource(R.string.screen_notes_privacy_ok),
                             onActionClick = { state.eventSink(NotesFolderEvent.DismissPrivacyNotice) },

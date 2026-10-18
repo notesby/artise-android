@@ -40,6 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import co.artise.android.workspace.api.LocalWorkspaceBranding
 import im.vector.app.features.analytics.plan.Interaction
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
@@ -250,8 +251,10 @@ fun RoomDetailsView(
                     pinnedMessagesCount = state.pinnedMessagesCount,
                     onPinnedMessagesClick = onPinnedMessagesClick
                 )
-                // Artise: the chat's notes.
-                NotesItem(onClick = onNotesClick)
+                // Artise: the chat's notes, when the workspace's server has them.
+                if (LocalWorkspaceBranding.current.hasNotes) {
+                    NotesItem(onClick = onNotesClick)
+                }
                 PollsItem(
                     openPollHistory = openPollHistory
                 )

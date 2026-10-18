@@ -16,6 +16,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import co.artise.android.accountdeletion.AccountDeletion
+import co.artise.android.workspace.api.SignInWorkspaceHolder
+import co.artise.android.workspace.api.WorkspaceInvite
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.navigation.NavElements
 import com.bumble.appyx.core.navigation.NavKey
@@ -103,6 +105,8 @@ class RootFlowNode(
     private val analyticsColdStartWatcher: AnalyticsColdStartWatcher,
     @AppCoroutineScope private val appCoroutineScope: CoroutineScope,
     private val accountDeletion: AccountDeletion,
+    // Artise: hands invite links to the sign-in screens.
+    private val signInWorkspaceHolder: SignInWorkspaceHolder,
 ) : BaseFlowNode<RootFlowNode.NavTarget>(
     backstack = BackStack(
         initialElement = NavTarget.SplashScreen,
@@ -412,6 +416,7 @@ class RootFlowNode(
             is ResolvedIntent.OAuth -> onOAuthAction(resolvedIntent.oAuthAction)
             is ResolvedIntent.Permalink -> navigateTo(resolvedIntent.permalinkData)
             is ResolvedIntent.IncomingShare -> onIncomingShare(resolvedIntent.shareIntentData)
+            is ResolvedIntent.WorkspaceInvite -> onWorkspaceInvite(resolvedIntent.invite)
         }
     }
 
@@ -442,6 +447,19 @@ class RootFlowNode(
         } else {
             Timber.w("Login link ignored, we are not allowed to connect to the homeserver")
         }
+    }
+
+    /**
+     * Artise: an invite link. Signed out, sign-in opens with the invite's workspace and its join page (where the person picks a username
+     * and password). Signed in, it's left alone: one workspace at a time for now (sign out to switch).
+     */
+    private suspend fun onWorkspaceInvite(invite: WorkspaceInvite) {
+        if (sessionStore.getAllSessions().isNotEmpty()) {
+            Timber.w("Workspace invite ignored: already signed in")
+            return
+        }
+        signInWorkspaceHolder.offerInvite(invite)
+        switchToNotLoggedInFlow(null)
     }
 
     private suspend fun onIncomingShare(shareIntentData: ShareIntentData) {

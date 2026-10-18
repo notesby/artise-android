@@ -28,6 +28,7 @@ import co.artise.android.notes.impl.ui.history.NotesChangesNode
 import co.artise.android.notes.impl.ui.media.NotesMediaNode
 import co.artise.android.notes.impl.ui.note.NoteNode
 import co.artise.android.notes.impl.ui.search.NotesSearchNode
+import co.artise.android.workspace.api.WorkspaceAccent
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.Node
 import com.bumble.appyx.core.plugin.Plugin
@@ -173,7 +174,10 @@ class NotesFlowNode(
 
     @Composable
     override fun View(modifier: Modifier) {
-        BackstackView(modifier)
+        // The workspace's accent on the notes screens' buttons and highlights.
+        WorkspaceAccent {
+            BackstackView(modifier)
+        }
     }
 
     private companion object {

@@ -27,6 +27,7 @@ import io.element.android.libraries.androidutils.browser.openUrlInChromeCustomTa
 import io.element.android.libraries.architecture.callback
 import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.emoji.api.picker.EmojiPickerRenderer
+import io.element.android.libraries.matrix.api.MatrixClient
 
 @ContributesNode(SessionScope::class)
 @AssistedInject
@@ -37,6 +38,7 @@ class PreferencesRootNode(
     private val emojiPickerRenderer: EmojiPickerRenderer,
     private val directLogoutView: DirectLogoutView,
     private val accountDeletion: AccountDeletion,
+    private val matrixClient: MatrixClient,
 ) : Node(buildContext, plugins = plugins) {
     interface Callback : PreferencesAccountCallback, Plugin {
         fun navigateToAddAccount()
@@ -100,12 +102,10 @@ class PreferencesRootNode(
             },
             // Artise: the account is deleted on Artise's page, which also ends this session on the server.
             onDeactivateClick = {
-                accountDeletion.markStarted()
-                activity.openUrlInChromeCustomTab(
-                    null,
-                    darkTheme = isDark,
-                    url = accountDeletion.pageUrl(activity.resources.configuration.locales[0].language),
-                )
+                accountDeletion.pageUrl(matrixClient.sessionId, activity.resources.configuration.locales[0].language)?.let { url ->
+                    accountDeletion.markStarted()
+                    activity.openUrlInChromeCustomTab(null, darkTheme = isDark, url = url)
+                }
             }
         )
 

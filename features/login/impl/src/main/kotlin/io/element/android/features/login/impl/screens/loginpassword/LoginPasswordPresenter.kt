@@ -16,6 +16,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import co.artise.android.workspace.api.SignInWorkspaceHolder
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
@@ -35,6 +36,8 @@ class LoginPasswordPresenter(
     private val authenticationService: MatrixAuthenticationService,
     private val accountProviderDataSource: AccountProviderDataSource,
     private val saveAccountProviderToHistory: SaveAccountProviderToHistory,
+    // Artise: the workspace chosen on the workspace step.
+    private val signInWorkspaceHolder: SignInWorkspaceHolder,
 ) : Presenter<LoginPasswordState> {
     @AssistedFactory
     interface Factory {
@@ -57,6 +60,7 @@ class LoginPasswordPresenter(
             )
         }
         val accountProvider by accountProviderDataSource.flow.collectAsState()
+        val signInWorkspace by signInWorkspaceHolder.current.collectAsState()
 
         fun handleEvent(event: LoginPasswordEvent) {
             when (event) {
@@ -78,6 +82,8 @@ class LoginPasswordPresenter(
             formState = formState.value,
             loginAction = loginAction.value,
             eventSink = ::handleEvent,
+            // Artise: only when it's the server being signed in to (not one chosen earlier and left).
+            workspace = signInWorkspace?.takeIf { it.serverName == accountProvider.friendlyServerName() },
         )
     }
 

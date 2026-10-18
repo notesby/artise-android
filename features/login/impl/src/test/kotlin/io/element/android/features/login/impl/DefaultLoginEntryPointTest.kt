@@ -9,7 +9,10 @@
 package io.element.android.features.login.impl
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
+import co.artise.android.workspace.api.WorkspaceSignInEntryPoint
+import co.artise.android.workspace.test.FakeSignInWorkspaceHolder
 import com.bumble.appyx.core.modality.BuildContext
+import com.bumble.appyx.core.node.Node
 import com.bumble.appyx.testing.junit4.util.MainDispatcherRule
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.login.api.LoginEntryPoint
@@ -42,6 +45,15 @@ class DefaultLoginEntryPointTest {
                 appCoroutineScope = backgroundScope,
                 elementClassicConnection = FakeElementClassicConnection(),
                 preferencesEntryPoint = FakePreferencesEntryPoint(),
+                workspaceSignInEntryPoint = object : WorkspaceSignInEntryPoint {
+                    override fun createNode(
+                        parentNode: Node,
+                        buildContext: BuildContext,
+                        params: WorkspaceSignInEntryPoint.Params,
+                        callback: WorkspaceSignInEntryPoint.Callback,
+                    ) = lambdaError()
+                },
+                signInWorkspaceHolder = FakeSignInWorkspaceHolder(),
             )
         }
         val callback = object : LoginEntryPoint.Callback {

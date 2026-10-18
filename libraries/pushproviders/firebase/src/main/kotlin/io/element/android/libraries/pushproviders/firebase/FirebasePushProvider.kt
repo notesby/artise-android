@@ -50,7 +50,7 @@ class FirebasePushProvider(
         return pusherSubscriber.registerPusher(
             matrixClient = matrixClient,
             pushKey = pushKey,
-            gateway = firebaseGatewayProvider.getFirebaseGateway(),
+            gateway = firebaseGatewayProvider.getFirebaseGateway(matrixClient.sessionId),
         )
     }
 
@@ -64,7 +64,7 @@ class FirebasePushProvider(
             Timber.tag(loggerTag.value).w("Unable to unregister pusher, Firebase token is not known.")
             Result.success(Unit)
         } else {
-            pusherSubscriber.unregisterPusher(matrixClient, pushKey, firebaseGatewayProvider.getFirebaseGateway())
+            pusherSubscriber.unregisterPusher(matrixClient, pushKey, firebaseGatewayProvider.getFirebaseGateway(matrixClient.sessionId))
         }
     }
 
@@ -76,7 +76,7 @@ class FirebasePushProvider(
     override suspend fun getPushConfig(sessionId: SessionId): Config? {
         return firebaseStore.getInstallationId()?.let { fcmToken ->
             Config(
-                url = firebaseGatewayProvider.getFirebaseGateway(),
+                url = firebaseGatewayProvider.getFirebaseGateway(sessionId),
                 pushKey = fcmToken
             )
         }

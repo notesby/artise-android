@@ -12,6 +12,7 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import androidx.core.net.toUri
+import co.artise.android.workspace.api.WorkspaceInvite
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.login.api.LoginParams
 import io.element.android.features.login.test.FakeLoginIntentResolver
@@ -316,6 +317,17 @@ class IntentResolverTest : RobolectricTest() {
         }
         val result = sut.resolve(intent)
         assertThat(result).isEqualTo(ResolvedIntent.Login(aLoginParams))
+    }
+
+    /** Artise: a workspace invite link opens the app with that invite, before any other kind of link is tried. */
+    @Test
+    fun `test resolve workspace invite`() {
+        val sut = createIntentResolver(oAuthIntentResolverResult = { null })
+        val intent = Intent(RuntimeEnvironment.getApplication(), Activity::class.java).apply {
+            action = Intent.ACTION_VIEW
+            data = "https://join.artise.co/acme/Ab3_xyZ9".toUri()
+        }
+        assertThat(sut.resolve(intent)).isEqualTo(ResolvedIntent.WorkspaceInvite(WorkspaceInvite("acme", "Ab3_xyZ9")))
     }
 
     private fun createIntentResolver(
