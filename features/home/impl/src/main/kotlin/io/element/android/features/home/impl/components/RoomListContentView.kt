@@ -165,6 +165,9 @@ private fun EmptyView(
                         onDismissClick = { eventSink(RoomListEvent.DismissBanner) },
                     )
                 }
+                SecurityBannerState.UnlockMessages -> {
+                    UnlockMessagesBanner(onUnlockClick = { eventSink(RoomListEvent.UnlockMessages) })
+                }
                 SecurityBannerState.None -> Unit
             }
         }
@@ -235,6 +238,11 @@ private fun RoomsViewList(
                         onContinueClick = onSetUpRecoveryClick,
                         onDismissClick = { eventSink(RoomListEvent.DismissBanner) },
                     )
+                }
+            }
+            SecurityBannerState.UnlockMessages -> {
+                item {
+                    UnlockMessagesBanner(onUnlockClick = { eventSink(RoomListEvent.UnlockMessages) })
                 }
             }
             SecurityBannerState.RecoveryKeyConfirmation -> {

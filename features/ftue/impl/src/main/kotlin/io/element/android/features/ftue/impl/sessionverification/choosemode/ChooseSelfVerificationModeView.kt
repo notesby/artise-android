@@ -41,6 +41,7 @@ import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TextButton
 import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.ui.strings.CommonStrings
+import co.artise.android.recovery.api.R as ArtiseRecoveryR
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,6 +63,11 @@ fun ChooseSelfVerificationModeView(
             TopAppBar(
                 title = {},
                 actions = {
+                    // Artise: open the chats now and confirm later, from the chat list's banner.
+                    TextButton(
+                        text = stringResource(ArtiseRecoveryR.string.artise_recovery_later),
+                        onClick = { state.eventSink(ChooseSelfVerificationModeEvent.Later) }
+                    )
                     TextButton(
                         text = stringResource(CommonStrings.action_signout),
                         onClick = { state.eventSink(ChooseSelfVerificationModeEvent.SignOut) }

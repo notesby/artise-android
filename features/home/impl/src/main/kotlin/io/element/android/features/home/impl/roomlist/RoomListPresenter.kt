@@ -53,7 +53,9 @@ import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.encryption.RecoveryState
 import io.element.android.libraries.matrix.api.roomlist.RoomList
 import io.element.android.libraries.matrix.api.roomlist.RoomListFilter
+import io.element.android.libraries.matrix.api.verification.SessionVerifiedStatus
 import io.element.android.libraries.matrix.ui.safety.rememberHideInvitesAvatar
+import io.element.android.libraries.preferences.api.store.SessionPreferencesStore
 import io.element.android.libraries.push.api.battery.BatteryOptimizationState
 import io.element.android.services.analytics.api.AnalyticsService
 import io.element.android.services.analytics.api.watchers.AnalyticsColdStartWatcher
@@ -88,6 +90,8 @@ class RoomListPresenter(
     private val spaceFiltersPresenter: Presenter<SpaceFiltersState>,
     private val globalSearchPresenter: Presenter<GlobalSearchState>,
     private val featureFlagService: FeatureFlagService,
+    // Artise: to bring identity confirmation back after "Hacerlo después".
+    private val sessionPreferencesStore: SessionPreferencesStore,
 ) : Presenter<RoomListState> {
     private val encryptionService = client.encryptionService
 
@@ -125,6 +129,7 @@ class RoomListPresenter(
                 }
                 RoomListEvent.DismissRequestVerificationPrompt -> securityBannerDismissed = true
                 RoomListEvent.DismissBanner -> securityBannerDismissed = true
+                RoomListEvent.UnlockMessages -> coroutineScope.launch { sessionPreferencesStore.setSkipSessionVerification(false) }
                 RoomListEvent.DismissNewNotificationSoundBanner -> coroutineScope.launch {
                     announcementService.onAnnouncementDismissed(Announcement.NewNotificationSound)
                 }
@@ -196,11 +201,13 @@ class RoomListPresenter(
     ): State<SecurityBannerState> {
         val currentSecurityBannerDismissed by rememberUpdatedState(securityBannerDismissed)
         val recoveryState by encryptionService.recoveryStateStateFlow.collectAsState()
+        val verifiedStatus by client.sessionVerificationService.sessionVerifiedStatus.collectAsState()
         return remember {
             derivedStateOf {
                 calculateBannerState(
                     securityBannerDismissed = currentSecurityBannerDismissed,
                     recoveryState = recoveryState,
+                    verifiedStatus = verifiedStatus,
                 )
             }
         }
@@ -209,7 +216,12 @@ class RoomListPresenter(
     private fun calculateBannerState(
         securityBannerDismissed: Boolean,
         recoveryState: RecoveryState,
+        verifiedStatus: SessionVerifiedStatus,
     ): SecurityBannerState {
+        // Artise: only shown once confirmation was put off (otherwise the confirmation screen is open); it can't be dismissed.
+        if (verifiedStatus == SessionVerifiedStatus.NotVerified) {
+            return SecurityBannerState.UnlockMessages
+        }
         if (securityBannerDismissed) {
             return SecurityBannerState.None
         }
