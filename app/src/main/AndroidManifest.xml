@@ -116,7 +116,8 @@
                 <data android:path="/element/" />
             </intent-filter>
             <!--
-              Artise: workspace invite links, https://join.artise.co/{workspace}/{code}
+              Artise: workspace invite links, https://join.artise.co/{workspace}/{code}, and the sign-in result of a workspace's own
+              client, https://join.artise.co/oauth (verified for the release app only; IntentResolver sends it to OAuth first).
               Matching asset file: https://join.artise.co/.well-known/assetlinks.json
             -->
             <intent-filter android:autoVerify="true">
@@ -128,6 +129,7 @@
                 <data android:scheme="https" />
                 <data android:host="join.artise.co" />
                 <data android:pathPattern="/..*/..*" />
+                <data android:path="/oauth" />
             </intent-filter>
             <!--
               matrix: links
