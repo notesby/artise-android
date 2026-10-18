@@ -27,4 +27,5 @@
     <string name="screen_artise_id_no_workspaces_title">Aún no tienes espacios de trabajo</string>
     <string name="screen_artise_id_no_workspaces">Todavía no estás en ningún espacio de trabajo. Pídele a quien te invitó el enlace de invitación.</string>
     <string name="screen_artise_id_error_sign_in">No se pudo iniciar sesión con Artise. Inténtalo de nuevo.</string>
+    <string name="screen_artise_id_already_open">Ya abierto</string>
 </resources>

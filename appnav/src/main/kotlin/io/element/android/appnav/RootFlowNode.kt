@@ -19,6 +19,9 @@ import co.artise.android.accountdeletion.AccountDeletion
 import co.artise.android.workspace.api.ArtiseIdCallback
 import co.artise.android.workspace.api.SignInWorkspaceHolder
 import co.artise.android.workspace.api.WorkspaceInvite
+import co.artise.android.workspace.api.WorkspaceLookup
+import co.artise.android.workspace.api.WorkspaceLookupResult
+import co.artise.android.workspace.api.serverName
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.navigation.NavElements
 import com.bumble.appyx.core.navigation.NavKey
@@ -109,6 +112,7 @@ class RootFlowNode(
     // Artise: hands invite links to the sign-in screens.
     private val signInWorkspaceHolder: SignInWorkspaceHolder,
     private val artiseIdCallback: ArtiseIdCallback,
+    private val workspaceLookup: WorkspaceLookup,
 ) : BaseFlowNode<RootFlowNode.NavTarget>(
     backstack = BackStack(
         initialElement = NavTarget.SplashScreen,
@@ -453,16 +457,29 @@ class RootFlowNode(
     }
 
     /**
-     * Artise: an invite link. Signed out, sign-in opens with the invite's workspace and its join page (where the person picks a username
-     * and password). Signed in, it's left alone: one workspace at a time for now (sign out to switch).
+     * Artise: an invite link. Signed out, sign-in opens with the invite's workspace and its join page. Signed in to that workspace
+     * already, it switches to it. Signed in elsewhere, the invite's workspace is added next to the others.
      */
     private suspend fun onWorkspaceInvite(invite: WorkspaceInvite) {
-        if (sessionStore.getAllSessions().isNotEmpty()) {
-            Timber.w("Workspace invite ignored: already signed in")
+        val sessions = sessionStore.getAllSessions()
+        if (sessions.isEmpty()) {
+            signInWorkspaceHolder.offerInvite(invite)
+            switchToNotLoggedInFlow(null)
             return
         }
+        val serverName = (workspaceLookup.find(invite.slug) as? WorkspaceLookupResult.Found)?.workspace?.serverName
+        val alreadyOpen = serverName?.let { name -> sessions.firstOrNull { SessionId(it.userId).serverName() == name } }
+        if (alreadyOpen != null) {
+            attachSession(SessionId(alreadyOpen.userId))
+            return
+        }
+        if (!featureFlagService.isFeatureEnabled(FeatureFlags.MultiAccount)) {
+            Timber.w("Workspace invite ignored: already signed in and multi account is disabled")
+            return
+        }
+        attachSession(SessionId(sessions.maxBy { it.lastUsageIndex }.userId))
         signInWorkspaceHolder.offerInvite(invite)
-        switchToNotLoggedInFlow(null)
+        backstack.push(NavTarget.NotLoggedInFlow(null))
     }
 
     private suspend fun onIncomingShare(shareIntentData: ShareIntentData) {

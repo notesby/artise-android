@@ -15,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import co.artise.android.workspace.api.WorkspaceSignInEntryPoint
+import co.artise.android.workspace.api.serverName
 import co.artise.android.workspace.impl.artiseid.ArtiseIdAuth
 import co.artise.android.workspace.impl.artiseid.ArtiseIdConfig
 import co.artise.android.workspace.impl.artiseid.ArtiseIdConfigClient
@@ -27,7 +28,10 @@ import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
 import io.element.android.libraries.architecture.Presenter
+import io.element.android.libraries.matrix.api.core.SessionId
+import io.element.android.libraries.sessionstorage.api.SessionStore
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -44,6 +48,7 @@ class ArtiseIdSignInPresenter(
     private val configClient: ArtiseIdConfigClient,
     private val auth: ArtiseIdAuth,
     private val joinLinkCheck: JoinLinkCheck,
+    private val sessionStore: SessionStore,
 ) : Presenter<ArtiseIdSignInState> {
     @AssistedFactory
     fun interface Factory {
@@ -70,8 +75,10 @@ class ArtiseIdSignInPresenter(
                 is ArtiseIdWorkspaces.Found -> when {
                     result.workspaces.isEmpty() -> ArtiseIdScreen.NoWorkspaces
                     else -> {
-                        if (openSingle && result.workspaces.size == 1) chosen = result.workspaces.single()
-                        ArtiseIdScreen.Workspaces(result.workspaces.toImmutableList())
+                        val open = sessionStore.getAllSessions().map { SessionId(it.userId).serverName() }.toImmutableSet()
+                        val single = result.workspaces.singleOrNull()
+                        if (openSingle && single != null && single.serverName !in open) chosen = single
+                        ArtiseIdScreen.Workspaces(result.workspaces.toImmutableList(), open)
                     }
                 }
                 ArtiseIdWorkspaces.SignedOut -> providers(isBusy = false, problem = ArtiseIdProblem.SignInFailed.takeIf { openSingle })

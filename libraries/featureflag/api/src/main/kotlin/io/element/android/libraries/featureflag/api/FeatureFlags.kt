@@ -76,7 +76,8 @@ enum class FeatureFlags(
         title = "Multi accounts",
         description = "Allow the application to connect to multiple accounts at the same time." +
             "\n\nWARNING: this feature is EXPERIMENTAL and UNSTABLE.",
-        defaultValue = { false },
+        // Artise: on, so one person can be in several workspaces and get notifications from all of them.
+        defaultValue = { true },
         isFinished = false,
     ),
     QrCodeLogin(

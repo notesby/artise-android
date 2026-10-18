@@ -29,4 +29,5 @@
     <string name="screen_artise_id_no_workspaces_title">No workspaces yet</string>
     <string name="screen_artise_id_no_workspaces">You\'re not in any workspace yet. Ask the person who invited you for the invite link.</string>
     <string name="screen_artise_id_error_sign_in">Couldn\'t sign in with Artise. Try again.</string>
+    <string name="screen_artise_id_already_open">Already open</string>
 </resources>
