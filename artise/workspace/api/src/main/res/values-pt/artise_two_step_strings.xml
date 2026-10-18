@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<resources>
+    <string name="artise_two_step_title">Verificação em duas etapas</string>
+    <string name="artise_two_step_on">Ativada</string>
+    <string name="artise_two_step_off">Desativada</string>
+    <!-- %1$s: Google, Microsoft or Apple -->
+    <string name="artise_two_step_provider">Sua conta %1$s protege seu acesso</string>
+</resources>

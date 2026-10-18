@@ -35,6 +35,11 @@ interface ArtiseIdTokenStore {
     suspend fun save(tokens: ArtiseIdTokens)
 
     suspend fun clear()
+
+    /** After signing out of Artise ID, the next sign-in asks again instead of reusing the browser's session. */
+    suspend fun isFreshSignInNeeded(): Boolean
+
+    suspend fun setFreshSignInNeeded(needed: Boolean)
 }
 
 /**
@@ -72,9 +77,16 @@ class EncryptedArtiseIdTokenStore(
         secretKeyRepository.deleteKey(KEY_ALIAS)
     }
 
+    override suspend fun isFreshSignInNeeded(): Boolean = withContext(dispatchers.io) { preferences.getBoolean(KEY_FRESH_SIGN_IN, false) }
+
+    override suspend fun setFreshSignInNeeded(needed: Boolean) = withContext(dispatchers.io) {
+        preferences.edit { putBoolean(KEY_FRESH_SIGN_IN, needed) }
+    }
+
     private companion object {
         const val PREFERENCES = "artise_id"
         const val KEY_TOKENS = "tokens"
+        const val KEY_FRESH_SIGN_IN = "fresh_sign_in"
         const val KEY_ALIAS = "artise_id_tokens"
     }
 }

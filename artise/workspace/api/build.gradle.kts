@@ -21,5 +21,6 @@ dependencies {
     implementation(libs.timber)
     api(libs.kotlinx.collections.immutable)
     implementation(projects.libraries.designsystem)
+    implementation(projects.libraries.androidutils)
     implementation(projects.libraries.uiStrings)
 }

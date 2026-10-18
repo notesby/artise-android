@@ -9,6 +9,8 @@ package co.artise.android.workspace.impl.artiseid
 
 import co.artise.android.workspace.impl.artiseid.ArtiseIdTestServer.Companion.DISCOVERY
 import co.artise.android.workspace.impl.artiseid.ArtiseIdTestServer.Companion.REDIRECT
+import co.artise.android.workspace.impl.artiseid.ArtiseIdTestServer.Companion.REVOKE
+import co.artise.android.workspace.impl.artiseid.ArtiseIdTestServer.Companion.SECURITY
 import co.artise.android.workspace.impl.artiseid.ArtiseIdTestServer.Companion.TOKEN
 import co.artise.android.workspace.impl.artiseid.ArtiseIdTestServer.Companion.WORKSPACES
 import co.artise.android.workspace.impl.artiseid.ArtiseIdTestServer.Companion.WORKSPACES_TWO
@@ -155,5 +157,28 @@ class ArtiseIdAuthTest {
         assertThat(store.tokens).isNotNull()
         auth.signOut()
         assertThat(store.tokens).isNull()
+    }
+
+    /** Seguridad reads two-step and the sign-in provider with the access token. */
+    @Test
+    fun `security is read with the access token`() = runTest {
+        server.on(SECURITY, ArtiseIdTestServer.json("""{"two_step": true, "methods": ["passkey", "totp"], "provider": null}"""))
+        store.tokens = ArtiseIdTokens("at-1", "rt-1")
+        val (auth, _) = auth()
+        assertThat(auth.security()).isEqualTo(ArtiseIdSecurity(twoStep = true, methods = listOf("passkey", "totp"), provider = null))
+        assertThat(server.requestsTo(SECURITY).single().getHeader("Authorization")).isEqualTo("Bearer at-1")
+    }
+
+    /** Signing out of Artise ID cancels the refresh token on the server, and the next sign-in page asks again (prompt=login). */
+    @Test
+    fun `signing out revokes and asks again next time`() = runTest {
+        server.on(REVOKE, MockResponse().setResponseCode(200))
+        store.tokens = ArtiseIdTokens("at-1", "rt-1")
+        val (auth, configClient) = auth()
+        auth.signOut()
+        assertThat(store.tokens).isNull()
+        assertThat(server.requestsTo(REVOKE).single().body.readUtf8()).contains("token=rt-1")
+        val url = requireNotNull(auth.authorizationUrl(configClient.config(), null)).toHttpUrl()
+        assertThat(url.queryParameter("prompt")).isEqualTo("login")
     }
 }

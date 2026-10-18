@@ -22,10 +22,13 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.edit
 import co.artise.android.workspace.api.LocalSignOutEndsArtiseId
+import co.artise.android.workspace.api.LocalTwoStepAccess
 import co.artise.android.workspace.api.LocalWorkspaceBranding
 import co.artise.android.workspace.api.LocalWorkspaceSwitcher
 import co.artise.android.workspace.api.OpenWorkspace
 import co.artise.android.workspace.api.SignInWorkspaceHolder
+import co.artise.android.workspace.api.TwoStepAccess
+import co.artise.android.workspace.api.TwoStepStatus
 import co.artise.android.workspace.api.WorkspaceBranding
 import co.artise.android.workspace.api.WorkspaceBrandingRenderer
 import co.artise.android.workspace.api.WorkspaceConfig
@@ -33,6 +36,7 @@ import co.artise.android.workspace.api.WorkspaceConfigRepository
 import co.artise.android.workspace.api.WorkspaceSwitcher
 import co.artise.android.workspace.api.serverName
 import co.artise.android.workspace.impl.artiseid.ArtiseIdAuth
+import co.artise.android.workspace.impl.artiseid.ArtiseIdConfigClient
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import io.element.android.libraries.core.meta.BuildMeta
@@ -53,8 +57,14 @@ class DefaultWorkspaceBrandingRenderer(
     private val artiseIdAuth: ArtiseIdAuth,
     private val sessionStore: SessionStore,
     private val buildMeta: BuildMeta,
+    private val artiseIdConfigClient: ArtiseIdConfigClient,
 ) : WorkspaceBrandingRenderer {
     private val signOutEndsArtiseId: suspend () -> Boolean = { signOutEndsArtiseId(sessionStore, artiseIdAuth) }
+
+    private val twoStepAccess = TwoStepAccess(
+        load = { artiseIdAuth.security()?.let { TwoStepStatus(isOn = it.twoStep, provider = it.provider) } },
+        pageUrl = { if (artiseIdAuth.hasTokens()) artiseIdConfigClient.get()?.securityUrl else null },
+    )
 
     private val preferences by lazy { context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE) }
 
@@ -82,6 +92,7 @@ class DefaultWorkspaceBrandingRenderer(
             LocalWorkspaceBranding provides branding,
             LocalSignOutEndsArtiseId provides signOutEndsArtiseId,
             LocalWorkspaceSwitcher provides switcher,
+            LocalTwoStepAccess provides twoStepAccess,
         ) {
             content()
             if (canWelcome) Welcome(sessionId, config)

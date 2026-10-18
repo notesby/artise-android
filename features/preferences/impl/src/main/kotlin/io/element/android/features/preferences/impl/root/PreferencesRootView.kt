@@ -34,6 +34,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import co.artise.android.workspace.api.TwoStepItem
 import co.artise.android.workspace.api.WorkspaceHelpItems
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
@@ -365,7 +366,8 @@ private fun ColumnScope.GeneralSection(
             onClick = onOpenLabs,
         )
     }
-    // Artise: the workspace's help page and its admin.
+    // Artise: two-step verification on Artise ID, the workspace's help page and its admin.
+    TwoStepItem()
     WorkspaceHelpItems()
     ListItem(
         content = { Text(stringResource(id = CommonStrings.common_about)) },

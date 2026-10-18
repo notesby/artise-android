@@ -68,6 +68,8 @@ class ArtiseIdTestServer : Closeable {
         const val DISCOVERY = "GET id.artise.co/.well-known/openid-configuration"
         const val TOKEN = "POST id.artise.co/oauth/v2/token"
         const val WORKSPACES = "GET api.artise.co/v1/me/workspaces"
+        const val SECURITY = "GET api.artise.co/v1/me/security"
+        const val REVOKE = "POST id.artise.co/oauth/v2/revoke"
         const val REDIRECT = "https://join.artise.co/oauth"
 
         val SIGN_IN_JSON = """
@@ -75,7 +77,7 @@ class ArtiseIdTestServer : Closeable {
              "scopes": ["openid", "profile", "email"], "providers": {"google": "g-idp", "microsoft": "m-idp"}}
         """.trimIndent()
         const val DISCOVERY_JSON = """{"issuer": "https://id.artise.co", "authorization_endpoint": "https://id.artise.co/oauth/v2/authorize",
-            "token_endpoint": "https://id.artise.co/oauth/v2/token"}"""
+            "token_endpoint": "https://id.artise.co/oauth/v2/token", "revocation_endpoint": "https://id.artise.co/oauth/v2/revoke"}"""
         const val WORKSPACES_ONE = """{"workspaces": [{"slug": "mas-k8s", "name": "Prueba MAS", "server_name": "mas-k8s.artise.co",
             "homeserver_url": "https://matrix.mas-k8s.artise.co"}]}"""
         const val WORKSPACES_TWO = """{"workspaces": [
@@ -96,5 +98,13 @@ class InMemoryArtiseIdTokenStore(var tokens: ArtiseIdTokens? = null) : ArtiseIdT
 
     override suspend fun clear() {
         tokens = null
+    }
+
+    var freshSignInNeeded = false
+
+    override suspend fun isFreshSignInNeeded() = freshSignInNeeded
+
+    override suspend fun setFreshSignInNeeded(needed: Boolean) {
+        freshSignInNeeded = needed
     }
 }
