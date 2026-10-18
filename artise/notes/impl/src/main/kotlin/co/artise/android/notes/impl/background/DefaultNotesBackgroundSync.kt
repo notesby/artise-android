@@ -19,6 +19,7 @@ class DefaultNotesBackgroundSync(
     private val settings: NotesBackgroundSettings,
     private val connection: NotesConnectionMonitor,
     private val accounts: NotesAccounts,
+    private val scheduler: NotesSyncScheduler,
 ) : NotesBackgroundSync {
     override fun isAllowedNow(): Boolean = settings.network.value.allows(connection.current())
 
@@ -27,6 +28,16 @@ class DefaultNotesBackgroundSync(
         val account = accounts.open(sessionId) ?: return false
         return account.repository.sync(roomId).isSuccess
     }
+
+    override suspend fun syncChatInAnyAccount(roomId: RoomId): Boolean {
+        if (!isAllowedNow()) return false
+        val holders = accounts.withNotes()
+            .mapNotNull { accounts.open(it) }
+            .filter { account -> account.repository.cachedChats().any { it.roomId == roomId } }
+        return holders.map { it.repository.sync(roomId).isSuccess }.any { it }
+    }
+
+    override fun onNotesPush(roomId: RoomId) = scheduler.scheduleChat(roomId, settings.network.value)
 
     override suspend fun syncAll() {
         for (sessionId in accounts.withNotes()) {

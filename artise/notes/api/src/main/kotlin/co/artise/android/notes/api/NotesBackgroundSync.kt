@@ -29,12 +29,33 @@ interface NotesBackgroundSync {
     /** Whether the current connection may be used for background updates now. */
     fun isAllowedNow(): Boolean
 
-    /**
-     * Syncs one chat's notes in the background, when allowed; false when it was skipped or failed. The silent push the server will send
-     * when a chat's notes change is meant to call this.
-     */
+    /** Syncs one chat's notes in [sessionId] in the background, when allowed; false when it was skipped or failed. */
     suspend fun syncChat(sessionId: SessionId, roomId: RoomId): Boolean
+
+    /**
+     * Syncs [roomId]'s notes in whichever account has them on this phone, when allowed; false when none did. The push doesn't say
+     * which account, and a room id belongs to one workspace's server.
+     */
+    suspend fun syncChatInAnyAccount(roomId: RoomId): Boolean
+
+    /**
+     * The server's silent push said [roomId]'s notes changed: syncs that chat in the background once the connection the setting
+     * allows is there. Returns at once; safe to call while the app is closed.
+     */
+    fun onNotesPush(roomId: RoomId)
 
     /** Syncs every chat whose notes are on this phone, in every account, when allowed. */
     suspend fun syncAll()
+}
+
+/**
+ * The notes push, an FCM data message without a notification: `{"artise_notes_room_id": "!…", "event_id": "$…", "prio": "normal"}`.
+ * Checked before the message parser, so it's never treated as a message. `event_id` is the state update's and says nothing about
+ * the notes.
+ */
+object NotesPush {
+    const val ROOM_ID_KEY = "artise_notes_room_id"
+
+    /** The chat whose notes changed, or null when [data] isn't a notes push. */
+    fun roomIdOf(data: Map<String, String>): RoomId? = data[ROOM_ID_KEY]?.takeIf { it.startsWith("!") }?.let(::RoomId)
 }
