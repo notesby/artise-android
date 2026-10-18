@@ -28,6 +28,7 @@ class TimelineItemActionComparator : Comparator<TimelineItemAction> {
         TimelineItemAction.Pin,
         TimelineItemAction.Unpin,
         TimelineItemAction.CopyText,
+        TimelineItemAction.SaveToNotes,
         TimelineItemAction.CopyCaption,
         TimelineItemAction.RemoveCaption,
         TimelineItemAction.ViewSource,
