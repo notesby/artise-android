@@ -64,6 +64,8 @@ WORDING = {
         "Espera a que termine antes de cerrar sesión.",
         "Espere terminar antes de sair.",
     ),
+    # Several workspaces: Element's "account" is a workspace
+    "common_add_another_account": ("Add a workspace", "Añadir un espacio de trabajo", "Adicionar um espaço de trabalho"),
     # Chat list
     "screen_roomlist_a11y_create_message": ("Start a new chat", "Empezar un chat nuevo", "Começar uma conversa nova"),
     "screen_roomlist_filter_rooms": ("Groups", "Grupos", "Grupos"),

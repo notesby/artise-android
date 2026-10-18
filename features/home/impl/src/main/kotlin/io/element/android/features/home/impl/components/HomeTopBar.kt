@@ -58,7 +58,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import co.artise.android.workspace.api.LocalWorkspaceBranding
+import co.artise.android.workspace.api.LocalWorkspaceSwitcher
 import co.artise.android.workspace.api.WorkspaceNameLine
+import co.artise.android.workspace.api.WorkspaceSwitcherSheet
 import io.element.android.appconfig.RoomListConfig
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
@@ -154,9 +156,19 @@ fun HomeTopBar(
                     // Artise: the workspace's logo and name above "Chats".
                     val workspace = LocalWorkspaceBranding.current
                     val workspaceName = workspace.name
+                    // Artise: tapping it opens the workspace switcher (every workspace on this phone, and "Añadir…").
+                    val switcher = LocalWorkspaceSwitcher.current
+                    var showSwitcher by remember { mutableStateOf(false) }
                     Column {
                         if (workspaceName != null && spaceFiltersState !is SpaceFiltersState.Selected) {
-                            WorkspaceNameLine(name = workspaceName, logoUrl = workspace.logoUrl)
+                            WorkspaceNameLine(
+                                name = workspaceName,
+                                logoUrl = workspace.logoUrl,
+                                modifier = Modifier.clickable { showSwitcher = true },
+                            )
+                        }
+                        if (showSwitcher) {
+                            WorkspaceSwitcherSheet(switcher = switcher, onDismiss = { showSwitcher = false })
                         }
                         AdaptativeTitle(
                             title = displayTitle,
