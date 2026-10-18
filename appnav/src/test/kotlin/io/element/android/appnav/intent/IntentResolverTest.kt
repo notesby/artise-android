@@ -13,6 +13,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.core.net.toUri
 import co.artise.android.workspace.api.WorkspaceInvite
+import co.artise.android.workspace.test.FakeArtiseIdCallback
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.login.api.LoginParams
 import io.element.android.features.login.test.FakeLoginIntentResolver
@@ -330,12 +331,37 @@ class IntentResolverTest : RobolectricTest() {
         assertThat(sut.resolve(intent)).isEqualTo(ResolvedIntent.WorkspaceInvite(WorkspaceInvite("acme", "Ab3_xyZ9")))
     }
 
+    /** Artise: an Artise ID sign-in's return goes to Artise ID, before OAuth (a workspace's own client uses the same address). */
+    @Test
+    fun `test resolve Artise ID return`() {
+        val url = "https://join.artise.co/oauth?code=abc&state=artise-id-state"
+        val sut = createIntentResolver(artiseIdHandles = { it == url })
+        val intent = Intent(RuntimeEnvironment.getApplication(), Activity::class.java).apply {
+            action = Intent.ACTION_VIEW
+            data = url.toUri()
+        }
+        assertThat(sut.resolve(intent)).isEqualTo(ResolvedIntent.ArtiseIdReturn(url))
+    }
+
+    /** Artise: the same address with another sign-in's state is a workspace's OAuth return. */
+    @Test
+    fun `test resolve workspace OAuth return on the same address`() {
+        val url = "https://join.artise.co/oauth?code=abc&state=mas-state"
+        val sut = createIntentResolver(oAuthIntentResolverResult = { OAuthAction.Success(url) }, artiseIdHandles = { false })
+        val intent = Intent(RuntimeEnvironment.getApplication(), Activity::class.java).apply {
+            action = Intent.ACTION_VIEW
+            data = url.toUri()
+        }
+        assertThat(sut.resolve(intent)).isEqualTo(ResolvedIntent.OAuth(OAuthAction.Success(url)))
+    }
+
     private fun createIntentResolver(
         deeplinkParserResult: DeeplinkData? = null,
         permalinkParserResult: (String) -> PermalinkData = { lambdaError() },
         loginIntentResolverResult: (String) -> LoginParams? = { lambdaError() },
         oAuthIntentResolverResult: (Intent) -> OAuthAction? = { lambdaError() },
         onIncomingShareIntent: (Intent) -> ShareIntentData? = { null },
+        artiseIdHandles: (String) -> Boolean = { false },
     ): IntentResolver {
         return IntentResolver(
             deeplinkParser = { deeplinkParserResult },
@@ -351,6 +377,7 @@ class IntentResolverTest : RobolectricTest() {
             shareIntentHandler = FakeShareIntentHandler(
                 onIncomingShareIntent = onIncomingShareIntent,
             ),
+            artiseIdCallback = FakeArtiseIdCallback(artiseIdHandles),
         )
     }
 }

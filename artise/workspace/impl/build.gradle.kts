@@ -36,6 +36,10 @@ dependencies {
     implementation(projects.libraries.di)
     implementation(projects.libraries.matrix.api)
     implementation(projects.libraries.network)
+    implementation(projects.libraries.cryptography.api)
+    implementation(projects.artise.appicon)
+    implementation(projects.libraries.sessionStorage.api)
+    implementation(projects.features.enterprise.api)
     implementation(projects.services.appnavstate.api)
     implementation(projects.services.toolbox.api)
     implementation(libs.network.okhttp.okhttp)
@@ -49,4 +53,7 @@ dependencies {
     testImplementation(projects.services.appnavstate.test)
     testImplementation(libs.network.mockwebserver)
     testImplementation(projects.artise.workspace.test)
+    testImplementation(projects.libraries.cryptography.test)
+    testImplementation(projects.libraries.cryptography.impl)
+    testImplementation(projects.libraries.sessionStorage.test)
 }

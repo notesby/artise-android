@@ -8,12 +8,12 @@
 package co.artise.android.workspace.impl.oauth
 
 import co.artise.android.workspace.api.WorkspaceConfigRepository
+import co.artise.android.workspace.impl.artiseid.JoinLinkCheck
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.SingleIn
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.core.extensions.runCatchingExceptions
-import io.element.android.libraries.core.meta.BuildMeta
 import io.element.android.libraries.matrix.api.auth.OAuthStaticClient
 import io.element.android.libraries.matrix.api.auth.OAuthStaticClientProvider
 import kotlinx.coroutines.withContext
@@ -31,13 +31,14 @@ import java.io.IOException
  * so its sign-in service skips the consent page; same as iOS. The client is registered for the sign-in service's issuer, which comes
  * from the homeserver's auth metadata.
  *
- * Only in the release app: the https redirect is an App Link verified for [RELEASE_APPLICATION_ID] alone, so other builds
- * (debug, nightly) wouldn't get the result back and keep registering themselves with their custom scheme.
+ * Only when join.artise.co links open this app ([JoinLinkCheck]: the release app, once Android has verified the App Link): otherwise
+ * the result wouldn't come back, so the app keeps registering itself with its custom scheme (debug and nightly builds, or a phone
+ * that couldn't verify the link).
  */
 @SingleIn(AppScope::class)
 @ContributesBinding(AppScope::class)
 class DefaultOAuthStaticClientProvider(
-    private val buildMeta: BuildMeta,
+    private val joinLinkCheck: JoinLinkCheck,
     private val workspaceConfigRepository: WorkspaceConfigRepository,
     private val okHttpClient: OkHttpClient,
     private val dispatchers: CoroutineDispatchers,
@@ -48,7 +49,7 @@ class DefaultOAuthStaticClientProvider(
 
     override suspend fun get(serverName: String, homeserverUrl: String): OAuthStaticClient? {
         pendingRedirectUri = null
-        if (buildMeta.applicationId != RELEASE_APPLICATION_ID) return null
+        if (!joinLinkCheck.opensJoinLinks()) return null
         val oauth = workspaceConfigRepository.fetch(serverName)?.oauth ?: return null
         val issuer = issuerOf(homeserverUrl) ?: return null
         return OAuthStaticClient(issuer = issuer, clientId = oauth.androidClientId, redirectUri = oauth.redirectUri)
@@ -77,9 +78,7 @@ class DefaultOAuthStaticClientProvider(
         }
     }
 
-    companion object {
-        /** The release app, the only one join.artise.co's assetlinks.json names. */
-        const val RELEASE_APPLICATION_ID = "co.artise.app"
-        private const val AUTH_METADATA_PATH = "/_matrix/client/v1/auth_metadata"
+    private companion object {
+        const val AUTH_METADATA_PATH = "/_matrix/client/v1/auth_metadata"
     }
 }

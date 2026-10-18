@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import co.artise.android.accountdeletion.AccountDeletion
+import co.artise.android.workspace.api.ArtiseIdCallback
 import co.artise.android.workspace.api.SignInWorkspaceHolder
 import co.artise.android.workspace.api.WorkspaceInvite
 import com.bumble.appyx.core.modality.BuildContext
@@ -107,6 +108,7 @@ class RootFlowNode(
     private val accountDeletion: AccountDeletion,
     // Artise: hands invite links to the sign-in screens.
     private val signInWorkspaceHolder: SignInWorkspaceHolder,
+    private val artiseIdCallback: ArtiseIdCallback,
 ) : BaseFlowNode<RootFlowNode.NavTarget>(
     backstack = BackStack(
         initialElement = NavTarget.SplashScreen,
@@ -417,6 +419,7 @@ class RootFlowNode(
             is ResolvedIntent.Permalink -> navigateTo(resolvedIntent.permalinkData)
             is ResolvedIntent.IncomingShare -> onIncomingShare(resolvedIntent.shareIntentData)
             is ResolvedIntent.WorkspaceInvite -> onWorkspaceInvite(resolvedIntent.invite)
+            is ResolvedIntent.ArtiseIdReturn -> artiseIdCallback.onCallback(resolvedIntent.url)
         }
     }
 

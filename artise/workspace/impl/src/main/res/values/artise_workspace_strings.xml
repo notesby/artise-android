@@ -18,4 +18,15 @@
     <string name="screen_workspace_error_server_unreachable">Can\'t reach %1$s\'s server right now. Try again in a moment.</string>
     <string name="screen_workspace_error_no_password">%1$s doesn\'t use a username and password, so you can\'t sign in to it here.</string>
     <string name="screen_workspace_error_invite_unavailable">This invite can\'t be opened in the app yet. Open the link in your browser instead.</string>
+    <string name="screen_artise_id_title" translatable="false">Artise</string>
+    <string name="screen_artise_id_subtitle">Sign in once and pick your workspace.</string>
+    <string name="screen_artise_id_continue_apple">Continue with Apple</string>
+    <string name="screen_artise_id_continue_google">Continue with Google</string>
+    <string name="screen_artise_id_continue_microsoft">Continue with Microsoft</string>
+    <string name="screen_artise_id_continue_email">Continue with email</string>
+    <string name="screen_artise_id_type_workspace">Have your workspace\'s name? Type it</string>
+    <string name="screen_artise_id_workspaces_title">Choose your workspace</string>
+    <string name="screen_artise_id_no_workspaces_title">No workspaces yet</string>
+    <string name="screen_artise_id_no_workspaces">You\'re not in any workspace yet. Ask the person who invited you for the invite link.</string>
+    <string name="screen_artise_id_error_sign_in">Couldn\'t sign in with Artise. Try again.</string>
 </resources>
