@@ -17,14 +17,14 @@
     <string name="screen_workspace_error_server_unreachable">Não foi possível conectar ao servidor de %1$s agora. Tente de novo em instantes.</string>
     <string name="screen_workspace_error_no_password">%1$s não usa usuário e senha, então não é possível entrar por aqui.</string>
     <string name="screen_workspace_error_invite_unavailable">Este convite ainda não pode ser aberto no app. Abra o link no navegador.</string>
-    <string name="screen_artise_id_subtitle">Entre uma vez e escolha seu espaço.</string>
+    <string name="screen_artise_id_subtitle">Entre uma vez e escolha seu espaço de trabalho.</string>
     <string name="screen_artise_id_continue_apple">Continuar com Apple</string>
     <string name="screen_artise_id_continue_google">Continuar com Google</string>
     <string name="screen_artise_id_continue_microsoft">Continuar com Microsoft</string>
     <string name="screen_artise_id_continue_email">Continuar com e-mail</string>
-    <string name="screen_artise_id_type_workspace">Tem o nome do seu espaço? Digite-o</string>
-    <string name="screen_artise_id_workspaces_title">Escolha seu espaço</string>
-    <string name="screen_artise_id_no_workspaces_title">Ainda sem espaços</string>
-    <string name="screen_artise_id_no_workspaces">Você ainda não está em nenhum espaço. Peça o link de convite a quem te convidou.</string>
+    <string name="screen_artise_id_type_workspace">Tem o nome do seu espaço de trabalho? Digite-o</string>
+    <string name="screen_artise_id_workspaces_title">Escolha seu espaço de trabalho</string>
+    <string name="screen_artise_id_no_workspaces_title">Ainda sem espaços de trabalho</string>
+    <string name="screen_artise_id_no_workspaces">Você ainda não está em nenhum espaço de trabalho. Peça o link de convite a quem te convidou.</string>
     <string name="screen_artise_id_error_sign_in">Não foi possível entrar com a Artise. Tente novamente.</string>
 </resources>
