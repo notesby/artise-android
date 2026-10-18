@@ -25,7 +25,9 @@ import extension.locales
 import extension.setupDependencyInjection
 import extension.testCommonDependencies
 import org.sonarqube.gradle.SonarResolverTask
+import java.io.File
 import java.util.Locale
+import java.util.Properties
 
 plugins {
     id("io.element.android-compose-application")
@@ -37,6 +39,12 @@ plugins {
     // To be able to update the firebase.xml files, uncomment and build the project
     // alias(libs.plugins.gms.google.services)
 }
+
+/** The Play upload key's properties, when this computer has them. */
+val artiseUploadProperties: Properties? = (System.getenv("ARTISE_UPLOAD_PROPERTIES") ?: "${System.getProperty("user.home")}/.artise-keys/upload.properties")
+    .let(::File)
+    .takeIf { it.isFile }
+    ?.let { file -> Properties().apply { file.inputStream().use(::load) } }
 
 android {
     namespace = "io.element.android.x"
@@ -87,6 +95,16 @@ android {
             storeFile = file("./signature/debug.keystore")
             storePassword = "android"
         }
+        // Artise's Play upload key. It lives outside the repo, in a properties file that is never committed
+        // (storeFile, storePassword, keyAlias, keyPassword); ARTISE_UPLOAD_PROPERTIES points elsewhere if needed.
+        artiseUploadProperties?.let { upload ->
+            register("artiseUpload") {
+                storeFile = file(upload.getProperty("storeFile"))
+                storePassword = upload.getProperty("storePassword")
+                keyAlias = upload.getProperty("keyAlias")
+                keyPassword = upload.getProperty("keyPassword")
+            }
+        }
         register("nightly") {
             keyAlias = System.getenv("ELEMENT_ANDROID_NIGHTLY_KEYID")
                 ?: project.property("signing.element.nightly.keyId") as? String?
@@ -122,7 +140,10 @@ android {
                 "login_redirect_scheme",
                 oAuthRedirectSchemeBase,
             )
-            signingConfig = signingConfigs.getByName("debug")
+            // Signed with the upload key when it's on this computer; otherwise with the debug key, for trying a
+            // release build on a phone (Play refuses debug-signed bundles).
+            signingConfig = signingConfigs.findByName("artiseUpload") ?: signingConfigs.getByName("debug")
+            if (artiseUploadProperties == null) logger.warn("Artise upload key not found: release is signed with the debug key")
 
             optimization {
                 enable = true
