@@ -9,15 +9,15 @@
 package config
 
 object BuildTimeConfig {
-    const val APPLICATION_ID = "io.element.android.x"
-    const val APPLICATION_NAME = "Element X"
+    const val APPLICATION_ID = "co.artise.app"
+    const val APPLICATION_NAME = "Artise"
     val METADATA_HOST_REVERSED: String? = null
     val OAUTH_CLIENT_URL_PATH: String? = "apps/android"
-    val URL_WEBSITE: String? = null
+    val URL_WEBSITE: String? = "https://artise.co"
     val URL_LOGO: String? = null
     val URL_COPYRIGHT: String? = null
     val URL_ACCEPTABLE_USE: String? = null
-    val URL_PRIVACY: String? = null
+    val URL_PRIVACY: String? = "https://artise.co/privacy.html"
     val URL_POLICY: String? = null
     val SERVICES_MAPTILER_BASE_URL: String? = null
     val SERVICES_MAPTILER_APIKEY: String? = null
@@ -31,7 +31,7 @@ object BuildTimeConfig {
     val BUG_REPORT_APP_NAME: String? = null
     const val PUSH_CONFIG_INCLUDE_FIREBASE: Boolean = true
     const val PUSH_CONFIG_INCLUDE_UNIFIED_PUSH: Boolean = true
-    val PUSHER_APP_ID_RELEASE: String? = null
-    val PUSHER_APP_ID_DEBUG: String? = null
-    val PUSHER_APP_ID_NIGHTLY: String? = null
+    val PUSHER_APP_ID_RELEASE: String? = "co.artise.app.android"
+    val PUSHER_APP_ID_DEBUG: String? = "co.artise.app.android.debug"
+    val PUSHER_APP_ID_NIGHTLY: String? = "co.artise.app.android.nightly"
 }

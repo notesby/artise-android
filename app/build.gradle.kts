@@ -272,7 +272,9 @@ dependencies {
         implementation(projects.appicon.enterprise)
     } else {
         implementation(projects.features.enterprise.implFoss)
-        implementation(projects.appicon.element)
+        // Artise: our EnterpriseService replaces the FOSS one (server lock, brand, no bug reports).
+        implementation(projects.artise.enterprise)
+        implementation(projects.artise.appicon)
     }
     allFeaturesImpl(project)
     implementation(projects.features.migration.api)

@@ -33,10 +33,8 @@ object ModulesConfig {
             AnalyticsConfig.Disabled
         }
     } else {
-        println("Analytics enabled with Posthog and Sentry")
-        AnalyticsConfig.Enabled(
-            withPosthog = true,
-            withSentry = true,
-        )
+        // Artise: no analytics SDKs and no consent screen; nothing about families' use leaves the app.
+        println("Analytics disabled")
+        AnalyticsConfig.Disabled
     }
 }
