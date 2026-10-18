@@ -65,6 +65,7 @@ import io.element.android.features.messages.api.timeline.voicemessages.composer.
 import io.element.android.features.messages.impl.actionlist.ActionListEvent
 import io.element.android.features.messages.impl.actionlist.ActionListView
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
+import io.element.android.features.messages.impl.artise.LocalOpenNotes
 import io.element.android.features.messages.impl.crypto.identity.IdentityChangeStateView
 import io.element.android.features.messages.impl.link.LinkEvent
 import io.element.android.features.messages.impl.link.LinkView
@@ -136,6 +137,7 @@ import io.element.android.wysiwyg.link.Link
 import kotlinx.collections.immutable.persistentListOf
 import timber.log.Timber
 import kotlin.time.Duration.Companion.milliseconds
+import co.artise.android.notes.api.R as NotesR
 
 @Composable
 fun MessagesView(
@@ -485,6 +487,14 @@ internal fun RowScope.MessagesMenuActions(
             contentDescription = stringResource(CommonStrings.common_threads),
         )
         Spacer(Modifier.width(8.dp))
+    }
+    LocalOpenNotes.current?.let { openNotes ->
+        Icon(
+            modifier = Modifier.clickable(onClick = openNotes),
+            imageVector = CompoundIcons.Document(),
+            contentDescription = stringResource(NotesR.string.notes_entry_title),
+        )
+        Spacer(Modifier.width(16.dp))
     }
     CallMenuItem(
         roomCallState = roomCallState,
