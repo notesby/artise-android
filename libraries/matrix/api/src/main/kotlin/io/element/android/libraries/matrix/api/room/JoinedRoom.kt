@@ -318,6 +318,13 @@ interface JoinedRoom : BaseRoom {
     suspend fun sendLiveLocation(geoUri: String): Result<Unit>
 
     /**
+     * Artise: sends a message event of any type (e.g. `m.sticker`), encrypted when the room is.
+     * @param eventType the event type.
+     * @param content the event content, as JSON.
+     */
+    suspend fun sendRaw(eventType: String, content: String): Result<Unit>
+
+    /**
      * Sets the display name of the current user within this room.
      * This is different from the global setDisplayName which updates
      * the user's display name across all of their rooms.

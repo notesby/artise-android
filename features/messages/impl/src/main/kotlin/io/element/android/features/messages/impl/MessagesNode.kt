@@ -17,10 +17,13 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
+import co.artise.android.stickers.api.StickerPickerRenderer
 import com.bumble.appyx.core.lifecycle.subscribe
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.Node
@@ -74,6 +77,8 @@ import io.element.android.libraries.matrix.ui.media.contentvalidation.EventConte
 import io.element.android.libraries.matrix.ui.media.contentvalidation.LocalEventContentValidationState
 import io.element.android.libraries.matrix.ui.model.getBestName
 import io.element.android.libraries.mediaplayer.api.MediaPlayer
+import io.element.android.libraries.textcomposer.artise.LocalStickerButton
+import io.element.android.libraries.textcomposer.artise.StickerButton
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.libraries.ui.utils.a11y.hasExternalKeyboard
 import io.element.android.libraries.ui.utils.a11y.isTalkbackActive
@@ -84,6 +89,7 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import co.artise.android.stickers.api.R as StickersR
 
 @ContributesNode(RoomScope::class)
 @AssistedInject
@@ -105,6 +111,7 @@ class MessagesNode(
     private val roomMemberModerationRenderer: RoomMemberModerationRenderer,
     private val eventContentValidationCache: EventContentValidationCache,
     private val emojiPickerRenderer: EmojiPickerRenderer,
+    private val stickerPickerRenderer: StickerPickerRenderer,
     private val dispatchers: CoroutineDispatchers,
 ) : Node(buildContext, plugins = plugins), MessagesNavigator {
     data class Inputs(
@@ -273,9 +280,14 @@ class MessagesNode(
         val activity = requireNotNull(LocalActivity.current)
         val isDark = ElementTheme.isLightTheme.not()
         val canUseOverlay = !isTalkbackActive() && !hasExternalKeyboard()
+        // Artise: the composer's sticker button opens the sticker picker.
+        var showStickerPicker by remember { mutableStateOf(false) }
+        val stickerButtonLabel = stringResource(StickersR.string.screen_stickers_open)
+        val stickerButton = remember(stickerButtonLabel) { StickerButton(stickerButtonLabel) { showStickerPicker = true } }
         CompositionLocalProvider(
             LocalTimelineItemPresenterFactories provides timelineItemPresenterFactories,
             LocalEventContentValidationState provides eventContentValidationCache,
+            LocalStickerButton provides stickerButton,
         ) {
             val state = presenter.present()
 
@@ -351,6 +363,9 @@ class MessagesNode(
                 },
                 onThreadsListClick = callback::navigateToThreadsList,
             )
+            if (showStickerPicker) {
+                stickerPickerRenderer.Render(room = room, onDismiss = { showStickerPicker = false })
+            }
             roomMemberModerationRenderer.Render(
                 state = state.roomMemberModerationState,
                 onSelectAction = { action, target ->

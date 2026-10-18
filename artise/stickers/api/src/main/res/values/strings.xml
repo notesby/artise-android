@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<resources>
+    <string name="screen_stickers_open">Stickers</string>
+    <string name="screen_stickers_save_received">Save to my stickers</string>
+    <string name="screen_stickers_saved">Saved to your stickers</string>
+    <string name="screen_stickers_save_received_failed">Couldn’t save the sticker. Check your connection and try again.</string>
+    <string name="screen_stickers_add_title">Add to my stickers</string>
+    <string name="screen_stickers_add_signed_out">Sign in to Artise first, then share the sticker again.</string>
+    <string name="screen_stickers_add_failed">Couldn’t add this picture to your stickers.</string>
+    <string name="screen_stickers_add_share_label">Artise sticker</string>
+</resources>

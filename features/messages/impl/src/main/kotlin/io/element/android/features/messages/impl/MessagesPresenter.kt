@@ -22,6 +22,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import co.artise.android.stickers.api.ReceivedSticker
+import co.artise.android.stickers.api.ReceivedStickerSaver
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
@@ -49,6 +51,7 @@ import io.element.android.features.messages.impl.timeline.model.TimelineItem
 import io.element.android.features.messages.impl.timeline.model.TimelineItemThreadInfo
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemPollContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemStateContent
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemStickerContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextBasedContent
 import io.element.android.features.messages.impl.timeline.model.event.captionOrNull
 import io.element.android.features.messages.impl.timeline.model.event.htmlCaptionOrNull
@@ -102,6 +105,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.util.concurrent.atomic.AtomicBoolean
+import co.artise.android.stickers.api.R as StickersR
 
 @AssistedInject
 class MessagesPresenter(
@@ -134,6 +138,7 @@ class MessagesPresenter(
     private val markAsFullyRead: MarkAsFullyRead,
     private val liveLocationShareManager: ActiveLiveLocationShareManager,
     @SessionCoroutineScope private val sessionCoroutineScope: CoroutineScope,
+    private val receivedStickerSaver: ReceivedStickerSaver,
 ) : Presenter<MessagesState> {
     @AssistedFactory
     interface Factory {
@@ -415,6 +420,7 @@ class MessagesPresenter(
             }
             TimelineItemAction.ViewSource -> handleShowDebugInfoAction(targetEvent)
             TimelineItemAction.Forward -> handleForwardAction(targetEvent)
+            TimelineItemAction.SaveSticker -> handleSaveSticker(targetEvent)
             TimelineItemAction.ReportContent -> handleReportAction(targetEvent)
             TimelineItemAction.EndPoll -> handleEndPollAction(targetEvent, timelineState)
             TimelineItemAction.Pin -> handlePinAction(targetEvent)
@@ -445,6 +451,27 @@ class MessagesPresenter(
                 formattedCaption = null,
             )
         }
+    }
+
+    /** Artise: keeps a sticker someone sent in your own stickers, reusing its picture on the server. */
+    private suspend fun handleSaveSticker(targetEvent: TimelineItem.Event) {
+        val content = targetEvent.content as? TimelineItemStickerContent ?: return
+        receivedStickerSaver.save(
+            ReceivedSticker(
+                mxcUrl = content.mediaSource.safeUrl,
+                description = content.caption ?: content.filename,
+                width = content.width ?: DEFAULT_STICKER_SIDE,
+                height = content.height ?: DEFAULT_STICKER_SIDE,
+                mimeType = content.mimeType,
+                size = content.fileSize ?: 0L,
+            )
+        ).fold(
+            onSuccess = { snackbarDispatcher.post(SnackbarMessage(StickersR.string.screen_stickers_saved)) },
+            onFailure = {
+                Timber.w(it, "Stickers: couldn't save a received sticker")
+                snackbarDispatcher.post(SnackbarMessage(StickersR.string.screen_stickers_save_received_failed))
+            },
+        )
     }
 
     private suspend fun handlePinAction(targetEvent: TimelineItem.Event) {
@@ -664,3 +691,6 @@ class MessagesPresenter(
         }
     }
 }
+
+/** Artise: the size a sticker is kept at when the sender didn't say. */
+private const val DEFAULT_STICKER_SIDE = 256

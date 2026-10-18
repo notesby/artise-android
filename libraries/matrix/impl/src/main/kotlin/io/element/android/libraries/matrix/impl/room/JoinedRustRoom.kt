@@ -546,6 +546,12 @@ class JoinedRustRoom(
         }
     }
 
+    override suspend fun sendRaw(eventType: String, content: String): Result<Unit> = withContext(roomDispatcher) {
+        runCatchingExceptions {
+            innerRoom.sendRaw(eventType, content)
+        }
+    }
+
     override suspend fun sendLiveLocation(geoUri: String): Result<Unit> = withContext(roomDispatcher) {
         runCatchingExceptions {
             innerRoom.sendLiveLocation(geoUri)

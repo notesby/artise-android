@@ -311,6 +311,8 @@ dependencies {
     }
     // Artise: Settings → Delete account opens Artise's page (used by preferences and appnav).
     implementation(projects.artise.accountdeletion)
+    // Artise: stickers (picker, starter pack, stickers from photos and keyboards).
+    implementation(projects.artise.stickers.impl)
     // Artise: Firebase Analytics, opt-in, in Play builds only.
     if ((ModulesConfig.analyticsConfig as? AnalyticsConfig.Enabled)?.withFirebase == true) {
         "gplayImplementation"(projects.artise.analytics)
@@ -363,6 +365,8 @@ licensee {
     allowUrl("https://opensource.org/license/bsd-2-clause")
     allowUrl("https://opensource.org/licenses/MIT")
     allowUrl("https://developer.android.com/studio/terms.html")
+    // Artise: ML Kit subject segmentation (sticker cut-outs, on the phone), under Google's ML Kit terms like Play services.
+    allowUrl("https://developers.google.com/ml-kit/terms")
     allowUrl("https://www.zetetic.net/sqlcipher/license/")
     allowUrl("https://jsoup.org/license")
     allowUrl("https://asm.ow2.io/license.html")
