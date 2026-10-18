@@ -34,6 +34,8 @@ import io.element.android.libraries.preferences.api.store.AppPreferencesStore
 import io.element.android.libraries.preferences.api.store.NotificationSound
 import io.element.android.libraries.push.api.notifications.NotificationSoundUpdater
 import io.element.android.libraries.push.impl.R
+import io.element.android.libraries.push.impl.notifications.artise.REMINDER_NOTIFICATION_CHANNEL_ID
+import io.element.android.libraries.push.impl.notifications.artise.buildReminderChannel
 import io.element.android.services.toolbox.api.strings.StringProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -81,6 +83,11 @@ interface NotificationChannels : NotificationSoundUpdater {
      * Get the channel for test notifications.
      */
     fun getChannelIdForTest(): String
+
+    /**
+     * Artise: get the "Reminders" channel, for Ari's important and critical automation posts.
+     */
+    fun getChannelIdForReminder(): String
 
     fun getSilentChannelId(): String = SILENT_NOTIFICATION_CHANNEL_ID
 }
@@ -213,6 +220,9 @@ class DefaultNotificationChannels(
                 accentColor = accentColor,
             )
         )
+
+        // Artise: high importance, so Ari's important and critical posts show as heads-up notifications.
+        notificationManager.createNotificationChannel(buildReminderChannel(stringProvider, accentColor))
     }
 
     private fun buildNoisyChannel(channelId: String, soundUri: Uri?, accentColor: Int): NotificationChannelCompat {
@@ -330,6 +340,8 @@ class DefaultNotificationChannels(
     }
 
     override fun getChannelIdForTest(): String = currentNoisyChannelId
+
+    override fun getChannelIdForReminder(): String = REMINDER_NOTIFICATION_CHANNEL_ID
 
     override fun recreateNoisyChannel(sound: NotificationSound, version: Int) {
         if (!supportNotificationChannels()) return

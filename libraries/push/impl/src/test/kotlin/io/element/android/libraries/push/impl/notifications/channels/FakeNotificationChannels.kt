@@ -16,6 +16,7 @@ class FakeNotificationChannels(
     var channelForIncomingCall: (ring: Boolean) -> String = { _ -> "" },
     var channelIdForMessage: (sessionId: SessionId, noisy: Boolean) -> String = { _, _ -> "" },
     var channelIdForTest: () -> String = { "" },
+    var channelIdForReminder: () -> String = { "" },
     // Side-effecting recreates default to lambdaError (matching FakeNotificationSoundUpdater) so a
     // test that doesn't expect a channel rebuild loudly fails instead of silently swallowing the call.
     var recreateNoisyChannelLambda: (sound: NotificationSound, version: Int) -> Unit = { _, _ -> lambdaError() },
@@ -33,6 +34,10 @@ class FakeNotificationChannels(
 
     override fun getChannelIdForTest(): String {
         return channelIdForTest()
+    }
+
+    override fun getChannelIdForReminder(): String {
+        return channelIdForReminder()
     }
 
     override fun recreateNoisyChannel(sound: NotificationSound, version: Int) {
