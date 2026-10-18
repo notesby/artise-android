@@ -1614,6 +1614,7 @@ class MessagesPresenterTest {
             liveLocationShareManager = liveLocationShareManager,
             sessionCoroutineScope = backgroundScope,
             receivedStickerSaver = receivedStickerSaver,
+            messageNoteSaver = { _, _, _, _ -> Result.success("Mensajes guardados/x.md") },
         )
     }
 }

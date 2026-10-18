@@ -12,6 +12,7 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import io.element.android.libraries.designsystem.icons.CompoundDrawables
 import io.element.android.libraries.ui.strings.CommonStrings
+import co.artise.android.notes.api.R as NotesApiR
 import co.artise.android.stickers.api.R as StickersR
 
 enum class TimelineItemAction(
@@ -25,6 +26,9 @@ enum class TimelineItemAction(
     // Artise: a sticker someone sent goes to your own stickers.
     SaveSticker(StickersR.string.screen_stickers_save_received, CompoundDrawables.ic_compound_sticker),
     CopyText(CommonStrings.action_copy_text, CompoundDrawables.ic_compound_copy),
+
+    // Artise: the message's text becomes a note in this chat's Notas.
+    SaveToNotes(NotesApiR.string.artise_save_to_notes, CompoundDrawables.ic_compound_document),
     CopyCaption(CommonStrings.action_copy_caption, CompoundDrawables.ic_compound_copy),
     CopyLink(CommonStrings.action_copy_link_to_message, CompoundDrawables.ic_compound_link),
     Redact(CommonStrings.action_remove, CompoundDrawables.ic_compound_delete, destructive = true),

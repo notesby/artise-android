@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<resources>
+    <string name="artise_save_to_notes">Guardar en Notas</string>
+    <string name="artise_saved_messages_folder">Mensajes guardados</string>
+    <string name="artise_saved_to_notes">Guardado en las Notas de este chat</string>
+    <string name="artise_save_to_notes_failed">No se pudo guardar en Notas. Inténtalo de nuevo.</string>
+</resources>

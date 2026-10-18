@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import co.artise.android.workspace.api.LocalWorkspaceBranding
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
@@ -37,6 +38,7 @@ import io.element.android.features.messages.impl.timeline.model.event.TimelineIt
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemRtcNotificationContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemStateContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemStickerContent
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextBasedContent
 import io.element.android.features.messages.impl.timeline.model.event.canBeCopied
 import io.element.android.features.messages.impl.timeline.model.event.canBeForwarded
 import io.element.android.features.messages.impl.timeline.model.event.canReact
@@ -94,9 +96,14 @@ class DefaultActionListPresenter(
 
     private val suggestedEmojis = persistentListOf("👍️", "👎️", "🔥", "❤️", "👏")
 
+    @Volatile
+    private var canSaveToNotes = false
+
     @Composable
     override fun present(): ActionListState {
         val localCoroutineScope = rememberCoroutineScope()
+        // Artise: "Guardar en Notas" only where the workspace has Notas.
+        canSaveToNotes = LocalWorkspaceBranding.current.hasNotes
 
         val target: MutableState<ActionListState.Target> = remember {
             mutableStateOf(ActionListState.Target.None)
@@ -236,6 +243,7 @@ class DefaultActionListPresenter(
             }
             if (timelineItem.content.canBeCopied()) {
                 add(TimelineItemAction.CopyText)
+                if (canSaveToNotes && timelineItem.content is TimelineItemTextBasedContent) add(TimelineItemAction.SaveToNotes)
             } else if (timelineItem.content.captionOrNull().isNullOrBlank().not()) {
                 add(TimelineItemAction.CopyCaption)
             }

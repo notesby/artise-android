@@ -22,6 +22,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import co.artise.android.notes.api.MessageNoteSaver
 import co.artise.android.stickers.api.ReceivedSticker
 import co.artise.android.stickers.api.ReceivedStickerSaver
 import dev.zacsweers.metro.Assisted
@@ -105,6 +106,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.util.concurrent.atomic.AtomicBoolean
+import co.artise.android.notes.api.R as NotesApiR
 import co.artise.android.stickers.api.R as StickersR
 
 @AssistedInject
@@ -139,6 +141,8 @@ class MessagesPresenter(
     private val liveLocationShareManager: ActiveLiveLocationShareManager,
     @SessionCoroutineScope private val sessionCoroutineScope: CoroutineScope,
     private val receivedStickerSaver: ReceivedStickerSaver,
+    // Artise: "Guardar en Notas".
+    private val messageNoteSaver: MessageNoteSaver,
 ) : Presenter<MessagesState> {
     @AssistedFactory
     interface Factory {
@@ -421,6 +425,7 @@ class MessagesPresenter(
             TimelineItemAction.ViewSource -> handleShowDebugInfoAction(targetEvent)
             TimelineItemAction.Forward -> handleForwardAction(targetEvent)
             TimelineItemAction.SaveSticker -> handleSaveSticker(targetEvent)
+            TimelineItemAction.SaveToNotes -> handleSaveToNotes(targetEvent)
             TimelineItemAction.ReportContent -> handleReportAction(targetEvent)
             TimelineItemAction.EndPoll -> handleEndPollAction(targetEvent, timelineState)
             TimelineItemAction.Pin -> handlePinAction(targetEvent)
@@ -454,6 +459,17 @@ class MessagesPresenter(
     }
 
     /** Artise: keeps a sticker someone sent in your own stickers, reusing its picture on the server. */
+    private suspend fun handleSaveToNotes(targetEvent: TimelineItem.Event) {
+        val text = (targetEvent.content as? TimelineItemTextBasedContent)?.body ?: return
+        messageNoteSaver.save(room.roomId, targetEvent.safeSenderName, targetEvent.sentTimeMillis, text).fold(
+            onSuccess = { snackbarDispatcher.post(SnackbarMessage(NotesApiR.string.artise_saved_to_notes)) },
+            onFailure = {
+                Timber.w(it, "Notes: couldn't save a message")
+                snackbarDispatcher.post(SnackbarMessage(NotesApiR.string.artise_save_to_notes_failed))
+            },
+        )
+    }
+
     private suspend fun handleSaveSticker(targetEvent: TimelineItem.Event) {
         val content = targetEvent.content as? TimelineItemStickerContent ?: return
         receivedStickerSaver.save(
