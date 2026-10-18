@@ -8,6 +8,7 @@
 
 package io.element.android.libraries.push.impl.notifications
 
+import co.artise.android.quiet.test.FakeQuietHours
 import io.element.android.features.enterprise.api.EnterpriseService
 import io.element.android.features.enterprise.test.FakeEnterpriseService
 import io.element.android.libraries.matrix.api.user.MatrixUser
@@ -55,6 +56,7 @@ class NotificationRendererTest : RobolectricTest() {
         roomGroupMessageCreator = roomGroupMessageCreator,
         summaryGroupMessageCreator = summaryGroupMessageCreator,
         activeNotificationsProvider = FakeActiveNotificationsProvider(),
+        quietHours = FakeQuietHours(),
     )
     private val notificationIdProvider = NotificationIdProvider
 

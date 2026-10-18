@@ -15,6 +15,7 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.progressSemantics
@@ -71,6 +72,8 @@ fun NotificationSettingsView(
     onTroubleshootNotificationsClick: () -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
+    // Artise: quiet hours for this workspace (artise/quiet).
+    quietHours: @Composable ColumnScope.() -> Unit = {},
 ) {
     OnLifecycleEvent { _, event ->
         when (event) {
@@ -103,6 +106,7 @@ fun NotificationSettingsView(
                 onTroubleshootNotificationsClick = onTroubleshootNotificationsClick,
             )
         }
+        if (state.matrixSettings is NotificationSettingsState.MatrixSettings.Valid) quietHours()
         AsyncActionView(
             async = state.changeNotificationSettingAction,
             errorMessage = { stringResource(R.string.screen_notification_settings_edit_failed_updating_default_mode) },

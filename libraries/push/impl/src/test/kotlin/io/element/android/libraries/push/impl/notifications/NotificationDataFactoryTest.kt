@@ -8,6 +8,7 @@
 
 package io.element.android.libraries.push.impl.notifications
 
+import co.artise.android.quiet.test.FakeQuietHours
 import com.google.common.truth.Truth.assertThat
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.user.MatrixUser
@@ -46,6 +47,7 @@ class NotificationDataFactoryTest : RobolectricTest() {
         roomGroupMessageCreator = fakeRoomGroupMessageCreator,
         summaryGroupMessageCreator = fakeSummaryGroupMessageCreator,
         activeNotificationsProvider = activeNotificationsProvider,
+        quietHours = FakeQuietHours(),
     )
 
     @Test

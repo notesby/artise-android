@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<resources>
+    <string name="artise_quiet_title">Silenciar fora do horário</string>
+    <string name="artise_quiet_description">As notificações deste espaço de trabalho chegam sem som. Os lembretes do Ari continuam tocando.</string>
+    <string name="artise_quiet_hours">Horário</string>
+    <!-- %1$s and %2$s: times like 22:00 -->
+    <string name="artise_quiet_window">Das %1$s às %2$s</string>
+    <string name="artise_quiet_weekend">O fim de semana todo</string>
+    <string name="artise_quiet_mentions">Tocar menções e respostas</string>
+</resources>

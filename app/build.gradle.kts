@@ -311,6 +311,8 @@ dependencies {
         "gplayImplementation"(projects.artise.recovery.blockstore)
         // Artise: notification sounds from the person's own files, per chat.
         implementation(projects.artise.sounds.impl)
+        // Artise: quiet hours per workspace.
+        implementation(projects.artise.quiet.impl)
     }
     allFeaturesImpl(project)
     implementation(projects.features.migration.api)
