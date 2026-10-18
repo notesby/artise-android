@@ -11,10 +11,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import dev.zacsweers.metro.Inject
 import io.element.android.features.enterprise.api.SessionEnterpriseService
 import io.element.android.features.logout.api.direct.DirectLogoutState
@@ -57,13 +55,9 @@ class PreferencesAccountPresenter(
 
         val showSecureBackupIndicator by indicatorService.showSettingChatBackupIndicator()
 
-        var canDeactivateAccount by remember {
-            mutableStateOf(false)
-        }
+        // Artise: deleting the account is always offered; it happens on Artise's page (Google Play requires it).
+        val canDeactivateAccount = true
         val canReportBug by remember { rageshakeFeatureAvailability.isAvailable() }.collectAsState(false)
-        LaunchedEffect(Unit) {
-            canDeactivateAccount = matrixClient.canDeactivateAccount()
-        }
 
         val directLogoutState = directLogoutPresenter.present()
 

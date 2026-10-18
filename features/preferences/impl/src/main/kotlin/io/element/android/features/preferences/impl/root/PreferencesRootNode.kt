@@ -12,6 +12,7 @@ import android.app.Activity
 import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import co.artise.android.accountdeletion.AccountDeletion
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.Node
 import com.bumble.appyx.core.plugin.Plugin
@@ -35,6 +36,7 @@ class PreferencesRootNode(
     private val presenter: PreferencesRootPresenter,
     private val emojiPickerRenderer: EmojiPickerRenderer,
     private val directLogoutView: DirectLogoutView,
+    private val accountDeletion: AccountDeletion,
 ) : Node(buildContext, plugins = plugins) {
     interface Callback : PreferencesAccountCallback, Plugin {
         fun navigateToAddAccount()
@@ -96,7 +98,15 @@ class PreferencesRootNode(
                     callback.startSignOutFlow()
                 }
             },
-            onDeactivateClick = callback::startAccountDeactivationFlow
+            // Artise: the account is deleted on Artise's page, which also ends this session on the server.
+            onDeactivateClick = {
+                accountDeletion.markStarted()
+                activity.openUrlInChromeCustomTab(
+                    null,
+                    darkTheme = isDark,
+                    url = accountDeletion.pageUrl(activity.resources.configuration.locales[0].language),
+                )
+            }
         )
 
         directLogoutView.Render(state = state.preferencesAccountState.directLogoutState)

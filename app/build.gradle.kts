@@ -309,6 +309,8 @@ dependencies {
     if (ModulesConfig.pushProvidersConfig.includeFirebase) {
         "gplayImplementation"(projects.libraries.pushproviders.firebase)
     }
+    // Artise: Settings → Delete account opens Artise's page (used by preferences and appnav).
+    implementation(projects.artise.accountdeletion)
     // Artise: Firebase Analytics, opt-in, in Play builds only.
     if ((ModulesConfig.analyticsConfig as? AnalyticsConfig.Enabled)?.withFirebase == true) {
         "gplayImplementation"(projects.artise.analytics)

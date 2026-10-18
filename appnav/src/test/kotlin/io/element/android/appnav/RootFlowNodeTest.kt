@@ -12,6 +12,7 @@ package io.element.android.appnav
 import android.content.Intent
 import android.net.Uri
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
+import co.artise.android.accountdeletion.AccountDeletion
 import com.bumble.appyx.core.modality.AncestryInfo
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.node
@@ -183,6 +184,13 @@ class RootFlowNodeTest : RobolectricTest() {
             announcementService = FakeAnnouncementService(),
             analyticsService = FakeAnalyticsService(),
             analyticsColdStartWatcher = FakeAnalyticsColdStartWatcher(),
+            accountDeletion = object : AccountDeletion {
+                override fun pageUrl(language: String) = ""
+
+                override fun markStarted() = Unit
+
+                override fun consumeStarted() = false
+            },
             appCoroutineScope = backgroundScope,
         )
     }
