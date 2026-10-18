@@ -98,6 +98,8 @@ fun PreferencesRootView(
     onSignOutClick: () -> Unit,
     onDeactivateClick: () -> Unit,
     modifier: Modifier = Modifier,
+    // Artise: "Actualizar notas en segundo plano" (artise/notes), in App settings.
+    notesBackground: @Composable () -> Unit = {},
 ) {
     val snackbarHostState = rememberSnackbarHostState(snackbarMessage = state.snackbarMessage)
 
@@ -150,6 +152,7 @@ fun PreferencesRootView(
                 onOpenLockScreenSettings = onOpenLockScreenSettings,
                 onOpenMediaSettings = onOpenMediaSettings,
                 onOpenLocationSettings = onOpenLocationSettings,
+                notesBackground = notesBackground,
             )
             // General section
             GeneralSection(
@@ -308,6 +311,7 @@ private fun AppSettingsSection(
     onOpenLockScreenSettings: () -> Unit,
     onOpenLocationSettings: () -> Unit,
     onOpenMediaSettings: () -> Unit,
+    notesBackground: @Composable () -> Unit,
 ) {
     PreferenceCategory(
         title = stringResource(CommonStrings.common_app_settings),
@@ -337,6 +341,7 @@ private fun AppSettingsSection(
             leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.LocationPin())),
             onClick = onOpenLocationSettings,
         )
+        notesBackground()
     }
 }
 

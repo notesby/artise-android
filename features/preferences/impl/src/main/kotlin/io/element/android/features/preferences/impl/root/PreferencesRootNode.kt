@@ -11,8 +11,11 @@ package io.element.android.features.preferences.impl.root
 import android.app.Activity
 import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import co.artise.android.accountdeletion.AccountDeletion
+import co.artise.android.notes.api.NotesBackgroundSettings
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.Node
 import com.bumble.appyx.core.plugin.Plugin
@@ -39,6 +42,8 @@ class PreferencesRootNode(
     private val directLogoutView: DirectLogoutView,
     private val accountDeletion: AccountDeletion,
     private val matrixClient: MatrixClient,
+    // Artise: the phone-wide setting for updating notes in the background.
+    private val notesBackgroundSettings: NotesBackgroundSettings,
 ) : Node(buildContext, plugins = plugins) {
     interface Callback : PreferencesAccountCallback, Plugin {
         fun navigateToAddAccount()
@@ -106,7 +111,11 @@ class PreferencesRootNode(
                     accountDeletion.markStarted()
                     activity.openUrlInChromeCustomTab(null, darkTheme = isDark, url = url)
                 }
-            }
+            },
+            notesBackground = {
+                val network by notesBackgroundSettings.network.collectAsState()
+                NotesBackgroundItem(network = network, onChange = notesBackgroundSettings::set)
+            },
         )
 
         directLogoutView.Render(state = state.preferencesAccountState.directLogoutState)

@@ -9,10 +9,12 @@ package co.artise.android.notes.impl.di
 
 import android.app.Activity
 import android.content.Context
+import co.artise.android.notes.impl.background.NotesEngines
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesIntoSet
 import io.element.android.features.enterprise.api.AppStartupHook
 import io.element.android.libraries.di.annotations.ApplicationContext
+import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.sessionstorage.api.observer.SessionListener
 import io.element.android.libraries.sessionstorage.api.observer.SessionObserver
 import timber.log.Timber
@@ -25,6 +27,7 @@ import timber.log.Timber
 class NotesSessionCleanup(
     @ApplicationContext private val context: Context,
     private val sessionObserver: SessionObserver,
+    private val engines: NotesEngines,
 ) : AppStartupHook {
     override suspend fun onAppStartup(activity: Activity) {
         sessionObserver.addListener(object : SessionListener {
@@ -33,6 +36,7 @@ class NotesSessionCleanup(
     }
 
     fun deleteNotes(userId: String) {
+        engines.remove(SessionId(userId))
         val name = NotesBindingContainer.databaseName(userId)
         listOf("$name.db", "$name.db-journal", "$name.db-wal", "$name.db-shm", "$name.key")
             .map { context.getDatabasePath(it) }

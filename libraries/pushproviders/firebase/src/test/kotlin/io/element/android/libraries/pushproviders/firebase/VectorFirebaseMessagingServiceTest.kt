@@ -11,7 +11,11 @@
 package io.element.android.libraries.pushproviders.firebase
 
 import android.os.Bundle
+import co.artise.android.notes.api.NotesBackgroundSync
+import com.google.common.truth.Truth.assertThat
 import com.google.firebase.messaging.RemoteMessage
+import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.test.AN_EVENT_ID
 import io.element.android.libraries.matrix.test.A_ROOM_ID
 import io.element.android.libraries.matrix.test.A_SECRET
@@ -167,6 +171,70 @@ class VectorFirebaseMessagingServiceTest : RobolectricTest() {
         unlockLambda.assertions().isNeverCalled()
     }
 
+    // Artise: notes pushes.
+    @Test
+    fun `a notes push goes to notes and never to the notification parser`() = runTest {
+        val handle = lambdaRecorder<PushData, String, Boolean> { _, _ -> true }
+        val handleInvalid = lambdaRecorder<String, String, Unit> { _, _ -> }
+        val notes = RecordingNotesBackgroundSync()
+        val vectorFirebaseMessagingService = createVectorFirebaseMessagingService(
+            pushHandler = FakePushHandler(handleResult = handle, handleInvalidResult = handleInvalid),
+            notesBackgroundSync = notes,
+        )
+        vectorFirebaseMessagingService.onMessageReceived(
+            message = RemoteMessage(
+                Bundle().apply {
+                    putString("artise_notes_room_id", A_ROOM_ID.value)
+                    putString("event_id", AN_EVENT_ID.value)
+                    putString("prio", "normal")
+                },
+            )
+        )
+        advanceUntilIdle()
+        assertThat(notes.pushes).containsExactly(A_ROOM_ID)
+        handle.assertions().isNeverCalled()
+        handleInvalid.assertions().isNeverCalled()
+    }
+
+    @Test
+    fun `a message push doesn't reach notes`() = runTest {
+        val handle = lambdaRecorder<PushData, String, Boolean> { _, _ -> true }
+        val notes = RecordingNotesBackgroundSync()
+        val vectorFirebaseMessagingService = createVectorFirebaseMessagingService(
+            pushHandler = FakePushHandler(handleResult = handle),
+            notesBackgroundSync = notes,
+        )
+        vectorFirebaseMessagingService.onMessageReceived(
+            message = RemoteMessage(
+                Bundle().apply {
+                    putString("event_id", AN_EVENT_ID.value)
+                    putString("room_id", A_ROOM_ID.value)
+                    putString("cs", A_SECRET)
+                },
+            )
+        )
+        advanceUntilIdle()
+        handle.assertions().isCalledOnce()
+        assertThat(notes.pushes).isEmpty()
+    }
+
+    private class RecordingNotesBackgroundSync : NotesBackgroundSync {
+        val pushes = mutableListOf<RoomId>()
+
+        override fun isAllowedNow() = true
+
+        override suspend fun syncChat(sessionId: SessionId, roomId: RoomId) = true
+
+        override suspend fun syncChatInAnyAccount(roomId: RoomId) = true
+
+        override suspend fun onNotesPush(roomId: RoomId): Boolean {
+            pushes += roomId
+            return true
+        }
+
+        override suspend fun syncAll() = Unit
+    }
+
     @Test
     fun `test new token is forwarded to the handler`() = runTest {
         val lambda = lambdaRecorder<String, Unit> { }
@@ -184,6 +252,7 @@ class VectorFirebaseMessagingServiceTest : RobolectricTest() {
         firebaseNewInstallationIdHandler: FirebaseNewInstallationIdHandler = FakeFirebaseNewInstallationIdHandler(),
         pushHandler: PushHandler = FakePushHandler(),
         pushHandlingWakeLock: FakeFetchPushForegroundServiceManager = FakeFetchPushForegroundServiceManager(),
+        notesBackgroundSync: NotesBackgroundSync = RecordingNotesBackgroundSync(),
     ): VectorFirebaseMessagingService {
         return VectorFirebaseMessagingService().apply {
             this.firebaseNewInstallationIdHandler = firebaseNewInstallationIdHandler
@@ -191,6 +260,7 @@ class VectorFirebaseMessagingServiceTest : RobolectricTest() {
             this.pushHandler = pushHandler
             this.coroutineScope = this@createVectorFirebaseMessagingService
             this.fetchPushForegroundServiceManager = pushHandlingWakeLock
+            this.notesBackgroundSync = notesBackgroundSync
         }
     }
 }

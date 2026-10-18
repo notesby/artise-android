@@ -8,6 +8,8 @@
 
 package io.element.android.libraries.pushproviders.firebase
 
+import co.artise.android.notes.api.NotesBackgroundSync
+import co.artise.android.notes.api.NotesPush
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.google.firebase.messaging.RemoteMessage.PRIORITY_HIGH
@@ -31,6 +33,9 @@ class VectorFirebaseMessagingService : FirebaseMessagingService() {
     @AppCoroutineScope
     @Inject lateinit var coroutineScope: CoroutineScope
 
+    // Artise: notes pushes say a chat's notes changed; they sync in the background and are never shown.
+    @Inject lateinit var notesBackgroundSync: NotesBackgroundSync
+
     override fun onCreate() {
         super.onCreate()
         bindings<VectorFirebaseMessagingServiceBindings>().inject(this)
@@ -47,6 +52,12 @@ class VectorFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         Timber.tag(loggerTag.value).w("New Firebase message. Priority: ${message.priority}/${message.originalPriority}")
+
+        // Artise: checked before the message parser, so a notes push is never treated as a message.
+        NotesPush.roomIdOf(message.data)?.let { roomId ->
+            coroutineScope.launch { notesBackgroundSync.onNotesPush(roomId) }
+            return
+        }
 
         val isHighPriority = message.priority == PRIORITY_HIGH
         if (isHighPriority) {

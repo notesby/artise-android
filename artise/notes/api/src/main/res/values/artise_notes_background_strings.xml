@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<!-- Artise: Settings → "Update notes in the background", the same texts as iOS (Data Saver instead of Low Data Mode). -->
+<resources>
+    <string name="screen_artise_notes_background_title">Update notes in the background</string>
+    <string name="screen_artise_notes_background_wifi">Only on Wi-Fi</string>
+    <string name="screen_artise_notes_background_mobile">Wi-Fi and mobile data</string>
+    <string name="screen_artise_notes_background_footer">Keeps notes up to date before you open them. Opening Notes always updates them, and Data Saver waits for that.</string>
+</resources>

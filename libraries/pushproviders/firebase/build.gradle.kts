@@ -57,6 +57,7 @@ dependencies {
 
     implementation(projects.libraries.pushstore.api)
     implementation(projects.libraries.pushproviders.api)
+    implementation(projects.artise.notes.api) // Artise: notes pushes
 
     api(platform(libs.google.firebase.bom))
     api("com.google.firebase:firebase-messaging") {

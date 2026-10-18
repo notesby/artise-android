@@ -31,16 +31,19 @@ class NotesLiveUpdates(
     private val matrixClient: MatrixClient,
     private val repository: NotesRepository,
 ) {
-    /** Follows [roomIds] until cancelled. */
-    suspend fun keepUpToDate(roomIds: Collection<RoomId>) = coroutineScope {
-        roomIds.distinct().forEach { roomId -> launch { follow(roomId) } }
+    /**
+     * Follows [roomIds] until cancelled. A change is passed on only when [isAllowed] (the background setting, outside Notas); one
+     * skipped is caught by the next periodic check.
+     */
+    suspend fun keepUpToDate(roomIds: Collection<RoomId>, isAllowed: () -> Boolean = { true }) = coroutineScope {
+        roomIds.distinct().forEach { roomId -> launch { follow(roomId, isAllowed) } }
     }
 
-    private suspend fun follow(roomId: RoomId) {
+    private suspend fun follow(roomId: RoomId, isAllowed: () -> Boolean) {
         val room = matrixClient.getRoom(roomId)
         if (room == null) {
             // Not a room this phone knows: the ETag check is all we can do.
-            repository.sync(roomId)
+            if (isAllowed()) repository.sync(roomId)
             return
         }
         room.use {
@@ -50,6 +53,7 @@ class NotesLiveUpdates(
                 .distinctUntilChanged()
                 .collect { tree ->
                     when {
+                        !isAllowed() -> Unit
                         tree != null -> repository.onTreeChanged(roomId, tree)
                         !checkedWithoutState -> {
                             checkedWithoutState = true
