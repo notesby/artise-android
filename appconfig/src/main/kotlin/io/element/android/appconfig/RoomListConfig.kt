@@ -12,8 +12,8 @@ object RoomListConfig {
     const val SHOW_INVITE_MENU_ITEM = false
     const val SHOW_REPORT_PROBLEM_MENU_ITEM = false
 
-    // Artise: "Notes" in the home menu opens every chat's notes.
-    const val SHOW_NOTES_MENU_ITEM = true
+    // Artise: a notes icon in the chats top bar opens every chat's notes (not hidden in the menu).
+    const val SHOW_NOTES_BUTTON = true
 
-    const val HAS_DROP_DOWN_MENU = SHOW_NOTES_MENU_ITEM || SHOW_INVITE_MENU_ITEM || SHOW_REPORT_PROBLEM_MENU_ITEM
+    const val HAS_DROP_DOWN_MENU = SHOW_INVITE_MENU_ITEM || SHOW_REPORT_PROBLEM_MENU_ITEM
 }

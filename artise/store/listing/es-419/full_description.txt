@@ -14,6 +14,12 @@ Notas compartidas en cada chat
 • Escribe con formato sencillo, listas que marcas con un toque, enlaces entre notas, fotos y documentos.
 • Las notas funcionan sin conexión y se sincronizan cuando vuelves a tener internet.
 • Un mapa muestra cómo se conectan tus notas.
+• Ve todas las fotos y archivos de las notas de un chat, qué notas los usan, y limpia los que nada usa.
+
+Stickers
+• Un paquete inicial para usar desde el primer día.
+• Crea tus propios stickers con tus fotos: el fondo se quita en tu teléfono.
+• Guarda los stickers que te mandan, o agrégalos desde otras apps y tu teclado.
 
 Todo lo que necesita un chat familiar
 • Llamadas de voz y video.
