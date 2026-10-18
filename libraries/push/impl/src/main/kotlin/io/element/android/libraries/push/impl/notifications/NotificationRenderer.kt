@@ -54,6 +54,7 @@ class NotificationRenderer(
             user = currentUser,
             color = color,
             showSessionId = numberOfAccounts > 1,
+            accountName = enterpriseService.notificationAccountName(currentUser.userId) ?: currentUser.userId.value,
         )
         val groupedEvents = eventsToProcess.groupByType()
         val roomNotifications = notificationDataFactory.toNotifications(groupedEvents.roomEvents, imageLoader, notificationAccountParams)

@@ -75,4 +75,12 @@ class ArtiseEnterpriseServiceTest {
         assertThat(service.firebasePushGateway(A_SESSION_ID)).isEqualTo("https://push.acme.example/_matrix/push/v1/notify")
         assertThat(service.unifiedPushDefaultPushGateway()).isNull()
     }
+
+    /** With several workspaces, notifications show the workspace's name; without its file, Element's Matrix ID. */
+    @Test
+    fun `notifications show the workspace name`() {
+        assertThat(service.notificationAccountName(A_SESSION_ID)).isNull()
+        workspaces.givenConfig(A_SESSION_ID, WorkspaceConfig(name = "Panadería Sol"))
+        assertThat(service.notificationAccountName(A_SESSION_ID)).isEqualTo("Panadería Sol")
+    }
 }
