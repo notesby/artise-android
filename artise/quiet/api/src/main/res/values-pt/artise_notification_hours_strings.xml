@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<!-- Artise: the same texts as iOS (screen_artise_notification_hours_*). -->
+<resources>
+    <string name="screen_artise_notification_hours_title">Horário das notificações</string>
+    <string name="screen_artise_notification_hours_description">Fora deste horário, as notificações deste espaço de trabalho chegam sem som. Os lembretes do Ari sempre tocam.</string>
+    <string name="screen_artise_notification_hours_days">Dias</string>
+    <string name="screen_artise_notification_hours_every_day">Todos os dias</string>
+    <string name="screen_artise_notification_hours_weekdays">De segunda a sexta</string>
+    <string name="screen_artise_notification_hours_custom">Personalizado</string>
+    <string name="screen_artise_notification_hours_weekdays_footer">No sábado e no domingo, as notificações chegam sem som.</string>
+    <string name="screen_artise_notification_hours_custom_footer">Num dia desligado, as notificações chegam sem som. Se “Até” for antes de “De”, o horário passa da meia-noite.</string>
+    <string name="screen_artise_notification_hours_hours">Horário</string>
+    <string name="screen_artise_notification_hours_from">De</string>
+    <string name="screen_artise_notification_hours_until">Até</string>
+    <string name="screen_artise_notification_hours_mentions">Menções e respostas sempre tocam</string>
+</resources>

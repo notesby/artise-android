@@ -7,8 +7,8 @@
 
 package co.artise.android.quiet.impl.di
 
-import co.artise.android.quiet.api.QuietHoursState
-import co.artise.android.quiet.impl.QuietHoursPresenter
+import co.artise.android.quiet.api.NotificationHoursState
+import co.artise.android.quiet.impl.NotificationHoursPresenter
 import dev.zacsweers.metro.BindingContainer
 import dev.zacsweers.metro.Binds
 import dev.zacsweers.metro.ContributesTo
@@ -17,7 +17,7 @@ import io.element.android.libraries.di.SessionScope
 
 @ContributesTo(SessionScope::class)
 @BindingContainer
-interface QuietHoursBindings {
+interface NotificationHoursBindings {
     @Binds
-    fun bindQuietHoursPresenter(presenter: QuietHoursPresenter): Presenter<QuietHoursState>
+    fun bindNotificationHoursPresenter(presenter: NotificationHoursPresenter): Presenter<NotificationHoursState>
 }

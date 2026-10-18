@@ -35,6 +35,7 @@ import io.element.android.features.preferences.impl.media.MediaSettingsNode
 import io.element.android.features.preferences.impl.moderation.ModerationAndSafetyNode
 import io.element.android.features.preferences.impl.notifications.NotificationSettingsNode
 import io.element.android.features.preferences.impl.notifications.edit.EditDefaultNotificationSettingNode
+import io.element.android.features.preferences.impl.notifications.hours.NotificationHoursNode
 import io.element.android.features.preferences.impl.root.PreferencesRootNode
 import io.element.android.features.preferences.impl.user.editprofile.EditUserProfileNode
 import io.element.android.libraries.architecture.BackstackView
@@ -96,6 +97,10 @@ class PreferencesFlowNode(
 
         @Parcelize
         data object NotificationSettings : NavTarget
+
+        // Artise: when this workspace's notifications may sound.
+        @Parcelize
+        data object NotificationHours : NavTarget
 
         @Parcelize
         data object ModerationAndSafety : NavTarget
@@ -259,12 +264,17 @@ class PreferencesFlowNode(
                         backstack.push(NavTarget.EditDefaultNotificationSetting(isOneToOne))
                     }
 
+                    override fun navigateToNotificationHours() {
+                        backstack.push(NavTarget.NotificationHours)
+                    }
+
                     override fun navigateToTroubleshootNotifications() {
                         backstack.push(NavTarget.TroubleshootNotifications)
                     }
                 }
                 createNode<NotificationSettingsNode>(buildContext, listOf(notificationSettingsCallback))
             }
+            NavTarget.NotificationHours -> createNode<NotificationHoursNode>(buildContext)
             NavTarget.TroubleshootNotifications -> {
                 notificationTroubleShootEntryPoint.createNode(
                     parentNode = this,

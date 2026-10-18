@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<!-- Artise: the same texts as iOS (screen_artise_notification_hours_*). -->
+<resources>
+    <string name="screen_artise_notification_hours_title">Horario de notificaciones</string>
+    <string name="screen_artise_notification_hours_description">Fuera de este horario, las notificaciones de este espacio de trabajo llegan sin sonido. Los recordatorios de Ari siempre suenan.</string>
+    <string name="screen_artise_notification_hours_days">Días</string>
+    <string name="screen_artise_notification_hours_every_day">Todos los días</string>
+    <string name="screen_artise_notification_hours_weekdays">De lunes a viernes</string>
+    <string name="screen_artise_notification_hours_custom">Personalizado</string>
+    <string name="screen_artise_notification_hours_weekdays_footer">El sábado y el domingo, las notificaciones llegan sin sonido.</string>
+    <string name="screen_artise_notification_hours_custom_footer">En un día apagado, las notificaciones llegan sin sonido. Si «Hasta» es antes que «Desde», el horario pasa de la medianoche.</string>
+    <string name="screen_artise_notification_hours_hours">Horario</string>
+    <string name="screen_artise_notification_hours_from">Desde</string>
+    <string name="screen_artise_notification_hours_until">Hasta</string>
+    <string name="screen_artise_notification_hours_mentions">Las menciones y respuestas siempre suenan</string>
+</resources>

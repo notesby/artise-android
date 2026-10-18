@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<!-- Artise: the same texts as iOS (screen_artise_notification_hours_*). -->
+<resources>
+    <string name="screen_artise_notification_hours_title">Notification hours</string>
+    <string name="screen_artise_notification_hours_description">Outside these hours, this workspace’s notifications arrive without sound. Ari’s reminders always sound.</string>
+    <string name="screen_artise_notification_hours_days">Days</string>
+    <string name="screen_artise_notification_hours_every_day">Every day</string>
+    <string name="screen_artise_notification_hours_weekdays">Monday to Friday</string>
+    <string name="screen_artise_notification_hours_custom">Custom</string>
+    <string name="screen_artise_notification_hours_weekdays_footer">On Saturday and Sunday, notifications arrive without sound.</string>
+    <string name="screen_artise_notification_hours_custom_footer">On a day that’s off, notifications arrive without sound. If Until is earlier than From, the hours go past midnight.</string>
+    <string name="screen_artise_notification_hours_hours">Hours</string>
+    <string name="screen_artise_notification_hours_from">From</string>
+    <string name="screen_artise_notification_hours_until">Until</string>
+    <string name="screen_artise_notification_hours_mentions">Mentions and replies always sound</string>
+</resources>

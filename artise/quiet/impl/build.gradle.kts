@@ -28,5 +28,8 @@ dependencies {
     implementation(projects.services.toolbox.api)
     implementation(libs.serialization.json)
 
+    testImplementation(projects.artise.quiet.test)
+    testImplementation(projects.libraries.matrix.test)
+    testImplementation(projects.services.toolbox.test)
     testCommonDependencies(libs)
 }

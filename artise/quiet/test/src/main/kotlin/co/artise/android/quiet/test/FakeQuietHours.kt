@@ -7,17 +7,17 @@
 
 package co.artise.android.quiet.test
 
+import co.artise.android.quiet.api.NotificationHoursSettings
 import co.artise.android.quiet.api.QuietHours
-import co.artise.android.quiet.api.QuietHoursSettings
 import io.element.android.libraries.matrix.api.core.SessionId
 import kotlinx.coroutines.flow.MutableStateFlow
 
 class FakeQuietHours(var quiet: Boolean = false) : QuietHours {
-    val settings = MutableStateFlow(QuietHoursSettings())
+    val settings = MutableStateFlow(NotificationHoursSettings())
 
     override fun settings(sessionId: SessionId) = settings
 
-    override suspend fun set(sessionId: SessionId, settings: QuietHoursSettings) {
+    override suspend fun set(sessionId: SessionId, settings: NotificationHoursSettings) {
         this.settings.value = settings
     }
 
