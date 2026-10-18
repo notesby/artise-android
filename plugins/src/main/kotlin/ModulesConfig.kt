@@ -33,8 +33,8 @@ object ModulesConfig {
             AnalyticsConfig.Disabled
         }
     } else {
-        // Artise: no analytics SDKs and no consent screen; nothing about families' use leaves the app.
-        println("Analytics disabled")
-        AnalyticsConfig.Disabled
+        // Artise: Google Analytics for Firebase, only for people who say yes on "Help improve Artise".
+        println("Analytics enabled with Firebase")
+        AnalyticsConfig.Enabled(withPosthog = false, withSentry = false, withFirebase = true)
     }
 }

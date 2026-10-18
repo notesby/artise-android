@@ -3,7 +3,7 @@ Artise is a private chat for your family, on your own Artise server. It comes wi
 Private by design
 • Chats are end-to-end encrypted between your devices.
 • Your messages live on your family's own server, not in a big tech platform.
-• No ads, no analytics, no tracking.
+• No ads. Usage statistics only if you say yes, and never your messages or notes.
 
 Ari, your family's assistant
 • Ask Ari in any chat it's part of: plans, reminders, shopping lists, what was decided last week.

@@ -25,7 +25,8 @@ android {
             value = if (isEnterpriseBuild) {
                 BuildTimeConfig.URL_POLICY ?: ""
             } else {
-                "https://element.io/cookie-policy"
+                // Artise: the analytics consent screen links to our privacy notice.
+                BuildTimeConfig.URL_POLICY ?: "https://element.io/cookie-policy"
             },
         )
         buildConfigFieldStr(

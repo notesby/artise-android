@@ -12,6 +12,7 @@ import com.android.build.api.variant.FilterConfiguration.FilterType.ABI
 import com.android.build.gradle.internal.tasks.factory.dependsOn
 import com.android.build.gradle.tasks.GenerateBuildConfig
 import com.google.firebase.appdistribution.gradle.firebaseAppDistribution
+import config.AnalyticsConfig
 import config.BuildTimeConfig
 import extension.AssetCopyTask
 import extension.GitBranchNameValueSource
@@ -307,6 +308,10 @@ dependencies {
 
     if (ModulesConfig.pushProvidersConfig.includeFirebase) {
         "gplayImplementation"(projects.libraries.pushproviders.firebase)
+    }
+    // Artise: Firebase Analytics, opt-in, in Play builds only.
+    if ((ModulesConfig.analyticsConfig as? AnalyticsConfig.Enabled)?.withFirebase == true) {
+        "gplayImplementation"(projects.artise.analytics)
     }
     if (ModulesConfig.pushProvidersConfig.includeUnifiedPush) {
         implementation(projects.libraries.pushproviders.unifiedpush)

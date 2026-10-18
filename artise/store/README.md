@@ -101,10 +101,11 @@ Use the questionnaire's "Communication" or "Social" category.
 | Files and documents | Sent in chats and added to notes. |
 | Other user-generated content | Notes. |
 | Approximate and precise location | Only when someone shares their location in a chat (optional). |
-| Device or other IDs | The push token and Firebase installation ID that route notifications to this phone. |
+| Device or other IDs | The push token and Firebase installation ID that route notifications to this phone. With usage statistics on: Firebase's app instance ID. |
+| App interactions (App activity) | **Optional** (the person says yes on "Help improve Artise"). Purpose: analytics. Which screens are opened and which actions are used, never content or names. |
 
-**Not collected** (checked in the bundle, see 5b): contacts, calendar, health, financial info, web history, app activity analytics, crash logs,
-diagnostics. The app has no analytics or crash reporting.
+**Not collected** (checked in the bundle, see 5b): contacts, calendar, health, financial info, web history, crash logs,
+diagnostics, advertising ID. No crash reporting.
 
 ### Permission declarations
 
@@ -144,12 +145,25 @@ live location", show the notification, then stop it.
 These were checked against the release bundle itself (its code, manifest and bundled web files) and the build settings
 compiled into it. Network traffic on a phone wasn't captured. Re-check after merging a new Element release.
 
-**No analytics, crash reporting or ads:**
-- **Element's analytics:** the Play build uses Element's no-op analytics module (`ModulesConfig`: Artise builds have
-  analytics disabled). The PostHog and Sentry libraries aren't in the build, and there's no consent screen.
-- **Firebase:** Firebase Analytics and Crashlytics aren't included. The manifest also sets
-  `firebase_analytics_collection_deactivated=true`. Firebase Messaging's delivery-metrics export is off by default,
-  and nothing turns it on.
+**Usage statistics, opt-in (Google Analytics for Firebase):**
+- **Consent:** after sign-in, "Help improve Artise" asks each person once, and Settings → Analytics turns it on or
+  off. Until someone says yes, the manifest keeps collection off (`firebase_analytics_collection_enabled=false`,
+  consent defaults all denied). `artise/analytics` turns it on at consent and off, with a data reset, when it's
+  withdrawn.
+- **What's sent:**
+  - Element's usage events: screens, button taps, calls started, messages sent. These have no content.
+  - Artise's notes events: note created, saved, deleted or renamed; photo or document added; upload retried or
+    cancelled; a conflict choice; search used.
+  - The kind of an error, never its message.
+  - No names, text, chat or note names, contacts, or user ID.
+- **Ads and Google signals:** the advertising ID permission (`AD_ID`) is removed. Ad-ID and SSAID collection are
+  off, and ad storage and ad personalization consent is always denied.
+- **Consent screen:** it names Google Analytics for Firebase and links to the privacy notice
+  (`BuildTimeConfig.URL_POLICY`).
+
+**No crash reporting or ads:**
+- **Other analytics:** the PostHog and Sentry libraries aren't in the build. Firebase Crashlytics isn't included.
+  Firebase Messaging's delivery-metrics export is off by default, and nothing turns it on.
 - **Bug reports:** `ArtiseEnterpriseService` returns `BugReportUrl.Disabled`, so reports can't be sent. Element's
   address (`rageshakes.element.io`) is still compiled in as an unused default.
 - **Call screen:** the web bundle (Element Call) contains PostHog and Sentry code. The app passes it empty keys
@@ -162,6 +176,7 @@ compiled into it. Network traffic on a phone wasn't captured. Re-check after mer
 | Service | When | What it receives |
 |---|---|---|
 | Google Firebase Cloud Messaging and Installations | Always, for notifications | A push token and installation ID for the phone. Pushes carry only an event ID. |
+| Google Analytics for Firebase | Only after the person says yes on "Help improve Artise" | Usage events (above), an app instance ID, the phone model, the Android and app version, and the approximate region from the IP address. |
 | MapTiler (`api.maptiler.com`) | Opening a map to share, view or follow a location | The phone's IP address. No key is set, so MapTiler refuses and **the map stays blank** (see below). Location previews in chats make no request without a key. |
 | Google Cloud Storage and jsDelivr | Only if someone turns on background blur during a call | The phone's IP address, while downloading the blur model. |
 | A UnifiedPush distributor and gateway | Only if the person installs one and picks it in the notification settings | Pushes, instead of Firebase. |
@@ -192,10 +207,16 @@ Add a section about the phone app to `https://artise.co/privacy.html`, in both l
 >
 > The app uses your location only when you share it in a chat, once or live. Live sharing shows a notification until
 > you stop it. The camera and microphone are used only for photos, voice messages and calls you start. The app has
-> no ads and no analytics, and it sends no crash reports.
+> no ads and sends no crash reports.
+>
+> **Usage statistics (optional).** After you sign in, the app asks whether you want to help improve Artise. Only if you
+> say yes, it sends Google Analytics for Firebase which screens you open and which features you use, together with
+> your phone model, the Android and app version, and an ID for this installation. It never sends your messages,
+> notes, names or contacts, and nothing is used for ads. You can turn it off at any time in Settings → Analytics.
 
-Add Google LLC to the processors table: "Delivering app notifications (Firebase Cloud Messaging), only an event ID;
-United States".
+Add Google LLC to the processors table, with two uses: "Delivering app notifications (Firebase Cloud Messaging),
+only an event ID; United States" and "Usage statistics in the app, only for people who agree (Google Analytics for
+Firebase); United States".
 
 Also create a reviewer account for Google Play review, with:
 

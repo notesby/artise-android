@@ -15,4 +15,42 @@
     <uses-permission
         android:name="android.permission.REQUEST_INSTALL_PACKAGES"
         tools:node="remove" />
+
+    <!-- Firebase Analytics is for usage statistics only: never the advertising ID. -->
+    <uses-permission
+        android:name="com.google.android.gms.permission.AD_ID"
+        tools:node="remove" />
+
+    <application>
+        <!--
+          Analytics runs only after the person says yes on "Help improve Artise" (FirebaseAnalyticsProvider turns it on).
+          Until then nothing is collected. The push library deactivates analytics for good; Artise replaces that with
+          "off until consent".
+        -->
+        <meta-data
+            android:name="firebase_analytics_collection_deactivated"
+            android:value="false"
+            tools:replace="android:value" />
+        <meta-data
+            android:name="firebase_analytics_collection_enabled"
+            android:value="false" />
+        <meta-data
+            android:name="google_analytics_default_allow_analytics_storage"
+            android:value="false" />
+        <meta-data
+            android:name="google_analytics_default_allow_ad_storage"
+            android:value="false" />
+        <meta-data
+            android:name="google_analytics_default_allow_ad_user_data"
+            android:value="false" />
+        <meta-data
+            android:name="google_analytics_default_allow_ad_personalization_signals"
+            android:value="false" />
+        <meta-data
+            android:name="google_analytics_adid_collection_enabled"
+            android:value="false" />
+        <meta-data
+            android:name="google_analytics_ssaid_collection_enabled"
+            android:value="false" />
+    </application>
 </manifest>

@@ -12,9 +12,11 @@ sealed interface AnalyticsConfig {
     data class Enabled(
         val withPosthog: Boolean,
         val withSentry: Boolean,
+        /** Artise: Google Analytics for Firebase, in Play builds only (`artise/analytics`). */
+        val withFirebase: Boolean = false,
     ) : AnalyticsConfig {
         init {
-            require(withPosthog || withSentry) {
+            require(withPosthog || withSentry || withFirebase) {
                 "At least one analytics provider must be enabled"
             }
         }
