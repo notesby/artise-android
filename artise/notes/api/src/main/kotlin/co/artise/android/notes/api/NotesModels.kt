@@ -107,10 +107,54 @@ data class NotesGraph(
     val edges: List<Pair<String, String>>,
 )
 
-/** One saved version of a note. [by] is the person's name, "Ari", or "synced device". */
+/** One saved version of a note: when, the server's description, and who it was for and how it was made. */
 data class NoteVersion(
     val commit: String,
+    /** ISO 8601 with the server's offset, e.g. "2026-09-29T18:02:11-06:00". */
     val at: String,
     val message: String,
+    val author: ChangeAuthor,
+)
+
+/** Who a change in a chat's notes was for and how it was made, as the server records it (docs/notes-api.md). */
+data class ChangeAuthor(
+    /** The person's display name; `null` for Ari on its own and synced devices. */
+    val who: String?,
+    /** ari, automation, routine, brief, ari_own, reaction, chat, app, files or sync; `null` from older servers. */
+    val how: String?,
+    /** Which automation or routine, e.g. "#3"; empty when there's none. */
+    val detail: String,
+    /** The plain name older servers send: the person's name, "Ari", or "synced device". The fallback for unknown [how]s. */
     val by: String,
+)
+
+/** One change to a chat's notes and the files it touched. */
+data class NotesChange(
+    val commit: String,
+    /** ISO 8601 with the server's offset. */
+    val at: String,
+    val message: String,
+    val author: ChangeAuthor,
+    val files: List<ChangedFile>,
+)
+
+/** A file a change touched; [from] is the old path of a renamed or copied file. */
+data class ChangedFile(
+    val path: String,
+    val change: FileChange,
+    val from: String?,
+)
+
+enum class FileChange {
+    ADDED,
+    MODIFIED,
+    DELETED,
+    RENAMED,
+    COPIED,
+}
+
+/** A page of a chat's changes, newest first; [more] means older ones can be asked for. */
+data class NotesChangesPage(
+    val changes: List<NotesChange>,
+    val more: Boolean,
 )

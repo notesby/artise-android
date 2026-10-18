@@ -8,12 +8,17 @@
 package co.artise.android.notes.impl.remote
 
 import co.artise.android.notes.api.Backlink
+import co.artise.android.notes.api.ChangeAuthor
+import co.artise.android.notes.api.ChangedFile
 import co.artise.android.notes.api.DeletedFolder
+import co.artise.android.notes.api.FileChange
 import co.artise.android.notes.api.MovedFolder
 import co.artise.android.notes.api.MovedNote
 import co.artise.android.notes.api.Note
 import co.artise.android.notes.api.NoteLinks
 import co.artise.android.notes.api.NoteVersion
+import co.artise.android.notes.api.NotesChange
+import co.artise.android.notes.api.NotesChangesPage
 import co.artise.android.notes.api.NotesChat
 import co.artise.android.notes.api.NotesException
 import co.artise.android.notes.api.NotesFile
@@ -192,7 +197,43 @@ class NotesApiClient(
 
     suspend fun history(roomId: RoomId, path: String): Result<List<NoteVersion>> {
         val url = url(roomId, "history").newBuilder().addQueryParameter("path", path).build()
-        return call(get(url)) { body -> json.decodeFromString<HistoryDto>(body).versions.map { NoteVersion(it.commit, it.at, it.message, it.by) } }
+        return call(get(url)) { body ->
+            json.decodeFromString<HistoryDto>(body).versions.map {
+                NoteVersion(it.commit, it.at, it.message, ChangeAuthor(it.who, it.how, it.detail, it.by))
+            }
+        }
+    }
+
+    /** The chat's latest changes, newest first; [before] is the last commit of the previous page. */
+    suspend fun changes(roomId: RoomId, before: String?, limit: Int = CHANGES_PAGE_SIZE): Result<NotesChangesPage> {
+        val url = url(roomId, "changes").newBuilder()
+            .addQueryParameter("limit", limit.toString())
+            .apply { if (before != null) addQueryParameter("before", before) }
+            .build()
+        return call(get(url)) { body ->
+            val dto = json.decodeFromString<ChangesDto>(body)
+            NotesChangesPage(
+                changes = dto.changes.map { change ->
+                    NotesChange(
+                        commit = change.commit,
+                        at = change.at,
+                        message = change.message,
+                        author = ChangeAuthor(change.who, change.how, change.detail, change.by),
+                        files = change.files.map { ChangedFile(it.path, fileChangeOf(it.change), it.from) },
+                    )
+                },
+                more = dto.more,
+            )
+        }
+    }
+
+    // A kind a newer server adds reads as a plain modification.
+    private fun fileChangeOf(change: String) = when (change) {
+        "added" -> FileChange.ADDED
+        "deleted" -> FileChange.DELETED
+        "renamed" -> FileChange.RENAMED
+        "copied" -> FileChange.COPIED
+        else -> FileChange.MODIFIED
     }
 
     private fun url(vararg segments: String): HttpUrl = baseUrl.newBuilder().apply { segments.forEach { addPathSegment(it) } }.build()
@@ -270,6 +311,7 @@ class NotesApiClient(
     private fun Response.bodyString(): String = body.string()
 
     private companion object {
+        const val CHANGES_PAGE_SIZE = 50
         const val HTTP_UNAUTHORIZED = 401
         const val HTTP_NOT_MODIFIED = 304
     }

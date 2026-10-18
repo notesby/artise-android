@@ -25,6 +25,7 @@ dependencies {
     api(projects.artise.notes.api)
     implementation(projects.libraries.architecture)
     implementation(projects.libraries.core)
+    implementation(projects.libraries.dateformatter.api)
     implementation(projects.libraries.designsystem)
     implementation(projects.libraries.sessionStorage.api)
     implementation(projects.libraries.uiStrings)
@@ -55,6 +56,7 @@ dependencies {
     implementation(libs.appyx.core)
 
     testCommonDependencies(libs)
+    testImplementation(projects.libraries.dateformatter.test)
     testImplementation(projects.libraries.matrix.test)
     testImplementation(projects.services.analytics.test)
     testImplementation(projects.services.toolbox.test)

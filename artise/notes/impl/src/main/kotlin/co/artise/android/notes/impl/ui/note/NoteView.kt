@@ -63,6 +63,7 @@ fun NoteView(
     onBackClick: () -> Unit,
     onBacklinkClick: (String) -> Unit,
     onEditClick: () -> Unit,
+    onHistoryClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val uriHandler = LocalUriHandler.current
@@ -76,7 +77,7 @@ fun NoteView(
             TopAppBar(
                 titleStr = state.title,
                 navigationIcon = { BackButton(onClick = onBackClick) },
-                actions = { NoteActions(state, onEditClick) },
+                actions = { NoteActions(state, onEditClick, onHistoryClick) },
             )
         },
     ) { padding ->
@@ -134,7 +135,7 @@ fun NoteView(
 }
 
 @Composable
-private fun RowScope.NoteActions(state: NoteState, onEditClick: () -> Unit) {
+private fun RowScope.NoteActions(state: NoteState, onEditClick: () -> Unit, onHistoryClick: () -> Unit) {
     var showMenu by remember { mutableStateOf(false) }
     IconButton(onClick = onEditClick, enabled = state.canEdit) {
         Icon(imageVector = CompoundIcons.Edit(), contentDescription = stringResource(R.string.screen_notes_edit))
@@ -148,6 +149,13 @@ private fun RowScope.NoteActions(state: NoteState, onEditClick: () -> Unit) {
             onClick = {
                 showMenu = false
                 state.eventSink(NoteEvent.StartRename)
+            },
+        )
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.screen_notes_history_menu)) },
+            onClick = {
+                showMenu = false
+                onHistoryClick()
             },
         )
         DropdownMenuItem(
@@ -243,5 +251,5 @@ private fun Backlinks(state: BacklinksState, onBacklinkClick: (String) -> Unit) 
 @PreviewsDayNight
 @Composable
 internal fun NoteViewPreview(@PreviewParameter(NoteStatePreviewParam::class) state: NoteState) = ElementPreview {
-    NoteView(state = state, onBackClick = {}, onBacklinkClick = {}, onEditClick = {})
+    NoteView(state = state, onBackClick = {}, onBacklinkClick = {}, onEditClick = {}, onHistoryClick = {})
 }

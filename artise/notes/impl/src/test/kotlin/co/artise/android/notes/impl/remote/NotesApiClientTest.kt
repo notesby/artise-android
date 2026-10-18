@@ -7,6 +7,8 @@
 
 package co.artise.android.notes.impl.remote
 
+import co.artise.android.notes.api.ChangeAuthor
+import co.artise.android.notes.api.FileChange
 import co.artise.android.notes.api.NotesException
 import co.artise.android.notes.api.ServerCopy
 import co.artise.android.notes.impl.A_ROOM
@@ -69,6 +71,58 @@ class NotesApiClientTest {
         val links = client().links(room, "Súper.md").getOrThrow()
         assertThat(links.outgoing.single().path).isNull()
         assertThat(links.backlinks.single().line).isEqualTo("Ver [[Súper]].")
+    }
+
+    /** The change history: each change says who it was for and how, with the files it touched; the next page asks with `before`. */
+    @Test
+    fun `changes are read with their author and files, and paged with before`() = runTest {
+        server.enqueue(
+            "GET /chats/$A_ROOM_ENCODED/changes?limit=50",
+            json(
+                body = """
+                    {"changes": [
+                      {"commit": "c2", "at": "2026-10-10T18:02:11-06:00", "message": "Weekly list", "who": "Ana", "how": "automation",
+                       "detail": "#3", "by": "Ana",
+                       "files": [{"path": "Súper.md", "change": "modified"},
+                                 {"path": "Recetas/Mole poblano.md", "change": "renamed", "from": "Recetas/Mole.md"},
+                                 {"path": "x.md", "change": "typechanged"}]},
+                      {"commit": "c1", "at": "2026-10-09T08:00:00-06:00", "message": "edited outside chat", "who": null, "how": "sync",
+                       "detail": "", "by": "synced device", "files": [{"path": "Fotos/luna.jpg", "change": "deleted"}]}
+                    ], "more": true}
+                """.trimIndent(),
+            ),
+        )
+        server.enqueue("GET /chats/$A_ROOM_ENCODED/changes?limit=50&before=c1", json(body = """{"changes": [], "more": false}"""))
+        val page = client().changes(room, before = null).getOrThrow()
+        assertThat(page.more).isTrue()
+        val first = page.changes.first()
+        assertThat(first.author).isEqualTo(ChangeAuthor(who = "Ana", how = "automation", detail = "#3", by = "Ana"))
+        assertThat(first.files.map { it.change }).containsExactly(FileChange.MODIFIED, FileChange.RENAMED, FileChange.MODIFIED).inOrder()
+        assertThat(first.files[1].from).isEqualTo("Recetas/Mole.md")
+        assertThat(page.changes.last().author).isEqualTo(ChangeAuthor(who = null, how = "sync", detail = "", by = "synced device"))
+        assertThat(page.changes.last().files.single().change).isEqualTo(FileChange.DELETED)
+        assertThat(client().changes(room, before = "c1").getOrThrow().changes).isEmpty()
+    }
+
+    /** A note's versions carry who/how/detail; an older server sends only `by`, which stays the fallback. */
+    @Test
+    fun `history reads the new fields and older servers`() = runTest {
+        server.enqueue(
+            "GET /chats/$A_ROOM_ENCODED/history?path=S%C3%BAper.md",
+            json(
+                body = """
+                    {"path": "Súper.md", "versions": [
+                      {"commit": "v2", "at": "2026-10-10T18:02:11-06:00", "message": "add pan", "who": "Luis", "how": "reaction", "detail": "", "by": "Luis"},
+                      {"commit": "v1", "at": "2026-09-29T18:02:11-06:00", "message": "app: edit Súper.md", "by": "Ana"}
+                    ]}
+                """.trimIndent(),
+            ),
+        )
+        val versions = client().history(room, "Súper.md").getOrThrow()
+        assertThat(versions.map { it.author }).containsExactly(
+            ChangeAuthor(who = "Luis", how = "reaction", detail = "", by = "Luis"),
+            ChangeAuthor(who = null, how = null, detail = "", by = "Ana"),
+        ).inOrder()
     }
 
     /** With an ETag, an unchanged tree is a 304 and nothing is downloaded. */

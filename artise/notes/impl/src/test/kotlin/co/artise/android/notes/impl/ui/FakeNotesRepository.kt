@@ -15,6 +15,7 @@ import co.artise.android.notes.api.MovedNote
 import co.artise.android.notes.api.Note
 import co.artise.android.notes.api.NoteLinks
 import co.artise.android.notes.api.NoteVersion
+import co.artise.android.notes.api.NotesChangesPage
 import co.artise.android.notes.api.NotesChat
 import co.artise.android.notes.api.NotesException
 import co.artise.android.notes.api.NotesGraph
@@ -37,7 +38,12 @@ class FakeNotesRepository(
     var syncResult: (RoomId) -> Result<SyncReport> = { Result.success(SyncReport(0, 0, 0, 0)) },
     var linksResult: (RoomId, String) -> Result<NoteLinks> = { _, path -> Result.success(NoteLinks(path, emptyList(), emptyList())) },
     var seenPrivacyNotice: Boolean = false,
+    var historyResult: (RoomId, String) -> Result<List<NoteVersion>> = { _, _ -> Result.success(emptyList()) },
+    var noteAtResult: (RoomId, String, String) -> Result<Note> = { _, _, _ -> Result.failure(NotesException.NotFound("none")) },
+    /** By the `before` asked for: `null` is the first page. */
+    var changeHistoryResult: (RoomId, String?) -> Result<NotesChangesPage> = { _, _ -> Result.success(NotesChangesPage(emptyList(), more = false)) },
 ) : NotesRepository {
+    val changeHistoryRequests = mutableListOf<String?>()
     var syncCount = 0
     val backgroundSyncs = mutableListOf<RoomId>()
     val changesFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 8)
@@ -194,9 +200,14 @@ class FakeNotesRepository(
 
     override suspend fun graph(roomId: RoomId) = Result.success(NotesGraph(emptyList(), emptyList()))
 
-    override suspend fun history(roomId: RoomId, path: String) = Result.success(emptyList<NoteVersion>())
+    override suspend fun history(roomId: RoomId, path: String) = historyResult(roomId, path)
 
-    override suspend fun noteAt(roomId: RoomId, path: String, commit: String) = Result.failure<Note>(NotesException.NotFound("none"))
+    override suspend fun changeHistory(roomId: RoomId, before: String?): Result<NotesChangesPage> {
+        changeHistoryRequests += before
+        return changeHistoryResult(roomId, before)
+    }
+
+    override suspend fun noteAt(roomId: RoomId, path: String, commit: String) = noteAtResult(roomId, path, commit)
 }
 
 fun aNote(path: String, content: String? = "text", hasLocalEdits: Boolean = false) =
