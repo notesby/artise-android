@@ -10,8 +10,8 @@ package io.element.android.features.preferences.impl.notifications
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import co.artise.android.quiet.api.QuietHoursSection
-import co.artise.android.quiet.api.QuietHoursState
+import co.artise.android.quiet.api.NotificationHoursRow
+import co.artise.android.quiet.api.NotificationHoursState
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.Node
 import com.bumble.appyx.core.plugin.Plugin
@@ -28,12 +28,15 @@ class NotificationSettingsNode(
     @Assisted buildContext: BuildContext,
     @Assisted plugins: List<Plugin>,
     private val presenter: NotificationSettingsPresenter,
-    // Artise: quiet hours for this workspace.
-    private val quietHoursPresenter: Presenter<QuietHoursState>,
+    // Artise: notification hours for this workspace.
+    private val notificationHoursPresenter: Presenter<NotificationHoursState>,
 ) : Node(buildContext, plugins = plugins) {
     interface Callback : Plugin {
         fun navigateToEditDefaultNotificationSetting(isOneToOne: Boolean)
         fun navigateToTroubleshootNotifications()
+
+        // Artise: the notification hours screen.
+        fun navigateToNotificationHours()
     }
 
     private val callback: Callback = callback()
@@ -47,7 +50,7 @@ class NotificationSettingsNode(
             onBackClick = ::navigateUp,
             onTroubleshootNotificationsClick = callback::navigateToTroubleshootNotifications,
             modifier = modifier,
-            quietHours = { QuietHoursSection(quietHoursPresenter.present()) },
+            notificationHours = { NotificationHoursRow(notificationHoursPresenter.present().settings, onClick = callback::navigateToNotificationHours) },
         )
     }
 }

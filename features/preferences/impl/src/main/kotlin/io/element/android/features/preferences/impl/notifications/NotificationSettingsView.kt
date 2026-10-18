@@ -72,8 +72,8 @@ fun NotificationSettingsView(
     onTroubleshootNotificationsClick: () -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
-    // Artise: quiet hours for this workspace (artise/quiet).
-    quietHours: @Composable ColumnScope.() -> Unit = {},
+    // Artise: the notification hours row for this workspace (artise/quiet).
+    notificationHours: @Composable ColumnScope.() -> Unit = {},
 ) {
     OnLifecycleEvent { _, event ->
         when (event) {
@@ -106,7 +106,7 @@ fun NotificationSettingsView(
                 onTroubleshootNotificationsClick = onTroubleshootNotificationsClick,
             )
         }
-        if (state.matrixSettings is NotificationSettingsState.MatrixSettings.Valid) quietHours()
+        if (state.matrixSettings is NotificationSettingsState.MatrixSettings.Valid) notificationHours()
         AsyncActionView(
             async = state.changeNotificationSettingAction,
             errorMessage = { stringResource(R.string.screen_notification_settings_edit_failed_updating_default_mode) },
