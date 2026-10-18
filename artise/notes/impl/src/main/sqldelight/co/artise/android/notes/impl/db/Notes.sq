@@ -1,0 +1,158 @@
+-- Offline copy of every chat's notes, and the queue of edits made on this phone.
+-- The database is encrypted with SQLCipher: these are families' private notes.
+
+-- A chat whose notes are cached. tree/etag are what we last pulled.
+CREATE TABLE NotesChatEntity (
+    room_id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    tree TEXT,
+    etag TEXT
+);
+
+-- One file as last seen on the server, or as edited locally when an edit is queued.
+-- content is only kept for notes (is_note = 1); raw files are fetched on demand.
+CREATE TABLE NotesFileEntity (
+    room_id TEXT NOT NULL,
+    path TEXT NOT NULL,
+    version TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    modified INTEGER NOT NULL,
+    is_note INTEGER NOT NULL,
+    content TEXT,
+    PRIMARY KEY (room_id, path)
+);
+
+-- Edits waiting to reach the server, pushed in id order.
+-- kind: save | delete | upload. Moves are online-only, so they never wait here.
+-- For uploads, content is the path of the file waiting on the phone and content_type its type.
+-- state: pending (to send), conflict / deleted / exists (waiting for the person to choose),
+-- rejected (the server refused it for good, e.g. too big; error holds its message).
+-- server_version/server_content: the server's copy sent with a conflict or exists answer.
+CREATE TABLE NotesEditEntity (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    room_id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    path TEXT NOT NULL,
+    content TEXT,
+    base_version TEXT,
+    state TEXT NOT NULL DEFAULT 'pending',
+    server_version TEXT,
+    server_content TEXT,
+    error TEXT,
+    created_at INTEGER NOT NULL,
+    content_type TEXT
+);
+
+CREATE INDEX NotesEditRoom ON NotesEditEntity(room_id, state);
+
+-- One-time things this account has seen, e.g. the privacy notice.
+CREATE TABLE NotesFlagEntity (
+    name TEXT NOT NULL PRIMARY KEY
+);
+
+-- Chats
+
+selectChats:
+SELECT * FROM NotesChatEntity ORDER BY name COLLATE NOCASE;
+
+selectChat:
+SELECT * FROM NotesChatEntity WHERE room_id = ?;
+
+insertChatIfMissing:
+INSERT OR IGNORE INTO NotesChatEntity(room_id, name, tree, etag) VALUES (?, ?, NULL, NULL);
+
+renameChat:
+UPDATE NotesChatEntity SET name = ? WHERE room_id = ?;
+
+updateChatTree:
+UPDATE NotesChatEntity SET tree = ?, etag = ? WHERE room_id = ?;
+
+deleteChat:
+DELETE FROM NotesChatEntity WHERE room_id = ?;
+
+deleteChatFiles:
+DELETE FROM NotesFileEntity WHERE room_id = ?;
+
+deleteChatEdits:
+DELETE FROM NotesEditEntity WHERE room_id = ?;
+
+-- Files
+
+selectFiles:
+SELECT * FROM NotesFileEntity WHERE room_id = ? ORDER BY path COLLATE NOCASE;
+
+selectFile:
+SELECT * FROM NotesFileEntity WHERE room_id = ? AND path = ?;
+
+upsertFile:
+INSERT OR REPLACE INTO NotesFileEntity(room_id, path, version, size, modified, is_note, content)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+updateFileContent:
+UPDATE NotesFileEntity SET content = ?, size = ?, modified = ? WHERE room_id = ? AND path = ?;
+
+updateFileVersion:
+UPDATE NotesFileEntity SET version = ? WHERE room_id = ? AND path = ?;
+
+renameFile:
+UPDATE NotesFileEntity SET path = :to_path WHERE room_id = :room_id AND path = :from_path;
+
+deleteFile:
+DELETE FROM NotesFileEntity WHERE room_id = ? AND path = ?;
+
+-- Edits
+
+selectEdits:
+SELECT * FROM NotesEditEntity WHERE room_id = ? ORDER BY id;
+
+selectPendingEdits:
+SELECT * FROM NotesEditEntity WHERE room_id = ? AND state = 'pending' ORDER BY id;
+
+selectPendingSave:
+SELECT * FROM NotesEditEntity WHERE room_id = ? AND path = ? AND kind = 'save' AND state = 'pending' ORDER BY id DESC LIMIT 1;
+
+selectEdit:
+SELECT * FROM NotesEditEntity WHERE id = ?;
+
+countEditsForPath:
+SELECT COUNT(*) FROM NotesEditEntity WHERE room_id = ? AND path = ?;
+
+insertEdit:
+INSERT INTO NotesEditEntity(room_id, kind, path, content, base_version, state, created_at)
+VALUES (?, ?, ?, ?, ?, 'pending', ?);
+
+updateEditContent:
+UPDATE NotesEditEntity SET content = ? WHERE id = ?;
+
+markEdit:
+UPDATE NotesEditEntity SET state = ?, server_version = ?, server_content = ?, error = ? WHERE id = ?;
+
+requeueEdit:
+UPDATE NotesEditEntity SET state = 'pending', path = ?, content = ?, base_version = ?, server_version = NULL, server_content = NULL, error = NULL WHERE id = ?;
+
+deleteEdit:
+DELETE FROM NotesEditEntity WHERE id = ?;
+
+lastInsertedId:
+SELECT last_insert_rowid();
+
+countWaitingEdits:
+SELECT COUNT(*) FROM NotesEditEntity WHERE room_id = ? AND state != 'pending';
+
+-- Flags
+
+hasFlag:
+SELECT COUNT(*) FROM NotesFlagEntity WHERE name = ?;
+
+setFlag:
+INSERT OR IGNORE INTO NotesFlagEntity(name) VALUES (?);
+
+insertUpload:
+INSERT INTO NotesEditEntity(room_id, kind, path, content, base_version, state, created_at, content_type)
+VALUES (?, 'upload', ?, ?, NULL, 'pending', ?, ?);
+
+contentType:
+SELECT content_type FROM NotesEditEntity WHERE id = ?;
+
+renameEdit:
+UPDATE NotesEditEntity SET path = ? WHERE id = ?;

@@ -20,6 +20,7 @@ import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.matrix.api.HomeserverCapabilitiesProvider
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.analytics.SdkStoreSizes
+import io.element.android.libraries.matrix.api.auth.OpenIdToken
 import io.element.android.libraries.matrix.api.core.DeviceId
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomAlias
@@ -837,6 +838,18 @@ class RustMatrixClient(
 
     override suspend fun getMaxFileUploadSize(): Result<Long> = withContext(sessionDispatcher) {
         runCatchingExceptions { innerClient.getMaxMediaUploadSize().toLong() }
+    }
+
+    override suspend fun requestOpenIdToken(): Result<OpenIdToken> = withContext(sessionDispatcher) {
+        runCatchingExceptions {
+            val token = innerClient.requestOpenidToken()
+            OpenIdToken(
+                accessToken = token.accessToken,
+                tokenType = token.tokenType,
+                matrixServerName = token.matrixServerName,
+                expiresInSeconds = token.expiresInSeconds.toLong(),
+            )
+        }
     }
 
     override suspend fun addRecentEmoji(emoji: String): Result<Unit> = withContext(sessionDispatcher) {

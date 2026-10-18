@@ -38,6 +38,7 @@ class DefaultHomeEntryPointTest : RobolectricTest() {
                 acceptDeclineInviteView = { _, _, _, _ -> lambdaError() },
                 directLogoutView = { _ -> lambdaError() },
                 reportRoomEntryPoint = { _, _, _ -> lambdaError() },
+                notesEntryPoint = { _, _, _, _ -> lambdaError() },
                 declineInviteAndBlockUserEntryPoint = FakeDeclineInviteAndBlockEntryPoint(),
                 changeRoomMemberRolesEntryPoint = { _, _, _, _ -> lambdaError() },
                 leaveRoomRenderer = { _, _, _ -> lambdaError() },

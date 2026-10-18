@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.coroutineScope
+import co.artise.android.notes.api.NotesEntryPoint
 import com.bumble.appyx.core.lifecycle.subscribe
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.Node
@@ -85,6 +86,7 @@ class HomeFlowNode(
     private val acceptDeclineInviteView: AcceptDeclineInviteView,
     private val directLogoutView: DirectLogoutView,
     private val reportRoomEntryPoint: ReportRoomEntryPoint,
+    private val notesEntryPoint: NotesEntryPoint,
     private val declineInviteAndBlockUserEntryPoint: DeclineInviteAndBlockEntryPoint,
     private val changeRoomMemberRolesEntryPoint: ChangeRoomMemberRolesEntryPoint,
     private val leaveRoomRenderer: LeaveRoomRenderer,
@@ -131,6 +133,9 @@ class HomeFlowNode(
         data class ReportRoom(val roomId: RoomId) : NavTarget
 
         @Parcelize
+        data object Notes : NavTarget
+
+        @Parcelize
         data class DeclineInviteAndBlockUser(val inviteData: InviteData) : NavTarget
 
         @Parcelize
@@ -147,6 +152,9 @@ class HomeFlowNode(
 
     private fun onMenuActionClick(activity: Activity, roomListMenuAction: RoomListMenuAction) {
         when (roomListMenuAction) {
+            RoomListMenuAction.Notes -> {
+                backstack.push(NavTarget.Notes)
+            }
             RoomListMenuAction.InviteFriends -> {
                 inviteFriendsUseCase.execute(activity)
             }
@@ -259,6 +267,14 @@ class HomeFlowNode(
 
     override fun resolve(navTarget: NavTarget, buildContext: BuildContext): Node {
         return when (navTarget) {
+            NavTarget.Notes -> {
+                val notesCallback = object : NotesEntryPoint.Callback {
+                    override fun onDone() {
+                        backstack.pop()
+                    }
+                }
+                notesEntryPoint.createNode(this, buildContext, NotesEntryPoint.Params(roomId = null), notesCallback)
+            }
             is NavTarget.ReportRoom -> {
                 reportRoomEntryPoint.createNode(
                     parentNode = this,

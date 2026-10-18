@@ -99,6 +99,7 @@ import io.element.android.libraries.ui.strings.CommonStrings
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import co.artise.android.notes.api.R as NotesR
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -222,6 +223,22 @@ private fun RowScope.RoomListMenuItems(
             expanded = showMenu,
             onDismissRequest = { showMenu = false }
         ) {
+            if (RoomListConfig.SHOW_NOTES_MENU_ITEM) {
+                DropdownMenuItem(
+                    onClick = {
+                        showMenu = false
+                        onMenuActionClick(RoomListMenuAction.Notes)
+                    },
+                    text = { Text(stringResource(id = NotesR.string.notes_entry_title)) },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = CompoundIcons.Document(),
+                            tint = ElementTheme.colors.iconSecondary,
+                            contentDescription = null,
+                        )
+                    }
+                )
+            }
             if (RoomListConfig.SHOW_INVITE_MENU_ITEM) {
                 DropdownMenuItem(
                     onClick = {

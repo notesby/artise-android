@@ -163,7 +163,8 @@ class RoomDetailsViewTest : RobolectricTest() {
         }
     }
 
-    @Config(qualifiers = "h1024dp")
+    // Artise: the Notes row moves this item further down.
+    @Config(qualifiers = "h1280dp")
     @Test
     fun `click on security and privacy invokes expected callback`() = runAndroidComposeUiTest {
         ensureCalledOnce { callback ->
@@ -378,6 +379,7 @@ private fun AndroidComposeUiTest<ComponentActivity>.setRoomDetailView(
     onJoinCallClick: (CallIntent) -> Unit = EnsureNeverCalledWithParam(),
     onPinnedMessagesClick: () -> Unit = EnsureNeverCalled(),
     onKnockRequestsClick: () -> Unit = EnsureNeverCalled(),
+    onNotesClick: () -> Unit = EnsureNeverCalled(),
     onSecurityAndPrivacyClick: () -> Unit = EnsureNeverCalled(),
     onProfileClick: (UserId) -> Unit = EnsureNeverCalledWithParam(),
     onReportRoomClick: () -> Unit = EnsureNeverCalled(),
@@ -397,6 +399,7 @@ private fun AndroidComposeUiTest<ComponentActivity>.setRoomDetailView(
             openAdminSettings = openAdminSettings,
             onJoinCallClick = onJoinCallClick,
             onPinnedMessagesClick = onPinnedMessagesClick,
+            onNotesClick = onNotesClick,
             onKnockRequestsClick = onKnockRequestsClick,
             onSecurityAndPrivacyClick = onSecurityAndPrivacyClick,
             onProfileClick = onProfileClick,

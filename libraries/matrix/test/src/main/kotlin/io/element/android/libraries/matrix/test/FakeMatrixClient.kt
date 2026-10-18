@@ -11,6 +11,7 @@ package io.element.android.libraries.matrix.test
 import io.element.android.libraries.matrix.api.HomeserverCapabilitiesProvider
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.analytics.SdkStoreSizes
+import io.element.android.libraries.matrix.api.auth.OpenIdToken
 import io.element.android.libraries.matrix.api.core.DeviceId
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomAlias
@@ -123,6 +124,7 @@ class FakeMatrixClient(
     override val ignoredUsersFlow: StateFlow<ImmutableList<UserId>> = MutableStateFlow(persistentListOf()),
     override val ownBeaconInfoUpdates: Flow<BeaconInfoUpdate> = emptyFlow(),
     private val getMaxUploadSizeResult: () -> Result<Long> = { lambdaError() },
+    private val requestOpenIdTokenResult: () -> Result<OpenIdToken> = { lambdaError() },
     private val getJoinedRoomIdsResult: () -> Result<Set<RoomId>> = { Result.success(emptySet()) },
     private val getRecentEmojisLambda: () -> Result<List<String>> = { Result.success(emptyList()) },
     private val addRecentEmojiLambda: (String) -> Result<Unit> = { Result.success(Unit) },
@@ -416,6 +418,10 @@ class FakeMatrixClient(
 
     override suspend fun getMaxFileUploadSize(): Result<Long> {
         return getMaxUploadSizeResult()
+    }
+
+    override suspend fun requestOpenIdToken(): Result<OpenIdToken> {
+        return requestOpenIdTokenResult()
     }
 
     override suspend fun addRecentEmoji(emoji: String): Result<Unit> {

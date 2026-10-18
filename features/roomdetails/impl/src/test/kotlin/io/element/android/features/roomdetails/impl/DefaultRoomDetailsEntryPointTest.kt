@@ -65,6 +65,7 @@ class DefaultRoomDetailsEntryPointTest {
                 rolesAndPermissionsEntryPoint = FakeRolesAndPermissionsEntryPoint(),
                 securityAndPrivacyEntryPoint = FakeSecurityAndPrivacyEntryPoint(),
                 roomDetailsEditEntryPoint = FakeRoomDetailsEditEntryPoint(),
+                notesEntryPoint = { _, _, _, _ -> lambdaError() },
             )
         }
         val callback = object : RoomDetailsEntryPoint.Callback {

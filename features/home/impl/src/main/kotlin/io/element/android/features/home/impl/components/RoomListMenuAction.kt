@@ -9,6 +9,7 @@
 package io.element.android.features.home.impl.components
 
 enum class RoomListMenuAction {
+    Notes,
     InviteFriends,
     ReportBug
 }

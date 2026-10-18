@@ -10,6 +10,7 @@ package io.element.android.libraries.matrix.api
 
 import io.element.android.libraries.core.data.tryOrNull
 import io.element.android.libraries.matrix.api.analytics.SdkStoreSizes
+import io.element.android.libraries.matrix.api.auth.OpenIdToken
 import io.element.android.libraries.matrix.api.core.DeviceId
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.MatrixPatterns
@@ -428,6 +429,12 @@ interface MatrixClient : ClientUrlContentFetcher {
      * Returns the maximum file upload size allowed by the Matrix server.
      */
     suspend fun getMaxFileUploadSize(): Result<Long>
+
+    /**
+     * Requests an OpenID token, to prove the user's identity to a third-party service
+     * (Artise: the Notes API) without sharing the Matrix access token.
+     */
+    suspend fun requestOpenIdToken(): Result<OpenIdToken>
 
     /**
      * Returns the list of shared recent emoji reactions for this account.
