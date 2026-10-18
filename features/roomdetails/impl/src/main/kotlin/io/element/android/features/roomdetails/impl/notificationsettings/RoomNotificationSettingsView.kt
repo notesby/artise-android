@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import co.artise.android.sounds.api.ChatSoundRow
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.roomdetails.impl.R
 import io.element.android.libraries.core.bool.orTrue
@@ -142,6 +143,9 @@ private fun RoomSpecificNotificationSettingsView(
                     )
                 }
             }
+
+            // Artise: the chat's own sound, picked from the person's files.
+            state.chatSoundState?.let { ChatSoundRow(it) }
 
             AsyncActionView(
                 async = state.setNotificationSettingAction,

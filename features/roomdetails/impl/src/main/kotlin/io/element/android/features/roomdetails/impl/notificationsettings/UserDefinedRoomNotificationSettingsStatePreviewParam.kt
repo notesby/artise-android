@@ -33,6 +33,7 @@ internal class UserDefinedRoomNotificationSettingsStatePreviewParam : PreviewPar
                 restoreDefaultAction = AsyncAction.Uninitialized,
                 displayMentionsOnlyDisclaimer = false,
                 eventSink = { },
+                chatSoundState = null,
             ),
         )
 }

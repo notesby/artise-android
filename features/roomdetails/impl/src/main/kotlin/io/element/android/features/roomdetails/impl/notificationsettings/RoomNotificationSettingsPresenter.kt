@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import co.artise.android.sounds.api.ChatSoundState
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
@@ -43,6 +44,8 @@ class RoomNotificationSettingsPresenter(
     private val room: JoinedRoom,
     private val notificationSettingsService: NotificationSettingsService,
     @Assisted private val showUserDefinedSettingStyle: Boolean,
+    // Artise: the chat's own sound.
+    private val chatSoundPresenter: Presenter<ChatSoundState>,
 ) : Presenter<RoomNotificationSettingsState> {
     @AssistedFactory
     interface Factory {
@@ -137,6 +140,7 @@ class RoomNotificationSettingsPresenter(
             restoreDefaultAction = restoreDefaultAction.value,
             displayMentionsOnlyDisclaimer = shouldDisplayMentionsOnlyDisclaimer,
             eventSink = ::handleEvent,
+            chatSoundState = chatSoundPresenter.present(),
         )
     }
 

@@ -46,6 +46,7 @@ internal class RoomNotificationSettingsStatePreviewParam : PreviewParameterProvi
             restoreDefaultAction = restoreDefaultAction,
             displayMentionsOnlyDisclaimer = displayMentionsOnlyDisclaimer,
             eventSink = { },
+            chatSoundState = null,
         )
     }
 }

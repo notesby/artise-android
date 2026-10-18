@@ -16,6 +16,7 @@ import androidx.annotation.ColorInt
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationCompat.MessagingStyle
 import androidx.core.app.Person
+import co.artise.android.sounds.api.ChatSounds
 import coil3.ImageLoader
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
@@ -124,6 +125,8 @@ class DefaultNotificationCreator(
     private val bitmapLoader: NotificationBitmapLoader,
     private val acceptInvitationActionFactory: AcceptInvitationActionFactory,
     private val rejectInvitationActionFactory: RejectInvitationActionFactory,
+    // Artise: a chat with its own sound posts on its own channel (artise/sounds).
+    private val chatSounds: ChatSounds,
 ) : NotificationCreator {
     /**
      * Create a notification for a Room.
@@ -156,6 +159,8 @@ class DefaultNotificationCreator(
         val channelId = when {
             containsMissedCall -> notificationChannels.getChannelForIncomingCall(false)
             containsReminder -> notificationChannels.getChannelIdForReminder()
+            roomInfo.shouldBing -> chatSounds.channelIdFor(roomInfo.sessionId, roomInfo.roomId)
+                ?: notificationChannels.getChannelIdForMessage(sessionId = roomInfo.sessionId, noisy = true)
             else -> notificationChannels.getChannelIdForMessage(
                 sessionId = roomInfo.sessionId,
                 noisy = roomInfo.shouldBing,
