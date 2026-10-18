@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<!-- Artise: Element's texts that name Element, reworded for Artise. Overrides the libraries' strings. -->
+<resources>
+    <string name="element_call">Artise</string>
+    <string name="call_invalid_audio_device_bluetooth_devices_disabled">Las llamadas no pueden usar dispositivos de audio Bluetooth en esta versión de Android. Elige otro dispositivo de audio.</string>
+    <string name="screen_incoming_call_subtitle_android">Llamada entrante</string>
+    <string name="screen_room_timeline_legacy_call">Llamada no compatible. Pide a quien llama que llame desde la app de Artise.</string>
+    <string name="screen_notification_settings_sound_element_default">Artise</string>
+    <string name="screen_notification_settings_sound_element_fade">Artise (suave)</string>
+    <string name="screen_onboarding_welcome_title">El chat privado de tu familia</string>
+    <string name="screen_advanced_settings_element_call_base_url">URL base personalizada para llamadas</string>
+    <string name="screen_advanced_settings_element_call_base_url_description">Define una URL base personalizada para las llamadas.</string>
+</resources>

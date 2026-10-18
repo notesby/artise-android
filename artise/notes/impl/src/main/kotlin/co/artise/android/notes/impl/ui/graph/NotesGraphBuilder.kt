@@ -107,6 +107,8 @@ object NotesGraphBuilder {
  */
 internal object ForceLayout {
     private const val ITERATIONS = 250
+    private const val GRAVITY = 0.6f
+    private const val MARGIN = 0.12f
 
     fun layout(count: Int, edges: List<Pair<Int, Int>>): FloatArray {
         val pos = FloatArray(count * 2)
@@ -146,6 +148,12 @@ internal object ForceLayout {
                 disp[2 * b] += dx / distance * force
                 disp[2 * b + 1] += dy / distance * force
             }
+            // A gentle pull to the middle: notes with no links would otherwise drift far out, and fitting them on
+            // screen would squeeze the linked notes into an unreadable pile.
+            for (i in 0 until count) {
+                disp[2 * i] -= (pos[2 * i] - 0.5f) * GRAVITY
+                disp[2 * i + 1] -= (pos[2 * i + 1] - 0.5f) * GRAVITY
+            }
             for (i in 0 until count) {
                 val dx = disp[2 * i]
                 val dy = disp[2 * i + 1]
@@ -159,7 +167,7 @@ internal object ForceLayout {
         return normalize(pos)
     }
 
-    /** Scales the layout to fill 0.05..0.95, keeping its proportions. */
+    /** Scales the layout to fill 0.12..0.88, keeping its proportions: names under the dots near the edges still fit. */
     private fun normalize(pos: FloatArray): FloatArray {
         val xs = pos.filterIndexed { i, _ -> i % 2 == 0 }
         val ys = pos.filterIndexed { i, _ -> i % 2 == 1 }
@@ -170,7 +178,7 @@ internal object ForceLayout {
         val offsetY = (span - (ys.max() - minY)) / 2
         return FloatArray(pos.size) { i ->
             val value = if (i % 2 == 0) (pos[i] - minX + offsetX) / span else (pos[i] - minY + offsetY) / span
-            0.05f + value * 0.9f
+            MARGIN + value * (1 - 2 * MARGIN)
         }
     }
 }

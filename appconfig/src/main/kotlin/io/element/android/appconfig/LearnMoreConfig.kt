@@ -8,10 +8,11 @@
 
 package io.element.android.appconfig
 
+// Artise: "Learn more" opens Artise's help page (artise.co/help.html), in the person's language.
 object LearnMoreConfig {
-    const val ENCRYPTION_URL: String = "https://element.io/help#encryption"
-    const val DEVICE_VERIFICATION_URL: String = "https://element.io/help#encryption-device-verification"
-    const val SECURE_BACKUP_URL: String = "https://element.io/help#encryption5"
-    const val IDENTITY_CHANGE_URL: String = "https://element.io/help#encryption18"
-    const val HISTORY_VISIBLE_URL: String = "https://element.io/en/help#e2ee-history-sharing"
+    const val ENCRYPTION_URL: String = "https://artise.co/help.html#encryption"
+    const val DEVICE_VERIFICATION_URL: String = "https://artise.co/help.html#verification"
+    const val SECURE_BACKUP_URL: String = "https://artise.co/help.html#recovery"
+    const val IDENTITY_CHANGE_URL: String = "https://artise.co/help.html#identity"
+    const val HISTORY_VISIBLE_URL: String = "https://artise.co/help.html#history"
 }

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<!-- Artise: Element's texts that name Element, reworded for Artise. Overrides the libraries' strings. -->
+<resources>
+    <string name="call_invalid_audio_device_bluetooth_devices_disabled">"Calls can’t use Bluetooth audio devices in this Android version. Please choose another audio device."</string>
+    <string name="screen_advanced_settings_element_call_base_url">"Custom calls base URL"</string>
+    <string name="screen_advanced_settings_element_call_base_url_description">"Set a custom base URL for calls."</string>
+    <string name="screen_incoming_call_subtitle_android">"Incoming call"</string>
+    <string name="screen_onboarding_welcome_title">"Your family’s private chat"</string>
+    <string name="screen_room_timeline_legacy_call">"Nepodporované volání. Zeptejte se, zda volající může používat novou aplikaci Artise."</string>
+</resources>

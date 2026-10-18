@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,7 +67,12 @@ fun StickerPickerView(
     state: StickerPickerState,
     onDismiss: () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss, scrollable = false) {
+    // Opened all the way: half-open, its last line (the starter pack credits) would sit under the navigation bar.
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        scrollable = false,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    ) {
         StickerPickerContent(state)
     }
     StickerPickerDialogs(state)
