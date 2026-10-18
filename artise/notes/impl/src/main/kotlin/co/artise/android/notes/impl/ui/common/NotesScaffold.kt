@@ -16,7 +16,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import co.artise.android.notes.impl.ui.chats.NotesSyncStatus
+import co.artise.android.workspace.api.LocalWorkspaceBranding
+import co.artise.android.workspace.api.LocalWorkspaceSwitcher
+import co.artise.android.workspace.api.WorkspaceNameLine
 import io.element.android.libraries.designsystem.components.button.BackButton
 import io.element.android.libraries.designsystem.theme.components.Scaffold
 import io.element.android.libraries.designsystem.theme.components.TopAppBar
@@ -51,6 +55,16 @@ internal fun NotesScaffold(
                 .padding(padding)
                 .consumeWindowInsets(padding)
         ) {
+            // With several workspaces, whose notes these are.
+            val workspace = LocalWorkspaceBranding.current
+            val workspaceName = workspace.name
+            if (workspaceName != null && LocalWorkspaceSwitcher.current.workspaces.size > 1) {
+                WorkspaceNameLine(
+                    name = workspaceName,
+                    logoUrl = workspace.logoUrl,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+            }
             NotesSyncStatusLine(sync)
             PullToRefreshBox(isRefreshing = isRefreshing, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
                 content()

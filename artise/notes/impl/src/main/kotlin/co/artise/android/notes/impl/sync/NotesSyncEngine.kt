@@ -387,9 +387,15 @@ class NotesSyncEngine(
         }
     }
 
-    /** Keeps the phone's copies under [MAX_CACHE_BYTES], removing the least recently used first. */
+    /**
+     * Keeps the phone's copies under [MAX_CACHE_BYTES], removing the least recently used first. One limit for the whole app: the copies
+     * of every workspace on this phone count together (each workspace has its folder next to this one).
+     */
     private fun trimCache() {
-        val cached = attachmentsDir.listFiles()?.filter { it.isFile }?.sortedBy { it.lastModified() } ?: return
+        // Only inside the notes' own cache folder, never anywhere else.
+        val shared = attachmentsDir.parentFile?.takeIf { it.name == ATTACHMENTS_CACHE_FOLDER }
+        val allWorkspaces = shared?.listFiles()?.filter { it.isDirectory } ?: listOf(attachmentsDir)
+        val cached = allWorkspaces.flatMap { dir -> dir.listFiles()?.filter { it.isFile }.orEmpty() }.sortedBy { it.lastModified() }
         var total = cached.sumOf { it.length() }
         for (file in cached) {
             if (total <= MAX_CACHE_BYTES) break
@@ -829,7 +835,10 @@ class NotesSyncEngine(
         private const val FLAG_PRIVACY_NOTICE = "privacy_notice_seen"
         const val ATTACHMENTS_FOLDER = "attachments"
 
-        /** Room on the phone for downloaded photos and files; files waiting to upload aren't counted or removed. */
+        /** The phone folder holding every workspace's downloaded copies, one subfolder each (see NotesBindingContainer). */
+        const val ATTACHMENTS_CACHE_FOLDER = "notes_attachments"
+
+        /** Room on the phone for downloaded photos and files, for all workspaces together; files waiting to upload aren't counted or removed. */
         const val MAX_CACHE_BYTES = 300L * 1024 * 1024
 
         /** Bigger photos only download when their note is opened. */
