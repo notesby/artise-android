@@ -26,6 +26,10 @@ data class WorkspaceBranding(
     private val features: Set<String>?,
     /** Null when the server has no web host: then no notes and no delete-account page. */
     val links: WorkspaceLinks?,
+    /** Ari's Matrix account: its chat is pinned at the top of the chat list. */
+    val assistantUserId: String? = null,
+    /** Whom "Escribirle al administrador" writes to. */
+    val contactUserId: String? = null,
 ) {
     /** Whether the notes screens can be offered (the server has a Notes API). */
     val hasNotes: Boolean get() = links?.notesApi != null
@@ -55,6 +59,8 @@ data class WorkspaceBranding(
                 assistantName = config.assistantName ?: DEFAULT_ASSISTANT_NAME,
                 features = config.features,
                 links = config.links,
+                assistantUserId = config.assistantUserId,
+                contactUserId = config.contactUserId,
             )
         }
     }

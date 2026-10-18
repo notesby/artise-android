@@ -34,6 +34,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import co.artise.android.workspace.api.WorkspaceHelpItems
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.preferences.impl.R
@@ -364,6 +365,8 @@ private fun ColumnScope.GeneralSection(
             onClick = onOpenLabs,
         )
     }
+    // Artise: the workspace's help page and its admin.
+    WorkspaceHelpItems()
     ListItem(
         content = { Text(stringResource(id = CommonStrings.common_about)) },
         leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Info())),

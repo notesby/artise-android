@@ -117,4 +117,29 @@ class WorkspaceFileParserTest {
         assertThat(config).isEqualTo(WorkspaceConfig(welcome = mapOf("es" to "Hola")))
         listOf("#FFF", "#1F6FEB80", "1F6FEB", "#GGGGGG").forEach { assertThat(WorkspaceFileParser.parseColor(it)).isNull() }
     }
+
+    /** mas-k8s's file (17 Oct): Ari's account, the admin to write to, the help page, no minimum version yet, and the Play link. */
+    @Test
+    fun `help, assistant, contact and update fields are read`() {
+        val config = WorkspaceFileParser.parse(
+            """
+            {"co.artise.workspace": {"links": {"web": "https://chat.mas-k8s.artise.co", "help": "https://artise.co/help"},
+            "assistant_user_id": "@wikibot:mas-k8s.artise.co", "contact_user_id": "@hector:mas-k8s.artise.co",
+            "min_app_version": {}, "store_links": {"android": "https://play.google.com/store/apps/details?id=co.artise.app"}}}
+            """.trimIndent()
+        )!!
+        assertThat(config.links?.help).isEqualTo("https://artise.co/help")
+        assertThat(config.assistantUserId).isEqualTo("@wikibot:mas-k8s.artise.co")
+        assertThat(config.contactUserId).isEqualTo("@hector:mas-k8s.artise.co")
+        assertThat(config.minAndroidVersionCode).isNull()
+        assertThat(config.androidStoreLink).isEqualTo("https://play.google.com/store/apps/details?id=co.artise.app")
+
+        val withMinimum = WorkspaceFileParser.parse("""{"co.artise.workspace": {"min_app_version": {"android": 202609100, "ios": "26.9.10"}}}""")!!
+        assertThat(withMinimum.minAndroidVersionCode).isEqualTo(202_609_100L)
+        val wrongTypes = WorkspaceFileParser.parse(
+            """{"co.artise.workspace": {"min_app_version": {"android": "202609100"}, "assistant_user_id": "wikibot"}}"""
+        )!!
+        assertThat(wrongTypes.minAndroidVersionCode).isNull()
+        assertThat(wrongTypes.assistantUserId).isNull()
+    }
 }
