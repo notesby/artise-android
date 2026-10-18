@@ -10,7 +10,7 @@
     <string name="screen_workspace_subtitle">Digite o nome do seu espaço de trabalho. Seu administrador pode informá-lo.</string>
     <string name="screen_workspace_field_label">Espaço de trabalho</string>
     <string name="screen_workspace_error_invalid">Esse nome não é válido. Use de 3 a 30 letras, números ou hífens.</string>
-    <string name="screen_workspace_error_not_found">Nenhum espaço de trabalho chamado %1$s</string>
+    <string name="screen_workspace_error_not_found">Não há nenhum espaço de trabalho chamado %1$s. Confira o nome e tente de novo.</string>
     <string name="screen_workspace_error_paused">Este espaço de trabalho está pausado. Fale com o administrador.</string>
     <string name="screen_workspace_error_too_many_tries">Muitas tentativas. Espere um minuto e tente de novo.</string>
     <string name="screen_workspace_error_unreachable">Não foi possível conectar ao Artise. Verifique sua conexão e tente de novo.</string>
@@ -26,6 +26,6 @@
     <string name="screen_artise_id_workspaces_title">Escolha seu espaço de trabalho</string>
     <string name="screen_artise_id_no_workspaces_title">Ainda sem espaços de trabalho</string>
     <string name="screen_artise_id_no_workspaces">Você ainda não está em nenhum espaço de trabalho. Peça o link de convite a quem te convidou.</string>
-    <string name="screen_artise_id_error_sign_in">Não foi possível entrar com a Artise. Tente novamente.</string>
+    <string name="screen_artise_id_error_sign_in">Não foi possível entrar com o Artise ID. Tente de novo.</string>
     <string name="screen_artise_id_already_open">Já aberto</string>
 </resources>

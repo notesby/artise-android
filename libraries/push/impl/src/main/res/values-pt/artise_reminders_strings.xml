@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<resources>
+    <string name="artise_notification_channel_reminders">Lembretes</string>
+    <string name="artise_notification_channel_reminders_description">Lembretes importantes e críticos do Ari, como os de remédios. Eles aparecem mesmo quando uma conversa está silenciada.</string>
+</resources>

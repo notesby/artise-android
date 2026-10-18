@@ -7,10 +7,13 @@
   -->
 <!-- Artise: Element's texts that name Element, reworded for Artise. Overrides the libraries' strings. -->
 <resources>
-    <string name="call_invalid_audio_device_bluetooth_devices_disabled">"Calls can’t use Bluetooth audio devices in this Android version. Please choose another audio device."</string>
-    <string name="screen_advanced_settings_element_call_base_url">"Custom calls base URL"</string>
-    <string name="screen_advanced_settings_element_call_base_url_description">"Set a custom base URL for calls."</string>
-    <string name="screen_incoming_call_subtitle_android">"Incoming call"</string>
-    <string name="screen_onboarding_welcome_title">"Your family’s private chat"</string>
-    <string name="screen_room_timeline_legacy_call">"Chamada não suportada. Pergunta se é possível utilizar a nova aplicação Artise."</string>
+    <string name="element_call">Artise</string>
+    <string name="call_invalid_audio_device_bluetooth_devices_disabled">As chamadas não podem usar dispositivos de áudio Bluetooth nesta versão do Android. Escolha outro dispositivo de áudio.</string>
+    <string name="screen_incoming_call_subtitle_android">Chamada recebida</string>
+    <string name="screen_room_timeline_legacy_call">Chamada não compatível. Peça para quem está ligando usar o app do Artise.</string>
+    <string name="screen_notification_settings_sound_element_default">Artise</string>
+    <string name="screen_notification_settings_sound_element_fade">Artise (suave)</string>
+    <string name="screen_onboarding_welcome_title">A conversa privada da sua família</string>
+    <string name="screen_advanced_settings_element_call_base_url">URL base personalizada para chamadas</string>
+    <string name="screen_advanced_settings_element_call_base_url_description">Defina uma URL base personalizada para as chamadas.</string>
 </resources>

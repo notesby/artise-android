@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<resources>
+    <string name="screen_stickers_mine">Minhas</string>
+    <string name="screen_stickers_starter">Pacote inicial</string>
+    <string name="screen_stickers_make">Criar uma figurinha com uma foto</string>
+    <string name="screen_stickers_empty">Crie figurinhas com suas fotos: toque em +. Elas ficam salvas na sua conta, em todos os seus aparelhos.</string>
+    <string name="screen_stickers_starter_credit">Figurinhas iniciais: Fluent Emoji da Microsoft (Licença MIT)</string>
+    <string name="screen_stickers_preview_title">Sua figurinha</string>
+    <string name="screen_stickers_not_cut_out">Não encontramos nada para recortar, então a foto inteira é usada.</string>
+    <string name="screen_stickers_save_and_send">Salvar e enviar</string>
+    <string name="screen_stickers_save">Salvar nas minhas figurinhas</string>
+    <string name="screen_stickers_remove_title">Remover esta figurinha?</string>
+    <string name="screen_stickers_remove_message">Ela será removida das suas figurinhas em todos os seus aparelhos. As mensagens já enviadas continuam com ela.</string>
+    <string name="screen_stickers_remove">Remover</string>
+    <string name="screen_stickers_send_failed">Não foi possível enviar a figurinha. Confira sua conexão e tente de novo.</string>
+    <string name="screen_stickers_make_failed">Não foi possível criar uma figurinha com esta foto. Tente outra.</string>
+    <string name="screen_stickers_save_failed">Não foi possível salvar a figurinha. Confira sua conexão e tente de novo.</string>
+    <string name="screen_stickers_remove_failed">Não foi possível remover a figurinha. Confira sua conexão e tente de novo.</string>
+</resources>

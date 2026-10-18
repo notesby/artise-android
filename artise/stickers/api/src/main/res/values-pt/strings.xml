@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2026 Artise.
+  ~
+  ~ SPDX-License-Identifier: AGPL-3.0-only.
+  ~ Please see LICENSE files in the repository root for full details.
+  -->
+<resources>
+    <string name="screen_stickers_open">Figurinhas</string>
+    <string name="screen_stickers_save_received">Salvar nas minhas figurinhas</string>
+    <string name="screen_stickers_saved">Salva nas suas figurinhas</string>
+    <string name="screen_stickers_save_received_failed">Não foi possível salvar a figurinha. Confira sua conexão e tente de novo.</string>
+    <string name="screen_stickers_add_title">Adicionar às minhas figurinhas</string>
+    <string name="screen_stickers_add_signed_out">Entre no Artise primeiro e depois compartilhe a figurinha de novo.</string>
+    <string name="screen_stickers_add_failed">Não foi possível adicionar esta imagem às suas figurinhas.</string>
+    <string name="screen_stickers_add_share_label">Figurinha do Artise</string>
+</resources>

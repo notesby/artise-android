@@ -7,10 +7,10 @@
 
 package io.element.android.libraries.push.impl.notifications.factories
 
-import co.artise.android.quiet.test.FakeQuietHours
 import android.app.Notification
 import android.service.notification.StatusBarNotification
 import androidx.core.app.NotificationCompat
+import co.artise.android.quiet.test.FakeQuietHours
 import com.google.common.truth.Truth.assertThat
 import io.element.android.libraries.matrix.test.AN_EVENT_ID_2
 import io.element.android.libraries.matrix.test.A_ROOM_ID
