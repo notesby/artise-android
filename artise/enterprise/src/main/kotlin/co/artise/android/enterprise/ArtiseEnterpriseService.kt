@@ -26,6 +26,9 @@ import kotlinx.coroutines.flow.flowOf
 const val ARTISE_SERVER_NAME = "artise.co"
 const val ARTISE_BASE_URL = "https://matrix.artise.co"
 
+/** Artise's own Sygnal, which holds the credentials for the Artise Firebase project. */
+const val ARTISE_PUSH_GATEWAY = "$ARTISE_BASE_URL/_matrix/push/v1/notify"
+
 /** Artise blue, `--blue` on the artise.co site. */
 val ARTISE_BRAND_COLOR = Color(0xFF22408A)
 
@@ -39,7 +42,7 @@ val artiseAccountProvider = AccountProvider.Managed(
  * Replaces Element's FOSS [EnterpriseService] so the app is locked to artise.co, uses the Artise brand color
  * and never sends bug reports to Element.
  *
- * The push gateways stay `null` (app default) until Artise runs its own Sygnal.
+ * Firebase pushes go through Artise's own Sygnal; UnifiedPush keeps the app default gateway.
  * Only this service is replaced; the rest of `:features:enterprise:impl-foss` is still used as is.
  */
 @ContributesBinding(AppScope::class, replaces = [DefaultEnterpriseService::class])
@@ -59,7 +62,7 @@ class ArtiseEnterpriseService : EnterpriseService {
 
     override fun semanticColorsFlow(sessionId: SessionId?): Flow<SemanticColorsLightDark> = flowOf(SemanticColorsLightDark.default)
 
-    override fun firebasePushGateway(): String? = null
+    override fun firebasePushGateway(): String = ARTISE_PUSH_GATEWAY
     override fun unifiedPushDefaultPushGateway(): String? = null
 
     override fun bugReportUrlFlow(sessionId: SessionId?): Flow<BugReportUrl> = flowOf(BugReportUrl.Disabled)
