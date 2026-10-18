@@ -130,6 +130,8 @@ android {
                 "login_redirect_scheme",
                 "$oAuthRedirectSchemeBase.debug",
             )
+            // Artise: the same scheme for unit tests (OAuthRedirectSchemeTest), which don't read resources.
+            buildConfigFieldStr("LOGIN_REDIRECT_SCHEME", "$oAuthRedirectSchemeBase.debug")
             applicationIdSuffix = ".debug"
             signingConfig = signingConfigs.getByName("debug")
         }
@@ -141,6 +143,8 @@ android {
                 "login_redirect_scheme",
                 oAuthRedirectSchemeBase,
             )
+            // Artise: the same scheme for unit tests (OAuthRedirectSchemeTest), which don't read resources.
+            buildConfigFieldStr("LOGIN_REDIRECT_SCHEME", oAuthRedirectSchemeBase)
             // Signed with the upload key when it's on this computer; otherwise with the debug key, for trying a
             // release build on a phone (Play refuses debug-signed bundles).
             signingConfig = signingConfigs.findByName("artiseUpload") ?: signingConfigs.getByName("debug")
@@ -168,6 +172,8 @@ android {
                 "login_redirect_scheme",
                 "$oAuthRedirectSchemeBase.nightly",
             )
+            // Artise: the same scheme for unit tests (OAuthRedirectSchemeTest), which don't read resources.
+            buildConfigFieldStr("LOGIN_REDIRECT_SCHEME", "$oAuthRedirectSchemeBase.nightly")
             matchingFallbacks += listOf("release")
             signingConfig = signingConfigs.getByName("nightly")
 

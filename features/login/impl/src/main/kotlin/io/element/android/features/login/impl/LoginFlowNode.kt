@@ -13,7 +13,11 @@ import android.os.Parcelable
 import androidx.activity.compose.LocalActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.lifecycleScope
 import co.artise.android.workspace.api.SignInWorkspaceHolder
 import co.artise.android.workspace.api.WorkspaceInvite
@@ -34,17 +38,21 @@ import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.login.api.LoginEntryPoint
 import io.element.android.features.login.impl.accountprovider.AccountProviderDataSource
 import io.element.android.features.login.impl.classic.ElementClassicConnection
+import io.element.android.features.login.impl.login.LoginModeState
+import io.element.android.features.login.impl.login.WorkspaceLoginMode
 import io.element.android.features.login.impl.qrcode.QrCodeLoginFlowNode
 import io.element.android.features.login.impl.screens.chooseaccountprovider.ChooseAccountProviderNode
 import io.element.android.features.login.impl.screens.classic.ClassicFlowNode
 import io.element.android.features.login.impl.screens.confirmaccountprovider.ConfirmAccountProviderNode
 import io.element.android.features.login.impl.screens.loginpassword.LoginPasswordNode
 import io.element.android.features.login.impl.screens.onboarding.OnBoardingNode
+import io.element.android.features.login.impl.util.openLearnMorePage
 import io.element.android.features.preferences.api.PreferencesEntryPoint
 import io.element.android.libraries.androidutils.browser.openUrlInChromeCustomTab
 import io.element.android.libraries.architecture.BackstackView
 import io.element.android.libraries.architecture.BaseFlowNode
 import io.element.android.libraries.architecture.NodeInputs
+import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.architecture.callback
 import io.element.android.libraries.architecture.createNode
 import io.element.android.libraries.architecture.inputs
@@ -75,6 +83,7 @@ class LoginFlowNode(
     // Artise: signing in starts with the workspace's name.
     private val workspaceSignInEntryPoint: WorkspaceSignInEntryPoint,
     private val signInWorkspaceHolder: SignInWorkspaceHolder,
+    private val loginModePresenter: Presenter<LoginModeState>,
 ) : BaseFlowNode<LoginFlowNode.NavTarget>(
     backstack = BackStack(
         initialElement = NavTarget.CheckClassicFlow,
@@ -93,6 +102,9 @@ class LoginFlowNode(
     private var darkTheme: Boolean = false
 
     private var externalAppStarted = false
+
+    // Artise: the server the workspace step found, until WorkspaceLoginMode has submitted it.
+    private val workspaceServerName = mutableStateOf<String?>(null)
 
     override fun onBuilt() {
         super.onBuilt()
@@ -279,7 +291,8 @@ class LoginFlowNode(
                     override fun onWorkspaceReady(serverName: String) {
                         lifecycleScope.launch {
                             accountProviderDataSource.setUrl(serverName)
-                            backstack.push(NavTarget.LoginPassword())
+                            // Artise: WorkspaceLoginMode then opens the server's sign-in page (OAuth) or the password screen.
+                            workspaceServerName.value = serverName
                         }
                     }
                 }
@@ -327,5 +340,19 @@ class LoginFlowNode(
             }
         }
         BackstackView(transitionHandler = rememberLoginFlowTransitionHandler())
+
+        // Artise: signs in to the workspace the workspace step found, while that step is showing.
+        val elements by backstack.elements.collectAsState()
+        if (elements.lastOrNull { it.targetState == BackStack.State.ACTIVE }?.key?.navTarget is NavTarget.Workspace) {
+            val context = LocalContext.current
+            WorkspaceLoginMode(
+                serverName = workspaceServerName.value,
+                loginModePresenter = loginModePresenter,
+                onSubmitServer = { workspaceServerName.value = null },
+                onLearnMoreClick = { openLearnMorePage(context) },
+                onOAuthDetails = ::navigateToMas,
+                onNeedLoginPassword = { backstack.push(NavTarget.LoginPassword()) },
+            )
+        }
     }
 }

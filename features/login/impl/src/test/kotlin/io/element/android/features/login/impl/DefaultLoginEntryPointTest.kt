@@ -18,6 +18,7 @@ import com.google.common.truth.Truth.assertThat
 import io.element.android.features.login.api.LoginEntryPoint
 import io.element.android.features.login.impl.accountprovider.anAccountProviderDataSource
 import io.element.android.features.login.impl.classic.FakeElementClassicConnection
+import io.element.android.features.login.impl.login.aLoginModeState
 import io.element.android.features.preferences.test.FakePreferencesEntryPoint
 import io.element.android.libraries.oauth.test.FakeOAuthActionFlow
 import io.element.android.tests.testutils.lambda.lambdaError
@@ -54,6 +55,7 @@ class DefaultLoginEntryPointTest {
                     ) = lambdaError()
                 },
                 signInWorkspaceHolder = FakeSignInWorkspaceHolder(),
+                loginModePresenter = { aLoginModeState() },
             )
         }
         val callback = object : LoginEntryPoint.Callback {
