@@ -8,6 +8,7 @@
 package co.artise.android.notes.impl.ui
 
 import co.artise.android.notes.api.LocalFile
+import co.artise.android.notes.api.MediaFile
 import co.artise.android.notes.api.MovedNote
 import co.artise.android.notes.api.Note
 import co.artise.android.notes.api.NoteLinks
@@ -109,6 +110,20 @@ class FakeNotesRepository(
     val cancelledUploads = mutableListOf<String>()
 
     override suspend fun uploads(roomId: RoomId): Map<String, UploadStatus> = uploads.toMap()
+
+    val media = mutableListOf<MediaFile>()
+    val deletedMedia = mutableListOf<Pair<String, Boolean>>()
+    var deleteMediaResult: (path: String, removeFromNotes: Boolean) -> Result<Unit> = { _, _ -> Result.success(Unit) }
+
+    override suspend fun media(roomId: RoomId): List<MediaFile> = media.toList()
+
+    override suspend fun cachedAttachment(roomId: RoomId, path: String): File? = null
+
+    override suspend fun deleteMedia(roomId: RoomId, path: String, removeFromNotes: Boolean): Result<Unit> =
+        deleteMediaResult(path, removeFromNotes).onSuccess {
+            deletedMedia += path to removeFromNotes
+            media.removeAll { it.path == path }
+        }
 
     override suspend fun retryUpload(roomId: RoomId, path: String) {
         retriedUploads += path

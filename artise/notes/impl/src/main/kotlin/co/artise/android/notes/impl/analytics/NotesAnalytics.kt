@@ -24,7 +24,8 @@ enum class NotesScreen : VectorAnalyticsScreen {
     NoteEditor,
     NotesSearch,
     NotesMap,
-    NotesChoices;
+    NotesChoices,
+    NotesMedia;
 
     override fun getName(): String = name
 
@@ -41,6 +42,7 @@ enum class NotesAction {
     UploadCancelled,
     ChoiceMade,
     SearchUsed,
+    MediaDeleted,
 }
 
 /** One notes action; [kind] says "photo" or "document" for attachments, or which choice was made. */

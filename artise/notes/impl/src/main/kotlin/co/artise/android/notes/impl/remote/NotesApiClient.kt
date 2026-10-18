@@ -232,6 +232,7 @@ class NotesApiClient(
             "deleted" -> NotesException.Deleted(message)
             "too_big" -> NotesException.TooBig(message)
             "not_a_note" -> NotesException.NotANote(message)
+            "in_use" -> NotesException.InUse(message, dto.usedBy)
             else -> if (response.code == HTTP_UNAUTHORIZED) NotesException.Unauthorized(message) else NotesException.Server(response.code, message)
         }
     }

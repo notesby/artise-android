@@ -10,6 +10,8 @@ package co.artise.android.notes.impl.sync
 import co.artise.android.notes.api.EditKind
 import co.artise.android.notes.api.EditState
 import co.artise.android.notes.api.LocalFile
+import co.artise.android.notes.api.MediaFile
+import co.artise.android.notes.api.MediaInUseException
 import co.artise.android.notes.api.MovedNote
 import co.artise.android.notes.api.Note
 import co.artise.android.notes.api.NoteLinks
@@ -28,11 +30,13 @@ import co.artise.android.notes.impl.analytics.NotesEvent
 import co.artise.android.notes.impl.attachments.PhotoConverter
 import co.artise.android.notes.impl.attachments.PrefetchPolicy
 import co.artise.android.notes.impl.local.NotesLocalStore
+import co.artise.android.notes.impl.media.NoteReferences
 import co.artise.android.notes.impl.remote.NotesApiClient
 import co.artise.android.notes.impl.remote.TreeResponse
 import co.artise.android.notes.impl.ui.note.NoteEmbedRemover
 import co.artise.android.notes.impl.ui.note.NoteEmbeds
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
+import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.services.analytics.api.AnalyticsService
 import io.element.android.services.toolbox.api.systemclock.SystemClock
@@ -173,6 +177,11 @@ class NotesSyncEngine(
 
     override suspend fun deleteFile(roomId: RoomId, path: String) {
         analyticsService.capture(NotesEvent(NotesAction.NoteDeleted))
+        queueDelete(roomId, path)
+    }
+
+    /** Removes the file from the phone's copy and queues its deletion on the server. */
+    private suspend fun queueDelete(roomId: RoomId, path: String) {
         io {
             store.transaction {
                 val file = store.file(roomId, path) ?: return@transaction
@@ -229,6 +238,46 @@ class NotesSyncEngine(
         }
         notifyChanged(roomId)
         return Result.success(path)
+    }
+
+    override suspend fun media(roomId: RoomId): List<MediaFile> = io {
+        val files = store.files(roomId)
+        val paths = files.map { it.path }
+        val usedBy = NoteReferences.index(files.filter { it.isNote && it.content != null }.map { it.path to it.content.orEmpty() }, paths)
+        val uploads = uploadStatuses(roomId)
+        files.filterNot { it.isNote }.map { file ->
+            MediaFile(file.path, file.size, file.modified, usedBy[file.path].orEmpty(), uploads[file.path])
+        }
+    }
+
+    override suspend fun cachedAttachment(roomId: RoomId, path: String): File? = io {
+        store.pendingEdits(roomId).firstOrNull { it.kind == EditKind.UPLOAD && it.path == path }?.content?.let(::File)
+            ?: store.file(roomId, path)?.version?.takeIf { it.isNotEmpty() }?.let { cacheFileFor(roomId, path, it) }?.takeIf { it.exists() }
+    }
+
+    override suspend fun deleteMedia(roomId: RoomId, path: String, removeFromNotes: Boolean): Result<Unit> = runCatchingExceptions {
+        // Not on the server yet: dropping the upload is enough.
+        if (uploads(roomId).containsKey(path)) {
+            cancelUpload(roomId, path)
+            return@runCatchingExceptions
+        }
+        // The latest notes first, so a note that started using the file since isn't missed (needs a connection).
+        sync(roomId).getOrThrow()
+        val onServer = api.links(roomId, path).getOrThrow().backlinks.map { it.path }
+        val files = io { store.files(roomId) }
+        val paths = files.map { it.path }
+        val onPhone = files.filter { it.isNote && it.content != null && path in NoteReferences.filesUsed(it.content.orEmpty(), paths) }.map { it.path }
+        val usedBy = (onServer + onPhone).distinct().sorted()
+        if (usedBy.isNotEmpty() && !removeFromNotes) throw MediaInUseException(usedBy)
+        for (note in usedBy) {
+            val content = files.firstOrNull { it.path == note }?.content ?: continue
+            val updated = NoteReferences.remove(content, path, paths)
+            if (updated != content) editNote(roomId, note, updated)
+        }
+        analyticsService.capture(NotesEvent(NotesAction.MediaDeleted))
+        // Queued after the notes' changes, so the server sees them first.
+        queueDelete(roomId, path)
+        syncInBackground(roomId)
     }
 
     override suspend fun attachment(roomId: RoomId, path: String): Result<File> {
@@ -298,7 +347,9 @@ class NotesSyncEngine(
 
     override suspend fun edits(roomId: RoomId): List<PendingEdit> = io { store.edits(roomId) }
 
-    override suspend fun uploads(roomId: RoomId): Map<String, UploadStatus> = edits(roomId)
+    override suspend fun uploads(roomId: RoomId): Map<String, UploadStatus> = io { uploadStatuses(roomId) }
+
+    private fun uploadStatuses(roomId: RoomId): Map<String, UploadStatus> = store.edits(roomId)
         .filter { it.kind == EditKind.UPLOAD }
         .associate { edit ->
             edit.path to when {

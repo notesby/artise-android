@@ -112,4 +112,31 @@
     <string name="screen_notes_upload_keep">Conservar</string>
     <string name="screen_notes_upload_cancel_title">¿Cancelar esta subida?</string>
     <string name="screen_notes_upload_cancel_message">“%1$s” todavía no está en el servidor. Se quitará de este teléfono y de la nota.</string>
+    <string name="screen_notes_media_title">Fotos y archivos</string>
+    <string name="screen_notes_media_all">Todos</string>
+    <string name="screen_notes_media_unused">Sin usar (%1$d)</string>
+    <string name="screen_notes_media_delete_unused">Borrar los que no se usan (%1$s)</string>
+    <string name="screen_notes_media_empty">Todavía no hay fotos ni archivos en estas notas.</string>
+    <string name="screen_notes_media_none_unused">Todas las fotos y archivos se usan en alguna nota.</string>
+    <string name="screen_notes_media_not_used">No se usa en ninguna nota</string>
+    <string name="screen_notes_media_open">Abrir</string>
+    <string name="screen_notes_media_delete">Borrar</string>
+    <string name="screen_notes_media_delete_title">¿Borrar “%1$s”?</string>
+    <string name="screen_notes_media_delete_message">Ninguna nota lo usa. Se borra para todos en este chat. Antes de borrarlo, Artise vuelve a revisar que ninguna nota lo use.</string>
+    <string name="screen_notes_media_in_use_title">“%1$s” se usa en notas</string>
+    <string name="screen_notes_media_in_use_message">Se muestra o enlaza en:\n%1$s\n\nAl borrarlo también se quita de estas notas (un enlace conserva sus palabras). Se borra para todos en este chat.</string>
+    <string name="screen_notes_media_remove_and_delete">Quitar de las notas y borrar</string>
+    <string name="screen_notes_media_delete_unused_message">Ocupan %1$s. Cada uno se vuelve a revisar antes de borrarlo; si alguno sí se usa, se conserva y se te pregunta.</string>
+    <string name="screen_notes_media_offline">Para borrar se necesita conexión, para asegurar que ninguna nota use el archivo. Inténtalo cuando tengas internet.</string>
+    <string name="screen_notes_media_failed">No se pudo borrar. Inténtalo de nuevo.</string>
+    <plurals name="screen_notes_media_used_in">
+        <item quantity="one">Se usa en %1$d nota</item>
+        <item quantity="many">Se usa en %1$d notas</item>
+        <item quantity="other">Se usa en %1$d notas</item>
+    </plurals>
+    <plurals name="screen_notes_media_delete_unused_title">
+        <item quantity="one">¿Borrar %1$d archivo sin usar?</item>
+        <item quantity="many">¿Borrar %1$d archivos sin usar?</item>
+        <item quantity="other">¿Borrar %1$d archivos sin usar?</item>
+    </plurals>
 </resources>

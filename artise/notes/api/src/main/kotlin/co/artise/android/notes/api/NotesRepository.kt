@@ -71,6 +71,19 @@ interface NotesRepository {
     /** Photos and files added on this phone and not on the server yet, by path. [changes] tells when this changes. */
     suspend fun uploads(roomId: RoomId): Map<String, UploadStatus>
 
+    /** Every photo and file in the chat's notes, with the notes that use each one (from the notes on the phone). */
+    suspend fun media(roomId: RoomId): List<MediaFile>
+
+    /** The photo or file's copy on the phone, if it's there already; never downloads. */
+    suspend fun cachedAttachment(roomId: RoomId, path: String): File?
+
+    /**
+     * Deletes a photo or file. It needs a connection: the notes are refreshed and the server is asked which notes use
+     * it, so nothing in use is deleted by mistake. When notes use it, it fails with [MediaInUseException], unless
+     * [removeFromNotes], which first takes it out of those notes. A file not uploaded yet is just dropped.
+     */
+    suspend fun deleteMedia(roomId: RoomId, path: String, removeFromNotes: Boolean): Result<Unit>
+
     /** Tries a waiting, failing or refused upload again now. */
     suspend fun retryUpload(roomId: RoomId, path: String)
 

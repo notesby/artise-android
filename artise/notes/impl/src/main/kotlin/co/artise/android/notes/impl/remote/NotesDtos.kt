@@ -97,6 +97,8 @@ internal data class ErrorDto(
     val error: String,
     val message: String? = null,
     val current: CurrentDto? = null,
+    /** For `in_use`: the notes that use the file. */
+    @SerialName("used_by") val usedBy: List<String> = emptyList(),
 )
 
 @Serializable

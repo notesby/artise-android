@@ -45,6 +45,8 @@ class NotesFolderNode(
         fun openEditor(roomId: RoomId, path: String)
         fun openChoices(roomId: RoomId)
         fun openMap(roomId: RoomId)
+
+        fun openMedia(roomId: RoomId)
     }
 
     private val inputs: Inputs = inputs()
@@ -61,6 +63,7 @@ class NotesFolderNode(
             onSearchClick = { callback.openSearch(inputs.roomId) },
             onReviewChoicesClick = { callback.openChoices(inputs.roomId) },
             onMapClick = { callback.openMap(inputs.roomId) },
+            onMediaClick = { callback.openMedia(inputs.roomId) },
             modifier = modifier,
         )
     }

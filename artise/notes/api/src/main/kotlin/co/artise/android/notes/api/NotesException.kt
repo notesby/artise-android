@@ -35,6 +35,9 @@ sealed class NotesException(message: String, cause: Throwable? = null) : Excepti
     /** Over 1 MB for a note, 50 MB for a file. */
     class TooBig(message: String) : NotesException(message)
 
+    /** The server keeps a photo or file that notes use ([usedBy]); take it out of them first. */
+    class InUse(message: String, val usedBy: List<String>) : NotesException(message)
+
     /** A photo or document: use the raw endpoints. */
     class NotANote(message: String) : NotesException(message)
 
