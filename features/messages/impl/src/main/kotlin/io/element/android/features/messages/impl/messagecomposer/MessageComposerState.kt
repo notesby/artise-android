@@ -9,6 +9,7 @@
 package io.element.android.features.messages.impl.messagecomposer
 
 import androidx.compose.runtime.Stable
+import co.artise.android.linkpreview.api.ComposerLinkPreview
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.textcomposer.mentions.ResolvedSuggestion
 import io.element.android.libraries.textcomposer.model.MessageComposerMode
@@ -29,5 +30,7 @@ data class MessageComposerState(
     val resolveMentionDisplay: (String, String) -> TextDisplay,
     val resolveAtRoomMentionDisplay: () -> TextDisplay,
     val slashCommandAction: AsyncAction<Unit>,
+    /** Artise: the preview that will go with the message, for its first link. */
+    val linkPreview: ComposerLinkPreview?,
     val eventSink: (MessageComposerEvent) -> Unit,
 )

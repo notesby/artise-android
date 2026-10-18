@@ -306,6 +306,23 @@ class RustTimeline(
         }
     }
 
+    override suspend fun sendMessageWithExtraContent(
+        body: String,
+        htmlBody: String?,
+        intentionalMentions: List<IntentionalMention>,
+        extraContent: String,
+    ): Result<Unit> = withContext(dispatcher) {
+        MessageEventContent.from(
+            body = body,
+            htmlBody = htmlBody,
+            intentionalMentions = intentionalMentions,
+        ).use { content ->
+            runCatchingExceptions<Unit> {
+                inner.sendWithExtraContent(content, extraContent)
+            }
+        }
+    }
+
     override suspend fun redactEvent(eventOrTransactionId: EventOrTransactionId, reason: String?): Result<Unit> = withContext(dispatcher) {
         runCatchingExceptions {
             inner.redactEvent(
