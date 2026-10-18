@@ -66,6 +66,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -196,7 +197,10 @@ fun TimelineView(
                 currentUserId = state.timelineRoomInfo.currentUserId,
             )
         }
-        CompositionLocalProvider(LocalTimelineEventRendererConfig provides composeLocalTimelineEventRendererConfig) {
+        CompositionLocalProvider(
+            LocalTimelineEventRendererConfig provides composeLocalTimelineEventRendererConfig,
+            LocalViewConfiguration provides rememberQuickLongPressViewConfiguration(),
+        ) {
             Box(modifier) {
                 LazyColumn(
                     modifier = Modifier
