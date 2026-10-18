@@ -65,6 +65,7 @@ dependencies {
     implementation(projects.libraries.uiStrings)
     implementation(projects.artise.workspace.api) // Artise: sign-out names the workspace
     implementation(projects.artise.quiet.api) // Artise: quiet hours per workspace
+    implementation(projects.artise.notes.api) // Artise: updating notes in the background
     implementation(projects.libraries.matrixui)
     implementation(projects.libraries.mediaviewer.api)
     implementation(projects.libraries.mediapickers.api)

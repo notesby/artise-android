@@ -7,9 +7,6 @@
 
 package co.artise.android.notes.impl.auth
 
-import dev.zacsweers.metro.ContributesBinding
-import dev.zacsweers.metro.SingleIn
-import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.services.toolbox.api.systemclock.SystemClock
 import kotlinx.coroutines.sync.Mutex
@@ -28,9 +25,8 @@ interface NotesTokenSource {
  * Hands out the OpenID token the Notes API signs in with. The Matrix access token never leaves the app.
  *
  * A token is reused until [REFRESH_MARGIN_MILLIS] before it expires; [invalidate] drops it after a 401.
+ * Made by [co.artise.android.notes.impl.background.NotesEngines], one per account.
  */
-@SingleIn(SessionScope::class)
-@ContributesBinding(SessionScope::class)
 class DefaultNotesTokenSource(
     private val matrixClient: MatrixClient,
     private val systemClock: SystemClock,
