@@ -31,13 +31,20 @@ class DefaultNotesBackgroundSync(
 
     override suspend fun syncChatInAnyAccount(roomId: RoomId): Boolean {
         if (!isAllowedNow()) return false
-        val holders = accounts.withNotes()
-            .mapNotNull { accounts.open(it) }
-            .filter { account -> account.repository.cachedChats().any { it.roomId == roomId } }
-        return holders.map { it.repository.sync(roomId).isSuccess }.any { it }
+        return holdersOf(roomId).map { it.repository.sync(roomId).isSuccess }.any { it }
     }
 
-    override fun onNotesPush(roomId: RoomId) = scheduler.scheduleChat(roomId, settings.network.value)
+    override suspend fun onNotesPush(roomId: RoomId): Boolean {
+        // Same rule as the other background syncs: only chats whose notes are already on this phone.
+        if (holdersOf(roomId).isEmpty()) return false
+        scheduler.scheduleChat(roomId, settings.network.value)
+        return true
+    }
+
+    /** The accounts that have [roomId]'s notes on this phone (one, since a room id belongs to one workspace's server). */
+    private suspend fun holdersOf(roomId: RoomId): List<NotesAccount> = accounts.withNotes()
+        .mapNotNull { accounts.open(it) }
+        .filter { account -> account.repository.cachedChats().any { it.roomId == roomId } }
 
     override suspend fun syncAll() {
         for (sessionId in accounts.withNotes()) {

@@ -8,12 +8,14 @@
 package co.artise.android.notes.impl.background
 
 import android.content.Context
+import android.os.Build
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -32,6 +34,7 @@ import io.element.android.libraries.di.annotations.ApplicationContext
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.workmanager.api.di.MetroWorkerFactory
 import io.element.android.libraries.workmanager.api.di.WorkerKey
+import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
 /** While the app is closed: every 15 minutes (Android's shortest), the chats whose notes are on this phone sync. */
@@ -62,7 +65,8 @@ class NotesChatSyncWorker(
 ) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val roomId = inputData.getString(ROOM_ID)?.let(::RoomId) ?: return Result.failure()
-        backgroundSync.syncChatInAnyAccount(roomId)
+        // Room ids only: never a chat's or a note's name.
+        if (backgroundSync.syncChatInAnyAccount(roomId)) Timber.i("Notes: push synced $roomId") else Timber.i("Notes: push skipped $roomId")
         return Result.success()
     }
 
@@ -116,6 +120,10 @@ class DefaultNotesSyncScheduler(
         val request = OneTimeWorkRequestBuilder<NotesChatSyncWorker>()
             .setConstraints(NotesSyncScheduler.constraintsFor(network))
             .setInputData(workDataOf(NotesChatSyncWorker.ROOM_ID to roomId.value))
+            .apply {
+                // Expedited where it runs without a notification (Android 12+); earlier versions would have to show one.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+            }
             .build()
         WorkManager.getInstance(context).enqueueUniqueWork(NotesSyncScheduler.WORK_NAME + "_" + roomId.value, ExistingWorkPolicy.REPLACE, request)
     }

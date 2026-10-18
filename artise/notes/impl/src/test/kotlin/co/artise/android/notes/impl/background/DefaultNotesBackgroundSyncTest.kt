@@ -79,11 +79,19 @@ class DefaultNotesBackgroundSyncTest {
 
     /** The push itself only queues a job for that chat, with the connection the setting allows; the job waits for it. */
     @Test
-    fun `a push queues a job with the setting's connection`() {
-        sync.onNotesPush(room)
+    fun `a push queues a job with the setting's connection`() = runTest {
+        assertThat(sync.onNotesPush(room)).isTrue()
         settings.set(NotesBackgroundNetwork.WIFI_AND_MOBILE)
         sync.onNotesPush(room)
         assertThat(scheduler.chats).containsExactly(room to NotesBackgroundNetwork.WIFI_ONLY, room to NotesBackgroundNetwork.WIFI_AND_MOBILE).inOrder()
+        assertThat(repository.syncCount).isEqualTo(0)
+    }
+
+    /** A push for a chat whose notes aren't on this phone is ignored: no job, no sync. */
+    @Test
+    fun `a push for a chat not on the phone is ignored`() = runTest {
+        assertThat(sync.onNotesPush(RoomId("!desconocido:artise.co"))).isFalse()
+        assertThat(scheduler.chats).isEmpty()
     }
 
     /** Only a data message with artise_notes_room_id is a notes push; a regular message push (room_id, event_id) isn't. */

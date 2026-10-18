@@ -39,10 +39,10 @@ interface NotesBackgroundSync {
     suspend fun syncChatInAnyAccount(roomId: RoomId): Boolean
 
     /**
-     * The server's silent push said [roomId]'s notes changed: syncs that chat in the background once the connection the setting
-     * allows is there. Returns at once; safe to call while the app is closed.
+     * The server's silent push said [roomId]'s notes changed: when that chat's notes are on this phone, queues a background sync that
+     * waits for the connection the setting allows, and returns true; otherwise ignores it. Safe to call while the app is closed.
      */
-    fun onNotesPush(roomId: RoomId)
+    suspend fun onNotesPush(roomId: RoomId): Boolean
 
     /** Syncs every chat whose notes are on this phone, in every account, when allowed. */
     suspend fun syncAll()

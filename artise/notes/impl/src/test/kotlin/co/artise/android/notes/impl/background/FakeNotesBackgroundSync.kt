@@ -21,8 +21,9 @@ class FakeNotesBackgroundSync(var allowed: Boolean = true) : NotesBackgroundSync
 
     val pushes = mutableListOf<RoomId>()
 
-    override fun onNotesPush(roomId: RoomId) {
+    override suspend fun onNotesPush(roomId: RoomId): Boolean {
         pushes += roomId
+        return true
     }
 
     override suspend fun syncAll() = Unit

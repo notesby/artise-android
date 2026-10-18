@@ -55,7 +55,7 @@ class VectorFirebaseMessagingService : FirebaseMessagingService() {
 
         // Artise: checked before the message parser, so a notes push is never treated as a message.
         NotesPush.roomIdOf(message.data)?.let { roomId ->
-            notesBackgroundSync.onNotesPush(roomId)
+            coroutineScope.launch { notesBackgroundSync.onNotesPush(roomId) }
             return
         }
 
