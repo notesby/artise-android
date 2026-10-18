@@ -69,6 +69,51 @@ WORDING = {
     # Signing in a new phone from this one with a QR code
     "common_link_new_device": ("Connect a phone", "Conectar un teléfono", "Conectar um celular"),
     "screen_onboarding_sign_in_with_qr_code": ("Scan with my other phone", "Escanear con mi otro teléfono", "Escanear com meu outro celular"),
+    # Plain errors and empty screens
+    "error_unknown": ("Something went wrong. Try again.", "Algo salió mal. Inténtalo de nuevo.", "Algo deu errado. Tente de novo."),
+    "error_failed_loading_messages": (
+        "Couldn’t load the messages. Check your connection.",
+        "No se pudieron cargar los mensajes. Revisa tu conexión.",
+        "Não foi possível carregar as mensagens. Confira sua conexão.",
+    ),
+    "error_failed_uploading_voice_message": (
+        "Couldn’t send your voice message. Try again.",
+        "No se pudo enviar tu mensaje de voz. Inténtalo de nuevo.",
+        "Não foi possível enviar sua mensagem de voz. Tente de novo.",
+    ),
+    "error_failed_creating_the_permalink": ("Couldn’t create the link", "No se pudo crear el enlace", "Não foi possível criar o link"),
+    "error_some_messages_have_not_been_sent": (
+        "Some messages weren’t sent. Tap them to try again.",
+        "Algunos mensajes no se enviaron. Tócalos para intentarlo de nuevo.",
+        "Algumas mensagens não foram enviadas. Toque nelas para tentar de novo.",
+    ),
+    "common_offline": ("No connection", "Sin conexión", "Sem conexão"),
+    "screen_roomlist_empty_title": ("No chats yet", "Todavía no hay chats", "Ainda não há conversas"),
+    "screen_roomlist_empty_message": (
+        "Start one with the + button, or ask Ari for anything.",
+        "Empieza uno con el botón +, o pídele algo a Ari.",
+        "Comece uma com o botão +, ou peça algo ao Ari.",
+    ),
+    "screen_roomlist_filter_favourites_empty_state_title": (
+        "No favourite chats yet",
+        "Todavía no tienes chats favoritos",
+        "Você ainda não tem conversas favoritas",
+    ),
+    "screen_roomlist_filter_favourites_empty_state_subtitle": (
+        "Mark a chat as a favourite from its details to keep it here.",
+        "Marca un chat como favorito desde su información para tenerlo aquí.",
+        "Marque uma conversa como favorita nas informações dela para mantê-la aqui.",
+    ),
+    "screen_roomlist_filter_unreads_empty_state_title": (
+        "You’re all caught up",
+        "Estás al día",
+        "Você está em dia",
+    ),
+    "screen_roomlist_filter_invites_empty_state_title": (
+        "No invites waiting",
+        "No tienes invitaciones pendientes",
+        "Você não tem convites pendentes",
+    ),
     # Chat list
     "screen_roomlist_a11y_create_message": ("Start a new chat", "Empezar un chat nuevo", "Começar uma conversa nova"),
     "screen_roomlist_filter_rooms": ("Groups", "Grupos", "Grupos"),
