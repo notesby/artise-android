@@ -10,6 +10,7 @@ package io.element.android.libraries.push.impl.notifications
 
 import android.app.Notification
 import androidx.compose.ui.graphics.Color
+import co.artise.android.quiet.test.FakeQuietHours
 import com.google.common.truth.Truth.assertThat
 import io.element.android.features.enterprise.api.EnterpriseService
 import io.element.android.features.enterprise.test.FakeEnterpriseService
@@ -664,6 +665,7 @@ fun TestScope.createDefaultNotificationDrawerManager(
                 roomGroupMessageCreator = roomGroupMessageCreator,
                 summaryGroupMessageCreator = summaryGroupMessageCreator,
                 activeNotificationsProvider = activeNotificationsProvider,
+                quietHours = FakeQuietHours(),
             ),
             enterpriseService = enterpriseService,
             sessionStore = sessionStore,

@@ -10,6 +10,7 @@ package io.element.android.libraries.push.impl.notifications
 
 import android.app.Notification
 import androidx.core.app.NotificationCompat
+import co.artise.android.quiet.api.QuietHours
 import coil3.ImageLoader
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
@@ -66,6 +67,8 @@ class DefaultNotificationDataFactory(
     private val roomGroupMessageCreator: RoomGroupMessageCreator,
     private val summaryGroupMessageCreator: SummaryGroupMessageCreator,
     private val activeNotificationsProvider: ActiveNotificationsProvider,
+    // Artise: quiet hours per workspace keep the summary silent too.
+    private val quietHours: QuietHours,
 ) : NotificationDataFactory {
     override suspend fun toNotifications(
         messages: List<NotifiableMessageEvent>,
@@ -91,7 +94,8 @@ class DefaultNotificationDataFactory(
                     threadId = threadId,
                     messageCount = events.size,
                     latestTimestamp = events.maxOf { it.timestamp },
-                    shouldBing = events.any { it.noisy }
+                    shouldBing = events.any { it.noisy } &&
+                        !quietHours.isQuietNow(notificationAccountParams.user.userId, isMention = events.any { it.hasMentionOrReply })
                 )
             }
         }

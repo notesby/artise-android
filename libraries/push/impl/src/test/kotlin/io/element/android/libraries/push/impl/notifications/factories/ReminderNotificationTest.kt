@@ -7,6 +7,7 @@
 
 package io.element.android.libraries.push.impl.notifications.factories
 
+import co.artise.android.quiet.test.FakeQuietHours
 import android.app.Notification
 import android.service.notification.StatusBarNotification
 import androidx.core.app.NotificationCompat
@@ -118,6 +119,7 @@ class ReminderNotificationTest : RobolectricTest() {
                 activeNotificationsProvider = FakeActiveNotificationsProvider(
                     getNotificationsForSessionResult = { shown.map { aStatusBarNotification(it) } },
                 ),
+                quietHours = FakeQuietHours(),
             )
             val result = factory.createSummaryNotification(
                 roomNotifications = listOf(

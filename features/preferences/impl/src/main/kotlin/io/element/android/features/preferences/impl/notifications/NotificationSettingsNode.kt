@@ -10,12 +10,15 @@ package io.element.android.features.preferences.impl.notifications
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import co.artise.android.quiet.api.QuietHoursSection
+import co.artise.android.quiet.api.QuietHoursState
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.Node
 import com.bumble.appyx.core.plugin.Plugin
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedInject
 import io.element.android.annotations.ContributesNode
+import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.architecture.callback
 import io.element.android.libraries.di.SessionScope
 
@@ -25,6 +28,8 @@ class NotificationSettingsNode(
     @Assisted buildContext: BuildContext,
     @Assisted plugins: List<Plugin>,
     private val presenter: NotificationSettingsPresenter,
+    // Artise: quiet hours for this workspace.
+    private val quietHoursPresenter: Presenter<QuietHoursState>,
 ) : Node(buildContext, plugins = plugins) {
     interface Callback : Plugin {
         fun navigateToEditDefaultNotificationSetting(isOneToOne: Boolean)
@@ -42,6 +47,7 @@ class NotificationSettingsNode(
             onBackClick = ::navigateUp,
             onTroubleshootNotificationsClick = callback::navigateToTroubleshootNotifications,
             modifier = modifier,
+            quietHours = { QuietHoursSection(quietHoursPresenter.present()) },
         )
     }
 }

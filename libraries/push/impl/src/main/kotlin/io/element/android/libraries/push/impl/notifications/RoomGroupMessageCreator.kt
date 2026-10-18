@@ -10,6 +10,7 @@ package io.element.android.libraries.push.impl.notifications
 
 import android.app.Notification
 import android.graphics.Bitmap
+import co.artise.android.quiet.api.QuietHours
 import coil3.ImageLoader
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
@@ -41,6 +42,8 @@ class DefaultRoomGroupMessageCreator(
     private val bitmapLoader: NotificationBitmapLoader,
     private val stringProvider: StringProvider,
     private val notificationCreator: NotificationCreator,
+    // Artise: quiet hours per workspace (artise/quiet).
+    private val quietHours: QuietHours,
 ) : RoomGroupMessageCreator {
     override suspend fun createRoomMessage(
         notificationAccountParams: NotificationAccountParams,
@@ -73,7 +76,8 @@ class DefaultRoomGroupMessageCreator(
                 roomDisplayName = roomName,
                 isDm = roomIsDm,
                 hasSmartReplyError = smartReplyErrors.isNotEmpty(),
-                shouldBing = events.any { it.noisy },
+                shouldBing = events.any { it.noisy } &&
+                    !quietHours.isQuietNow(notificationAccountParams.user.userId, isMention = events.any { it.hasMentionOrReply }),
                 customSound = events.last().soundName,
                 isUpdated = events.last().let { it.isUpdated || it.outGoingMessage },
             ),

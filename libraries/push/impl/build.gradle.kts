@@ -69,6 +69,7 @@ dependencies {
     implementation(libs.sqldelight.coroutines)
     implementation(projects.libraries.encryptedDb)
     implementation(projects.artise.sounds.api) // Artise: a chat's own notification sound
+    implementation(projects.artise.quiet.api) // Artise: quiet hours per workspace
 
     implementation(projects.appconfig)
     implementation(projects.libraries.architecture)
@@ -104,6 +105,7 @@ dependencies {
     testImplementation(libs.coil.test)
     testImplementation(projects.libraries.matrix.test)
     testImplementation(projects.artise.sounds.test)
+    testImplementation(projects.artise.quiet.test)
     testImplementation(projects.libraries.matrixmedia.test)
     testImplementation(projects.libraries.preferences.test)
     testImplementation(projects.libraries.sessionStorage.test)

@@ -11,6 +11,7 @@ package io.element.android.libraries.push.impl.notifications
 import android.content.Context
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import co.artise.android.quiet.test.FakeQuietHours
 import com.google.common.truth.Truth.assertThat
 import io.element.android.appconfig.NotificationConfig
 import io.element.android.features.enterprise.api.EnterpriseService
@@ -246,6 +247,7 @@ fun createRoomGroupMessageCreator(
             enterpriseService = enterpriseService,
         ),
         bitmapLoader = bitmapLoader,
-        stringProvider = AndroidStringProvider(context.resources)
+        stringProvider = AndroidStringProvider(context.resources),
+        quietHours = FakeQuietHours(),
     )
 }
