@@ -27,6 +27,7 @@ class FakeSummaryGroupMessageCreator(
         roomNotifications: List<RoomNotification>,
         invitationNotifications: List<OneShotNotification>,
         simpleNotifications: List<OneShotNotification>,
+        onReminderChannel: Boolean,
     ): Notification {
         return createSummaryNotificationResult(
             notificationAccountParams,
