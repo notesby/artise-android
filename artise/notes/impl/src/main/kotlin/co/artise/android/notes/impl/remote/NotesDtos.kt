@@ -78,7 +78,21 @@ internal data class LinksDto(
 )
 
 @Serializable
-internal data class OutgoingDto(val target: String, val path: String? = null)
+internal data class OutgoingDto(val target: String, val path: String? = null, val candidates: List<String> = emptyList())
+
+@Serializable
+internal data class PagesDto(val pages: List<PageDto> = emptyList())
+
+@Serializable
+internal data class PageDto(
+    val path: String,
+    val title: String,
+    val type: String = "",
+    val folder: String = "",
+    val aliases: List<String> = emptyList(),
+    val summary: String = "",
+    val note: Boolean = true,
+)
 
 @Serializable
 internal data class BacklinkDto(val path: String, val line: String)

@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import co.artise.android.notes.api.NotesPage
 import co.artise.android.notes.impl.R
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.libraries.designsystem.components.dialogs.ListDialog
@@ -41,6 +42,7 @@ import kotlinx.collections.immutable.persistentListOf
 fun LinkEditDialog(
     edit: LinkEditState,
     notePaths: ImmutableList<String>,
+    pages: ImmutableList<NotesPage>,
     onSave: (EditableLink) -> Unit,
     onRemove: () -> Unit,
     onDismiss: () -> Unit,
@@ -51,7 +53,7 @@ fun LinkEditDialog(
     var shownText by rememberSaveable { mutableStateOf(edit.link.shownText) }
     val isNote = edit.link.isNote
     val suggestions = if (isNote) {
-        WikiLinkSuggestions.suggestionsFor(target, notePaths, currentPath = null).filter { it.linkText != target.trim() }.take(4)
+        WikiLinkSuggestions.suggestionsFor(target, notePaths, currentPath = null, pages = pages).filter { it.linkText != target.trim() }.take(4)
     } else {
         emptyList()
     }
@@ -127,6 +129,7 @@ internal fun LinkEditDialogPreview(@PreviewParameter(LinkEditStatePreviewParam::
     LinkEditDialog(
         edit = edit,
         notePaths = persistentListOf("Recetas/Mole.md", "Viejo/Mole.md", "Súper.md"),
+        pages = persistentListOf(),
         onSave = {},
         onRemove = {},
         onDismiss = {},

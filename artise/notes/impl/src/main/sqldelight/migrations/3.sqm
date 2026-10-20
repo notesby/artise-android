@@ -1,0 +1,13 @@
+-- Version 3 → 4: the chat's pages (GET /pages), so links by title or alias resolve offline too.
+ALTER TABLE NotesChatEntity ADD COLUMN pages_tree TEXT;
+CREATE TABLE NotesPageEntity (
+    room_id TEXT NOT NULL,
+    path TEXT NOT NULL,
+    title TEXT NOT NULL,
+    type TEXT NOT NULL,
+    folder TEXT NOT NULL,
+    aliases TEXT NOT NULL,
+    summary TEXT NOT NULL,
+    is_note INTEGER NOT NULL,
+    PRIMARY KEY (room_id, path)
+);

@@ -8,6 +8,8 @@
 package co.artise.android.notes.impl.ui.graph
 
 import co.artise.android.notes.api.LocalFile
+import co.artise.android.notes.api.NotesPage
+import co.artise.android.notes.impl.markdown.LinkResolution
 import co.artise.android.notes.impl.markdown.NoteLinkResolver
 import co.artise.android.notes.impl.markdown.NoteMarkdownParser
 import co.artise.android.notes.impl.markdown.WikiLinkRewriter
@@ -26,13 +28,17 @@ data class NotesGraphModel(
     val edges: List<Pair<Int, Int>>,
 )
 
-/** A note on the map: [x] and [y] in 0..1, [degree] = how many notes it's linked with. */
+/**
+ * A note on the map: [x] and [y] in 0..1, [degree] = how many notes it's linked with. [isPage] marks a person, place
+ * or thing with its own note (a folder the chat's `SCHEMA.md` marks `(pages)`), drawn with a ring.
+ */
 data class GraphNode(
     val path: String,
     val name: String,
     val x: Float,
     val y: Float,
     val degree: Int,
+    val isPage: Boolean = false,
 )
 
 /**
@@ -40,16 +46,18 @@ data class GraphNode(
  * Links are read like on the note screen: `[[wiki links]]` and Markdown links to other notes; photos are left out.
  */
 object NotesGraphBuilder {
-    fun build(files: List<LocalFile>): NotesGraphModel {
+    fun build(files: List<LocalFile>, pages: Collection<NotesPage> = emptyList()): NotesGraphModel {
         val notes = files.filter { it.isNote && it.path.endsWith(".md") }.sortedBy { it.path.lowercase() }
         val paths = notes.map { it.path }
+        val pagePaths = pages.filter { it.isNote }.map { it.path }.toSet()
         val index = paths.withIndex().associate { (i, path) -> path to i }
         val edges = linkedSetOf<Pair<Int, Int>>()
         for (note in notes) {
             val from = index.getValue(note.path)
             val targets = linkTargets(note.content.orEmpty())
             for (target in targets) {
-                val to = NoteLinkResolver.resolve(target, paths)?.let(index::get) ?: continue
+                // A page's title or alias links too ([[Mamá]] → people/Ana.md); a name two notes share links to neither.
+                val to = (NoteLinkResolver.resolve(target, paths, pages) as? LinkResolution.Found)?.path?.let(index::get) ?: continue
                 if (to != from) edges += min(from, to) to max(from, to)
             }
         }
@@ -69,6 +77,7 @@ object NotesGraphBuilder {
                     x = positions[2 * i],
                     y = positions[2 * i + 1],
                     degree = degrees[i],
+                    isPage = note.path in pagePaths,
                 )
             },
             edges = edgeList,

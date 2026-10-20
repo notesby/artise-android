@@ -96,6 +96,7 @@ class NotesSyncEngineTest {
         server.enqueue(tree, treeResponse("t1", "Súper.md" to "v1", "Mole.md" to "m1", "luna.jpg" to "p1"))
         server.enqueue(noteKey("S%C3%BAper.md"), note("Súper.md", "v1", "- leche"))
         server.enqueue(noteKey("Mole.md"), note("Mole.md", "m1", "# Mole"))
+        server.enqueue(pagesKey, json(body = """{"pages": []}"""))
         sync(room).getOrThrow()
     }
 
@@ -779,5 +780,49 @@ class NotesSyncEngineTest {
         assertThat(engine.deleteFolder(room, "Viajes", recursive = true).getOrThrow().notes).isEqualTo(1)
         assertThat(engine.files(room)).isEmpty()
         assertThat(engine.folders(room)).isEmpty()
+    }
+
+    private val pagesKey = "GET /chats/$A_ROOM_ENCODED/pages"
+    private val anaPage =
+        """{"path": "people/Ana.md", "title": "Ana", "type": "person", "folder": "people", "aliases": ["Mamá"], "summary": "", "note": true}"""
+
+    /** Pages are fetched with the notes and kept on the phone; an unchanged tree doesn't fetch them again, a changed one does. */
+    @Test
+    fun `pages follow the tree`() = runTest {
+        val engine = engine()
+        server.enqueue(pagesKey, json(body = """{"pages": [$anaPage]}"""))
+        engine.firstSync()
+        assertThat(engine.pages(room).single().aliases).containsExactly("Mamá")
+
+        server.enqueue(tree, MockResponse().setResponseCode(304))
+        engine.sync(room).getOrThrow()
+        assertThat(server.requestsTo(pagesKey)).hasSize(1)
+
+        server.enqueue(tree, treeResponse("t2", "Súper.md" to "v1", "Mole.md" to "m1", "luna.jpg" to "p1"))
+        server.enqueue(pagesKey, json(body = """{"pages": []}"""))
+        engine.sync(room).getOrThrow()
+        assertThat(server.requestsTo(pagesKey)).hasSize(2)
+        assertThat(engine.pages(room)).isEmpty()
+    }
+
+    /**
+     * A failed pages request doesn't fail the sync (links then resolve by file name) and is tried again next time;
+     * a server without the endpoint counts as having no pages, so it isn't asked again until the notes change.
+     */
+    @Test
+    fun `pages failing leaves the sync alone`() = runTest {
+        val engine = engine()
+        server.enqueue(pagesKey, MockResponse().setResponseCode(500))
+        engine.firstSync()
+        assertThat(engine.file(room, "Súper.md")?.content).isEqualTo("- leche")
+        assertThat(engine.pages(room)).isEmpty()
+        server.requests.clear()
+        server.enqueue(tree, MockResponse().setResponseCode(304))
+        server.enqueue(pagesKey, error(404, "not_found"))
+        engine.sync(room).getOrThrow()
+        assertThat(server.requestsTo(pagesKey)).hasSize(1)
+        server.enqueue(tree, MockResponse().setResponseCode(304))
+        engine.sync(room).getOrThrow()
+        assertThat(server.requestsTo(pagesKey)).hasSize(1)
     }
 }

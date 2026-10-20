@@ -117,6 +117,12 @@ interface NotesRepository {
     /** Drops the edit and goes back to the server's copy. */
     suspend fun discardEdit(editId: Long)
 
+    /**
+     * The chat's pages (people, places, things, photos, documents) with their titles and aliases, as of the last sync.
+     * Kept on the phone, so `[[links]]` by title or alias resolve offline too; empty before the first sync.
+     */
+    suspend fun pages(roomId: RoomId): List<NotesPage>
+
     // Online-only reads.
 
     suspend fun search(roomId: RoomId, query: String): Result<List<NotesSearchResult>>

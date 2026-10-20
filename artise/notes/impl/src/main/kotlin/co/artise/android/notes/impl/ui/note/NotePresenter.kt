@@ -16,9 +16,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import co.artise.android.notes.api.LocalFile
 import co.artise.android.notes.api.NotesException
+import co.artise.android.notes.api.NotesPage
 import co.artise.android.notes.api.NotesRepository
+import co.artise.android.notes.api.OutgoingLink
 import co.artise.android.notes.api.UploadStatus
 import co.artise.android.notes.impl.markdown.ChecklistToggle
+import co.artise.android.notes.impl.markdown.LinkResolution
+import co.artise.android.notes.impl.markdown.NoteFrontmatter
 import co.artise.android.notes.impl.markdown.NoteLinkResolver
 import co.artise.android.notes.impl.ui.common.NoteNameProblem
 import co.artise.android.notes.impl.ui.common.NoteNames
@@ -77,7 +81,14 @@ class NotePresenter(
         var embeds by remember { mutableStateOf<ImmutableMap<String, EmbedState>>(persistentMapOf()) }
         var openFile by remember { mutableStateOf<OpenFileRequest?>(null) }
         var uploads by remember { mutableStateOf<Map<String, UploadStatus>>(emptyMap()) }
+        var pages by remember { mutableStateOf(emptyList<NotesPage>()) }
+        var outgoing by remember { mutableStateOf(emptyList<OutgoingLink>()) }
 
+        LaunchedEffect(Unit) {
+            // Pages (titles, aliases) decide where a tapped [[link]] goes; a sync may add some while the note is open.
+            pages = repository.pages(roomId)
+            repository.changes(roomId).collect { pages = repository.pages(roomId) }
+        }
         LaunchedEffect(Unit) {
             file = repository.file(roomId, path)
             if (file?.content == null) {
@@ -126,7 +137,11 @@ class NotePresenter(
         }
         LaunchedEffect(Unit) {
             backlinks = repository.links(roomId, path).fold(
-                onSuccess = { links -> BacklinksState.Loaded(links.backlinks.toImmutableList()) },
+                onSuccess = { links ->
+                    // The server also says which links are ambiguous, even for names the phone has no page for yet.
+                    outgoing = links.outgoing
+                    BacklinksState.Loaded(links.backlinks.toImmutableList())
+                },
                 onFailure = { error ->
                     // A note created on this phone isn't on the server yet: nothing links to it.
                     if (error is NotesException.NotFound) BacklinksState.Loaded(persistentListOf()) else BacklinksState.Offline
@@ -149,11 +164,20 @@ class NotePresenter(
             )
         }
 
+        /** Opens a note, or a photo or file ("[[factura.pdf]]") in another app rather than a note screen. */
+        suspend fun open(target: String) {
+            if (target.endsWith(".md")) navigator.openNote(target) else openAttachment(target)
+        }
+
+        val content = file?.content
+        val page = remember(pages, content) { pageInfoFor(path, pages, content) }
+
         return NoteState(
             title = NotesFolderEntries.noteName(path),
-            content = file?.content,
+            content = content,
             isLoading = isLoading,
             hasLocalEdits = file?.hasLocalEdits == true,
+            page = page,
             backlinks = backlinks,
             dialog = dialog,
             embeds = remember(embeds, uploads) { embeds.withUploads(uploads) },
@@ -162,13 +186,25 @@ class NotePresenter(
                 when (event) {
                     is NoteEvent.OpenNoteLink -> scope.launch {
                         val paths = repository.files(roomId).map { it.path }
-                        val target = NoteLinkResolver.resolve(event.target, paths)
-                        when {
-                            target == null -> dialog = NoteDialog.MissingNote(event.target)
-                            // A link to a photo or file ("[[factura.pdf]]") opens it rather than a note screen.
-                            !target.endsWith(".md") -> openAttachment(target)
-                            else -> navigator.openNote(target)
+                        // The server's word wins when it flagged this link as ambiguous; otherwise the phone resolves it.
+                        val serverCandidates = outgoing.firstOrNull { it.target.trim() == event.target.trim() }?.candidates.orEmpty()
+                        val resolution = if (serverCandidates.size > 1) {
+                            LinkResolution.Ambiguous(serverCandidates)
+                        } else {
+                            NoteLinkResolver.resolve(event.target, paths, pages)
                         }
+                        when (resolution) {
+                            LinkResolution.Missing -> dialog = NoteDialog.MissingNote(event.target)
+                            is LinkResolution.Ambiguous -> dialog = NoteDialog.ChooseNote(
+                                target = event.target,
+                                candidates = resolution.paths.map { candidate -> linkCandidate(candidate, pages) }.toImmutableList(),
+                            )
+                            is LinkResolution.Found -> open(resolution.path)
+                        }
+                    }
+                    is NoteEvent.OpenCandidate -> scope.launch {
+                        dialog = null
+                        open(event.path)
                     }
                     is NoteEvent.ToggleTask -> scope.launch {
                         val content = file?.content ?: return@launch
@@ -235,6 +271,25 @@ class NotePresenter(
                     NoteEvent.DismissDialog -> dialog = null
                 }
             },
+        )
+    }
+
+    /** The note's kind and other names: from the server's pages, else from the header at the top of its text. */
+    private fun pageInfoFor(path: String, pages: List<NotesPage>, content: String?): PageInfo? {
+        pages.firstOrNull { it.path == path }?.let { return PageInfo(it.type, it.aliases.toImmutableList()) }
+        val header = content?.let(NoteFrontmatter::parse) ?: return null
+        val type = header.type ?: return null
+        return PageInfo(type, header.aliases.toImmutableList())
+    }
+
+    /** How a candidate shows in the chooser: the page's title and summary when it's a page, else its file name and folder. */
+    private fun linkCandidate(candidatePath: String, pages: List<NotesPage>): LinkCandidate {
+        val page = pages.firstOrNull { it.path == candidatePath }
+        return LinkCandidate(
+            path = candidatePath,
+            name = page?.title ?: NotesFolderEntries.noteName(candidatePath),
+            folder = page?.folder?.ifEmpty { null } ?: candidatePath.substringBeforeLast('/', ""),
+            summary = page?.summary.orEmpty(),
         )
     }
 

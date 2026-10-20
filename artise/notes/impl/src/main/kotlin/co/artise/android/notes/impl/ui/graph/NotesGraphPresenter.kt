@@ -46,8 +46,9 @@ class NotesGraphPresenter(
         LaunchedEffect(Unit) {
             repository.changes(roomId).onStart { emit(Unit) }.collect {
                 val files = repository.files(roomId)
+                val pages = repository.pages(roomId)
                 // The layout is a few hundred passes over every pair of notes: keep it off the main thread.
-                graph = withContext(dispatchers.computation) { NotesGraphBuilder.build(files) }
+                graph = withContext(dispatchers.computation) { NotesGraphBuilder.build(files, pages) }
             }
         }
         return NotesGraphState(graph = graph)

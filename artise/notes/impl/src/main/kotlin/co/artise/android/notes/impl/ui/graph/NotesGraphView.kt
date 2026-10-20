@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -96,6 +97,8 @@ private fun GraphCanvas(graph: NotesGraphModel, onNoteClick: (String) -> Unit) {
     val edgeColor = ElementTheme.colors.borderInteractiveSecondary
     val density = LocalDensity.current
     val baseRadius = with(density) { 6.dp.toPx() }
+    val ringGap = with(density) { 3.dp.toPx() }
+    val ringWidth = with(density) { 1.5.dp.toPx() }
     val tapSlop = with(density) { 24.dp.toPx() }
     val labelWidth = with(density) { 120.dp.roundToPx() }
 
@@ -140,6 +143,8 @@ private fun GraphCanvas(graph: NotesGraphModel, onNoteClick: (String) -> Unit) {
                 // Busier notes are a little bigger, up to twice the size.
                 val radius = baseRadius * (1f + min(node.degree, 5) / 5f)
                 drawCircle(nodeColor, radius, center)
+                // A page (a person, place or thing with its own note) wears a ring, so they stand out among plain notes.
+                if (node.isPage) drawCircle(nodeColor, radius + ringGap, center, style = Stroke(width = ringWidth))
                 val label = textMeasurer.measure(
                     text = node.name,
                     style = labelStyle,

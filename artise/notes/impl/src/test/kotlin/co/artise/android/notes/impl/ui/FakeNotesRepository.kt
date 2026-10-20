@@ -19,6 +19,7 @@ import co.artise.android.notes.api.NotesChangesPage
 import co.artise.android.notes.api.NotesChat
 import co.artise.android.notes.api.NotesException
 import co.artise.android.notes.api.NotesGraph
+import co.artise.android.notes.api.NotesPage
 import co.artise.android.notes.api.NotesRepository
 import co.artise.android.notes.api.NotesSearchResult
 import co.artise.android.notes.api.PendingEdit
@@ -44,6 +45,9 @@ class FakeNotesRepository(
     var changeHistoryResult: (RoomId, String?) -> Result<NotesChangesPage> = { _, _ -> Result.success(NotesChangesPage(emptyList(), more = false)) },
 ) : NotesRepository {
     val changeHistoryRequests = mutableListOf<String?>()
+
+    /** The chat's pages, as a sync would have stored them. */
+    val pages = mutableMapOf<RoomId, List<NotesPage>>()
     var syncCount = 0
     val backgroundSyncs = mutableListOf<RoomId>()
     val changesFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 8)
@@ -197,6 +201,8 @@ class FakeNotesRepository(
     override suspend fun search(roomId: RoomId, query: String) = Result.success(emptyList<NotesSearchResult>())
 
     override suspend fun links(roomId: RoomId, path: String) = linksResult(roomId, path)
+
+    override suspend fun pages(roomId: RoomId) = pages[roomId].orEmpty()
 
     override suspend fun graph(roomId: RoomId) = Result.success(NotesGraph(emptyList(), emptyList()))
 

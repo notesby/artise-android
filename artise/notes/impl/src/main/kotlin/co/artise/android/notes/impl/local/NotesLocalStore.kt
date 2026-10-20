@@ -12,12 +12,14 @@ import co.artise.android.notes.api.EditState
 import co.artise.android.notes.api.LocalFile
 import co.artise.android.notes.api.NotesChat
 import co.artise.android.notes.api.NotesFile
+import co.artise.android.notes.api.NotesPage
 import co.artise.android.notes.api.PendingEdit
 import co.artise.android.notes.api.ServerCopy
 import co.artise.android.notes.impl.db.NotesDatabase
 import co.artise.android.notes.impl.db.NotesEditEntity
 import co.artise.android.notes.impl.db.NotesFileEntity
 import io.element.android.libraries.matrix.api.core.RoomId
+import kotlinx.serialization.json.Json
 
 /** A chat's cached tree hash and the ETag to send with the next tree request. */
 data class CachedTree(val tree: String?, val etag: String?)
@@ -68,6 +70,7 @@ class NotesLocalStore(private val database: NotesDatabase) {
     private fun forgetChat(roomId: RoomId) {
         queries.deleteChatEdits(roomId.value)
         queries.deleteChatFiles(roomId.value)
+        queries.deleteChatPages(roomId.value)
         queries.deleteChatFolders(roomId.value)
         queries.deleteChat(roomId.value)
     }
@@ -104,6 +107,26 @@ class NotesLocalStore(private val database: NotesDatabase) {
     }
 
     fun addFolder(roomId: RoomId, path: String) = queries.insertFolder(roomId.value, path)
+
+    // Pages
+
+    /** The chat's pages as of the last fetch; empty before the first. */
+    fun pages(roomId: RoomId): List<NotesPage> = queries.selectPages(roomId.value).executeAsList().map {
+        NotesPage(it.path, it.title, it.type, it.folder, Json.decodeFromString<List<String>>(it.aliases), it.summary, it.is_note != 0L)
+    }
+
+    /** The tree hash the chat's pages were fetched for, so they're fetched again only when the notes changed. */
+    fun pagesTree(roomId: RoomId): String? = queries.selectChat(roomId.value).executeAsOneOrNull()?.pages_tree
+
+    /** Replaces the chat's pages with the server's list, fetched for [tree]. */
+    fun setPages(roomId: RoomId, tree: String, pages: List<NotesPage>) = transaction {
+        queries.insertChatIfMissing(roomId.value, "")
+        queries.deleteChatPages(roomId.value)
+        pages.forEach {
+            queries.insertPage(roomId.value, it.path, it.title, it.type, it.folder, Json.encodeToString(it.aliases), it.summary, if (it.isNote) 1L else 0L)
+        }
+        queries.updateChatPagesTree(tree, roomId.value)
+    }
 
     /** Forgets [path] and every folder inside it. */
     fun removeFolderTree(roomId: RoomId, path: String) = queries.deleteFolderTree(roomId.value, path)

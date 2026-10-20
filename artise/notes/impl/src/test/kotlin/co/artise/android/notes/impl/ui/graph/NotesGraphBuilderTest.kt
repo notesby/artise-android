@@ -8,6 +8,7 @@
 package co.artise.android.notes.impl.ui.graph
 
 import co.artise.android.notes.api.LocalFile
+import co.artise.android.notes.api.NotesPage
 import co.artise.android.notes.impl.ui.aNote
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
@@ -76,5 +77,15 @@ class NotesGraphBuilderTest {
         val closest = (0 until 12).flatMap { a -> (a + 1 until 12).map { b -> distance(a, b) } }.min()
         // Every pair of notes is at least 8% of the map apart: room for their names.
         assertThat(closest).isGreaterThan(0.08f)
+    }
+
+    /** Pages wear a ring on the map, and a link by alias ([[Mamá]]) joins the two notes like any other. */
+    @Test
+    fun `pages are marked and alias links count`() {
+        val pages = listOf(NotesPage("people/Ana.md", "Ana", "person", "people", listOf("Mamá"), "", isNote = true))
+        val graph = NotesGraphBuilder.build(listOf(aNote("Súper.md", "Preguntar a [[Mamá]]."), aNote("people/Ana.md", "")), pages)
+        assertThat(graph.nodes.first { it.name == "Ana" }.isPage).isTrue()
+        assertThat(graph.nodes.first { it.name == "Súper" }.isPage).isFalse()
+        assertThat(graph.edges).hasSize(1)
     }
 }

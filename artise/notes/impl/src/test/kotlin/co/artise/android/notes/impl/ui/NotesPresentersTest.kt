@@ -11,6 +11,8 @@ import co.artise.android.notes.api.Backlink
 import co.artise.android.notes.api.NoteLinks
 import co.artise.android.notes.api.NotesChat
 import co.artise.android.notes.api.NotesException
+import co.artise.android.notes.api.NotesPage
+import co.artise.android.notes.api.OutgoingLink
 import co.artise.android.notes.api.SyncReport
 import co.artise.android.notes.impl.ui.chats.NotesChatsEvent
 import co.artise.android.notes.impl.ui.chats.NotesChatsPresenter
@@ -22,10 +24,12 @@ import co.artise.android.notes.impl.ui.note.BacklinksState
 import co.artise.android.notes.impl.ui.note.NoteDialog
 import co.artise.android.notes.impl.ui.note.NoteEvent
 import co.artise.android.notes.impl.ui.note.NotePresenter
+import co.artise.android.notes.impl.ui.note.PageInfo
 import com.google.common.truth.Truth.assertThat
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.tests.testutils.consumeItemsUntilPredicate
 import io.element.android.tests.testutils.test
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
@@ -176,6 +180,70 @@ class NotesPresentersTest {
         NotePresenter(room, "Súper.md", RecordingNoteNavigator(), repository).test {
             assertThat(consumeItemsUntilPredicate { it.backlinks == BacklinksState.Offline }.last().content).isEqualTo("text")
             cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    private val anaPages = listOf(
+        NotesPage("people/Ana.md", "Ana", "person", "people", listOf("Mamá"), "Mamá de Hector", isNote = true),
+        NotesPage("clients/Ana.md", "Ana", "client", "clients", emptyList(), "Dueña de la panadería", isNote = true),
+    )
+
+    /** `[[Mamá]]` opens people/Ana.md through its alias; `[[Ana]]` names two pages, so the person picks one and that one opens. */
+    @Test
+    fun `links resolve by alias and ask when ambiguous`() = runTest {
+        val navigator = RecordingNoteNavigator()
+        val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aNote("Súper.md"), aNote("people/Ana.md"), aNote("clients/Ana.md"))))
+        repository.pages[room] = anaPages
+        NotePresenter(room, "Súper.md", navigator, repository).test {
+            val state = consumeItemsUntilPredicate { !it.isLoading }.last()
+            state.eventSink(NoteEvent.OpenNoteLink("Mamá"))
+            assertThat(navigator.opened).containsExactly("people/Ana.md")
+            state.eventSink(NoteEvent.OpenNoteLink("Ana"))
+            val asking = consumeItemsUntilPredicate { it.dialog != null }.last()
+            val dialog = asking.dialog as NoteDialog.ChooseNote
+            assertThat(dialog.target).isEqualTo("Ana")
+            assertThat(dialog.candidates.map { it.folder to it.summary }).containsExactly("people" to "Mamá de Hector", "clients" to "Dueña de la panadería")
+            asking.eventSink(NoteEvent.OpenCandidate("clients/Ana.md"))
+            assertThat(consumeItemsUntilPredicate { it.dialog == null }.last().dialog).isNull()
+            assertThat(navigator.opened).containsExactly("people/Ana.md", "clients/Ana.md").inOrder()
+        }
+    }
+
+    /** The server's `/links` may know of an ambiguity the phone doesn't (pages not fetched yet): its candidates are offered. */
+    @Test
+    fun `server candidates are offered`() = runTest {
+        val navigator = RecordingNoteNavigator()
+        val repository = FakeNotesRepository(
+            files = mutableMapOf(room to listOf(aNote("Súper.md"), aNote("people/Ana.md"), aNote("clients/Ana.md"))),
+            linksResult = { _, path ->
+                Result.success(
+                NoteLinks(path, listOf(OutgoingLink("Ana", null, listOf("people/Ana.md", "clients/Ana.md"))), emptyList())
+            )
+            },
+        )
+        NotePresenter(room, "Súper.md", navigator, repository).test {
+            val state = consumeItemsUntilPredicate { !it.isLoading && it.backlinks is BacklinksState.Loaded }.last()
+            state.eventSink(NoteEvent.OpenNoteLink("Ana"))
+            val dialog = consumeItemsUntilPredicate { it.dialog != null }.last().dialog as NoteDialog.ChooseNote
+            assertThat(dialog.candidates.map { it.path }).containsExactly("people/Ana.md", "clients/Ana.md").inOrder()
+            assertThat(navigator.opened).isEmpty()
+        }
+    }
+
+    /** A page shows what it is and its other names, from the server's pages or, failing that, from the note's own header. */
+    @Test
+    fun `page fields come from pages or the header`() = runTest {
+        val repository = FakeNotesRepository(
+            files = mutableMapOf(room to listOf(aNote("people/Ana.md", "---\ntype: person\naliases: [Mamá, Ana María]\n---\n# Ana"))),
+        )
+        NotePresenter(room, "people/Ana.md", RecordingNoteNavigator(), repository).test {
+            val state = consumeItemsUntilPredicate { !it.isLoading }.last()
+            assertThat(state.page).isEqualTo(PageInfo("person", persistentListOf("Mamá", "Ana María")))
+        }
+        repository.pages[room] = anaPages
+        NotePresenter(room, "people/Ana.md", RecordingNoteNavigator(), repository).test {
+            val state = consumeItemsUntilPredicate { !it.isLoading && it.page?.aliases?.size == 1 }.last()
+            assertThat(state.page).isEqualTo(PageInfo("person", persistentListOf("Mamá")))
         }
     }
 }

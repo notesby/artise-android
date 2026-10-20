@@ -21,6 +21,19 @@ open class NoteStatePreviewParam : PreviewParameterProvider<NoteState> {
             aNoteState(content = null, isLoading = true, backlinks = BacklinksState.Loading),
             aNoteState(content = null),
             aNoteState(dialog = NoteDialog.MissingNote("Leche")),
+            aNoteState(
+                dialog = NoteDialog.ChooseNote(
+                    "Ana",
+                    persistentListOf(
+                        LinkCandidate("people/Ana.md", "Ana", "people", "Mamá de Hector, vive en Monterrey"),
+                        LinkCandidate("clients/Ana.md", "Ana", "clients", "Dueña de la panadería"),
+                    ),
+                ),
+            ),
+            aNoteState(
+                content = "---\ntype: person\naliases: [Mamá, Ana María]\n---\n# Ana\nVive en Monterrey.",
+                page = PageInfo("person", persistentListOf("Mamá", "Ana María")),
+            ),
             aNoteState(dialog = NoteDialog.Rename("Súper", NoteNameProblem.EXISTS)),
             aNoteState(dialog = NoteDialog.ConfirmDelete),
             aNoteState(dialog = NoteDialog.RenameFailed(RenameFailure.OFFLINE)),
@@ -31,6 +44,7 @@ fun aNoteState(
     content: String? = "# Súper\n- [x] leche\n- [ ] pan\n\nPara el [[Recetas/Mole|mole]].",
     isLoading: Boolean = false,
     hasLocalEdits: Boolean = false,
+    page: PageInfo? = null,
     backlinks: BacklinksState = BacklinksState.Loaded(persistentListOf(Backlink("Recetas/Mole.md", "Comprar todo en [[Súper]]."))),
     dialog: NoteDialog? = null,
 ) = NoteState(
@@ -38,6 +52,7 @@ fun aNoteState(
     content = content,
     isLoading = isLoading,
     hasLocalEdits = hasLocalEdits,
+    page = page,
     backlinks = backlinks,
     dialog = dialog,
     embeds = persistentMapOf(),

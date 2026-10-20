@@ -83,10 +83,14 @@ data class NotesSearchResult(
     val lines: List<String>,
 )
 
-/** A link from a note. [path] is `null` when the target doesn't exist yet. */
+/**
+ * A link from a note. [path] is `null` when the target doesn't exist yet, unless [candidates] names two or more
+ * notes that share that name: then the link is ambiguous, and the person chooses before anything opens.
+ */
 data class OutgoingLink(
     val target: String,
     val path: String?,
+    val candidates: List<String> = emptyList(),
 )
 
 /** Another note that links here, with the line the link is on. */
@@ -99,6 +103,24 @@ data class NoteLinks(
     val path: String,
     val outgoing: List<OutgoingLink>,
     val backlinks: List<Backlink>,
+)
+
+/**
+ * One page of a chat's notes: a person, place or thing with its own note in a folder the chat's `SCHEMA.md` marks
+ * `(pages)`, or a photo or document. [title] and [aliases] are what `[[links]]` may call it, besides its file name.
+ */
+data class NotesPage(
+    val path: String,
+    val title: String,
+    /** `person`, `place`, `thing`, `client`, `image`, `document`... as the server names it. */
+    val type: String,
+    /** The `(pages)` folder it lives in, without the slash; empty for photos and documents. */
+    val folder: String,
+    val aliases: List<String>,
+    /** One line about who or what it is; may be empty. */
+    val summary: String,
+    /** `true` for a note, `false` for a photo or document. */
+    val isNote: Boolean,
 )
 
 /** Every note and link in a chat, for the map. */

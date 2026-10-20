@@ -8,6 +8,7 @@
 package co.artise.android.notes.impl.ui.editor
 
 import androidx.compose.ui.text.input.TextFieldValue
+import co.artise.android.notes.api.NotesPage
 import co.artise.android.notes.impl.ui.note.EmbedState
 import co.artise.android.notes.impl.ui.note.OpenFileRequest
 import kotlinx.collections.immutable.ImmutableList
@@ -27,6 +28,8 @@ data class NoteEditorState(
     val suggestions: ImmutableList<WikiLinkSuggestion>,
     /** The chat's notes, for the link dialog's suggestions. */
     val notePaths: ImmutableList<String>,
+    /** The chat's pages (people, places, things, files) with their aliases, for the same suggestions. */
+    val pages: ImmutableList<NotesPage>,
     /** The link dialog, after tapping a link on a formatted line. */
     val linkEdit: LinkEditState?,
     /** A photo or file is being uploaded. */

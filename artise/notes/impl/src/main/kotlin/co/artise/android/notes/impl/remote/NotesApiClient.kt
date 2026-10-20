@@ -23,6 +23,7 @@ import co.artise.android.notes.api.NotesChat
 import co.artise.android.notes.api.NotesException
 import co.artise.android.notes.api.NotesFile
 import co.artise.android.notes.api.NotesGraph
+import co.artise.android.notes.api.NotesPage
 import co.artise.android.notes.api.NotesSearchResult
 import co.artise.android.notes.api.NotesTree
 import co.artise.android.notes.api.OutgoingLink
@@ -182,10 +183,15 @@ class NotesApiClient(
             val dto = json.decodeFromString<LinksDto>(body)
             NoteLinks(
                 path = dto.path,
-                outgoing = dto.outgoing.map { OutgoingLink(it.target, it.path) },
+                outgoing = dto.outgoing.map { OutgoingLink(it.target, it.path, it.candidates) },
                 backlinks = dto.backlinks.map { Backlink(it.path, it.line) },
             )
         }
+    }
+
+    /** The chat's pages: titles, types, aliases and summaries, for `[[` suggestions and link resolution by name. */
+    suspend fun pages(roomId: RoomId): Result<List<NotesPage>> = call(get(url(roomId, "pages"))) { body ->
+        json.decodeFromString<PagesDto>(body).pages.map { NotesPage(it.path, it.title, it.type, it.folder, it.aliases, it.summary, it.note) }
     }
 
     suspend fun graph(roomId: RoomId): Result<NotesGraph> = call(get(url(roomId, "graph"))) { body ->

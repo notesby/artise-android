@@ -21,6 +21,8 @@ data class NoteState(
     val content: String?,
     val isLoading: Boolean,
     val hasLocalEdits: Boolean,
+    /** Set when the note is a page (a person, place or thing of its own): its kind and other names. */
+    val page: PageInfo?,
     val backlinks: BacklinksState,
     val dialog: NoteDialog?,
     /** Photos and files embedded in the note (`![[...]]`), by the target written in the note. */
@@ -65,10 +67,29 @@ internal fun ImmutableMap<String, EmbedState>.withUploads(uploads: Map<String, U
 /** Open [file] (on the phone) in the app the person uses for that kind of file. */
 data class OpenFileRequest(val file: String, val name: String)
 
+/** What makes a note a page: `person`, `place`, `thing`... and the other names a `[[link]]` may use for it. */
+@Immutable
+data class PageInfo(
+    val type: String,
+    val aliases: ImmutableList<String>,
+)
+
+/** One of the notes a tapped `[[link]]` could mean, told apart by where it is and what it's about. */
+@Immutable
+data class LinkCandidate(
+    val path: String,
+    val name: String,
+    val folder: String,
+    val summary: String,
+)
+
 @Immutable
 sealed interface NoteDialog {
     /** A tapped `[[link]]` to a note that doesn't exist yet: offer to create it. */
     data class MissingNote(val target: String) : NoteDialog
+
+    /** A tapped `[[link]]` two or more notes answer to: the person picks one, nothing opens on its own. */
+    data class ChooseNote(val target: String, val candidates: ImmutableList<LinkCandidate>) : NoteDialog
 
     /** The rename dialog, with the problem found in the last name tried. */
     data class Rename(val currentName: String, val problem: NoteNameProblem?) : NoteDialog

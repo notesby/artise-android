@@ -10,6 +10,7 @@ package co.artise.android.notes.impl.remote
 import co.artise.android.notes.api.ChangeAuthor
 import co.artise.android.notes.api.FileChange
 import co.artise.android.notes.api.NotesException
+import co.artise.android.notes.api.NotesPage
 import co.artise.android.notes.api.ServerCopy
 import co.artise.android.notes.impl.A_ROOM
 import co.artise.android.notes.impl.A_ROOM_ENCODED
@@ -284,5 +285,38 @@ class NotesApiClientTest {
     fun `delete sends the base version`() = runTest {
         server.enqueue("DELETE /chats/$A_ROOM_ENCODED/file?path=a.md&base=v1", json(body = """{"path": "a.md", "deleted": true}"""))
         assertThat(client().delete(room, "a.md", "v1").isSuccess).isTrue()
+    }
+
+    /** The chat's pages come with title, type, folder, aliases and summary; photos and documents are pages too. */
+    @Test
+    fun `pages are read`() = runTest {
+        server.enqueue(
+            "GET /chats/$A_ROOM_ENCODED/pages",
+            json(
+                body = """
+                    {"pages": [
+                      {"path": "people/Ana.md", "title": "Ana", "type": "person", "folder": "people",
+                       "aliases": ["Mamá"], "summary": "Ana, Hector's mother", "note": true},
+                      {"path": "Fotos/playa.jpg", "title": "playa.jpg", "type": "image", "folder": "", "aliases": [], "summary": "", "note": false}]}
+                """.trimIndent(),
+            ),
+        )
+        val pages = client().pages(room).getOrThrow()
+        assertThat(pages).containsExactly(
+            NotesPage("people/Ana.md", "Ana", "person", "people", listOf("Mamá"), "Ana, Hector's mother", isNote = true),
+            NotesPage("Fotos/playa.jpg", "playa.jpg", "image", "", emptyList(), "", isNote = false),
+        ).inOrder()
+    }
+
+    /** An ambiguous link comes with its candidates, so the app can ask instead of opening the first. */
+    @Test
+    fun `ambiguous links carry their candidates`() = runTest {
+        server.enqueue(
+            "GET /chats/$A_ROOM_ENCODED/links?path=S%C3%BAper.md",
+            json(body = """{"path": "Súper.md", "outgoing": [{"target": "Ana", "path": null, "candidates": ["people/Ana.md", "clients/Ana.md"]}]}"""),
+        )
+        val link = client().links(room, "Súper.md").getOrThrow().outgoing.single()
+        assertThat(link.path).isNull()
+        assertThat(link.candidates).containsExactly("people/Ana.md", "clients/Ana.md").inOrder()
     }
 }

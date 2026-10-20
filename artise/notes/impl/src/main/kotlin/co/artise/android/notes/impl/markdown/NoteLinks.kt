@@ -8,6 +8,7 @@
 package co.artise.android.notes.impl.markdown
 
 import androidx.compose.runtime.Immutable
+import co.artise.android.notes.api.NotesPage
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.text.Normalizer
@@ -63,10 +64,46 @@ object NoteLinkResolver {
             .minWithOrNull(compareBy<String> { it.count { c -> c == '/' } }.thenBy { it.length })
     }
 
+    /**
+     * Like [resolve], but also by a page's title or alias (`[[Mamá]]` → `people/Ana.md`), and honest about ambiguity:
+     * when two notes or pages answer to the same name, the result lists them all, so the person chooses instead of
+     * the app guessing. An exact path always wins.
+     */
+    fun resolve(target: String, paths: Collection<String>, pages: Collection<NotesPage>): LinkResolution {
+        val wanted = target.trim().removePrefix("/")
+        if (wanted.isEmpty()) return LinkResolution.Missing
+        val candidates = if (EXTENSION.containsMatchIn(wanted)) listOf(wanted) else listOf("$wanted.md", wanted)
+        val byKey = paths.groupBy { it.matchKey() }
+        for (candidate in candidates) {
+            byKey[candidate.matchKey()]?.let { return LinkResolution.Found(it.minBy { path -> path.length }) }
+        }
+        val nameKeys = candidates.map { it.substringAfterLast('/').matchKey() }.toSet()
+        val byName = paths.filter { it.substringAfterLast('/').matchKey() in nameKeys }
+        val byTitle = pages.filter { page -> page.title.matchKey() in nameKeys || page.aliases.any { it.matchKey() in nameKeys } }.map { it.path }
+        val found = (byName + byTitle).distinct().sortedWith(compareBy<String> { it.count { c -> c == '/' } }.thenBy { it.length })
+        return when (found.size) {
+            0 -> LinkResolution.Missing
+            1 -> LinkResolution.Found(found.single())
+            else -> LinkResolution.Ambiguous(found)
+        }
+    }
+
     private fun String.matchKey(): String = Normalizer.normalize(lowercase(), Normalizer.Form.NFD).replace(DIACRITICS, "")
 
     private val DIACRITICS = Regex("\\p{Mn}+")
     private val EXTENSION = Regex("\\.[A-Za-z0-9]{1,5}$")
+}
+
+/** What a `[[link]]` points to, once titles and aliases are taken into account. */
+@Immutable
+sealed interface LinkResolution {
+    data class Found(val path: String) : LinkResolution
+
+    /** Two or more notes answer to that name; [paths] in folder order. The person picks one. */
+    data class Ambiguous(val paths: List<String>) : LinkResolution
+
+    /** No such note yet: offer to create it. */
+    data object Missing : LinkResolution
 }
 
 /**

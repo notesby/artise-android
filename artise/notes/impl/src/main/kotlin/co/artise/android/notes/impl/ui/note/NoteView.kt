@@ -39,6 +39,8 @@ import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.libraries.designsystem.components.button.BackButton
 import io.element.android.libraries.designsystem.components.dialogs.ConfirmationDialog
 import io.element.android.libraries.designsystem.components.dialogs.ErrorDialog
+import io.element.android.libraries.designsystem.components.dialogs.ListOption
+import io.element.android.libraries.designsystem.components.dialogs.SingleSelectionDialog
 import io.element.android.libraries.designsystem.components.dialogs.TextFieldDialog
 import io.element.android.libraries.designsystem.components.list.ListItemContent
 import io.element.android.libraries.designsystem.preview.ElementPreview
@@ -56,6 +58,7 @@ import io.element.android.libraries.designsystem.theme.components.Scaffold
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.ui.strings.CommonStrings
+import kotlinx.collections.immutable.toImmutableList
 
 @Composable
 fun NoteView(
@@ -96,6 +99,7 @@ fun NoteView(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             }
+            state.page?.let { PageFields(it) }
             when {
                 state.content != null -> NoteMarkdownView(
                     markdown = state.content,
@@ -179,6 +183,18 @@ private fun NoteDialogs(state: NoteState) {
             onSubmitClick = { state.eventSink(NoteEvent.CreateMissingNote) },
             onDismiss = dismiss,
         )
+        is NoteDialog.ChooseNote -> SingleSelectionDialog(
+            title = stringResource(R.string.screen_notes_choose_note_title, dialog.target),
+            subtitle = stringResource(R.string.screen_notes_choose_note_body),
+            options = dialog.candidates.map { candidate ->
+                ListOption(
+                    title = candidate.name,
+                    subtitle = listOf(candidate.folder.ifEmpty { "/" }, candidate.summary).filter { it.isNotEmpty() }.joinToString(" · "),
+                )
+            }.toImmutableList(),
+            onSelectOption = { index -> state.eventSink(NoteEvent.OpenCandidate(dialog.candidates[index].path)) },
+            onDismissRequest = dismiss,
+        )
         is NoteDialog.Rename -> TextFieldDialog(
             title = stringResource(R.string.screen_notes_rename),
             value = dialog.currentName,
@@ -217,6 +233,40 @@ private fun NoteDialogs(state: NoteState) {
             onSubmit = dismiss,
         )
     }
+}
+
+/** "Person · Also called Mamá, Ana María": what kind of page this is, and its other names, under the title. */
+@Composable
+private fun PageFields(page: PageInfo) {
+    val parts = listOfNotNull(
+        pageTypeLabel(page.type),
+        page.aliases.takeIf { it.isNotEmpty() }?.let { stringResource(R.string.screen_notes_page_also_called, it.joinToString(", ")) },
+    )
+    if (parts.isEmpty()) return
+    Text(
+        text = parts.joinToString(" · "),
+        style = ElementTheme.typography.fontBodySmRegular,
+        color = ElementTheme.colors.textSecondary,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+    )
+}
+
+/** The page type in the person's language; a kind this app doesn't know shows as the server wrote it. */
+@Composable
+internal fun pageTypeLabel(type: String): String? = when (type.lowercase()) {
+    "" -> null
+    "person" -> stringResource(R.string.screen_notes_page_type_person)
+    "place" -> stringResource(R.string.screen_notes_page_type_place)
+    "thing" -> stringResource(R.string.screen_notes_page_type_thing)
+    "client" -> stringResource(R.string.screen_notes_page_type_client)
+    "document" -> stringResource(R.string.screen_notes_page_type_document)
+    "project" -> stringResource(R.string.screen_notes_page_type_project)
+    "pet" -> stringResource(R.string.screen_notes_page_type_pet)
+    "organisation", "organization" -> stringResource(R.string.screen_notes_page_type_organisation)
+    "image" -> stringResource(R.string.screen_notes_page_type_image)
+    "spreadsheet" -> stringResource(R.string.screen_notes_page_type_spreadsheet)
+    "audio" -> stringResource(R.string.screen_notes_page_type_audio)
+    else -> type.replaceFirstChar { it.uppercase() }
 }
 
 @Composable

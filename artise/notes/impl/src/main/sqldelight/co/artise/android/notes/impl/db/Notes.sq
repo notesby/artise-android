@@ -1,12 +1,13 @@
 -- Offline copy of every chat's notes, and the queue of edits made on this phone.
 -- The database is encrypted with SQLCipher: these are families' private notes.
 
--- A chat whose notes are cached. tree/etag are what we last pulled.
+-- A chat whose notes are cached. tree/etag are what we last pulled; pages_tree is the tree the pages were fetched for.
 CREATE TABLE NotesChatEntity (
     room_id TEXT NOT NULL PRIMARY KEY,
     name TEXT NOT NULL,
     tree TEXT,
-    etag TEXT
+    etag TEXT,
+    pages_tree TEXT
 );
 
 -- One file as last seen on the server, or as edited locally when an edit is queued.
@@ -54,6 +55,20 @@ CREATE TABLE NotesFlagEntity (
 CREATE TABLE NotesFolderEntity (
     room_id TEXT NOT NULL,
     path TEXT NOT NULL,
+    PRIMARY KEY (room_id, path)
+);
+
+-- The chat's pages as the server lists them (GET /pages): a person, place or thing with its own note, or a photo
+-- or document. Titles and aliases let [[links]] resolve by name offline. aliases is a JSON array of strings.
+CREATE TABLE NotesPageEntity (
+    room_id TEXT NOT NULL,
+    path TEXT NOT NULL,
+    title TEXT NOT NULL,
+    type TEXT NOT NULL,
+    folder TEXT NOT NULL,
+    aliases TEXT NOT NULL,
+    summary TEXT NOT NULL,
+    is_note INTEGER NOT NULL,
     PRIMARY KEY (room_id, path)
 );
 
@@ -174,6 +189,20 @@ INSERT OR IGNORE INTO NotesFolderEntity(room_id, path) VALUES (?, ?);
 
 deleteChatFolders:
 DELETE FROM NotesFolderEntity WHERE room_id = ?;
+
+-- Pages
+
+selectPages:
+SELECT * FROM NotesPageEntity WHERE room_id = ? ORDER BY path COLLATE NOCASE;
+
+insertPage:
+INSERT OR REPLACE INTO NotesPageEntity(room_id, path, title, type, folder, aliases, summary, is_note) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+deleteChatPages:
+DELETE FROM NotesPageEntity WHERE room_id = ?;
+
+updateChatPagesTree:
+UPDATE NotesChatEntity SET pages_tree = ? WHERE room_id = ?;
 
 deleteFolderTree:
 DELETE FROM NotesFolderEntity WHERE room_id = :room_id AND (path = :path OR path LIKE :path || '/%');
