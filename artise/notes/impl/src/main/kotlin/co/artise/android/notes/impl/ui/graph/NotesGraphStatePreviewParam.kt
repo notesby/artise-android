@@ -9,6 +9,7 @@ package co.artise.android.notes.impl.ui.graph
 
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import co.artise.android.notes.api.LocalFile
+import co.artise.android.notes.api.NotesPage
 
 open class NotesGraphStatePreviewParam : PreviewParameterProvider<NotesGraphState> {
     override val values: Sequence<NotesGraphState>
@@ -21,7 +22,9 @@ open class NotesGraphStatePreviewParam : PreviewParameterProvider<NotesGraphStat
                         note("Recetas/Sopa.md", ""),
                         note("Menú.md", ""),
                         note("Ideas.md", ""),
+                        note("people/Ana.md", "---\ntype: person\naliases: [Mamá]\n---\n"),
                     ),
+                    pages = listOf(NotesPage("people/Ana.md", "Ana", "person", "people", listOf("Mamá"), "", isNote = true)),
                 ),
             ),
             NotesGraphState(NotesGraphModel(emptyList(), emptyList())),

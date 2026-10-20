@@ -22,8 +22,16 @@ open class NoteEditorStatePreviewParam : PreviewParameterProvider<NoteEditorStat
                 text = "Para el [[mo",
                 cursor = 12,
                 suggestions = listOf(
-                    WikiLinkSuggestion("Mole", "Recetas/Mole.md", "Recetas/Mole"),
-                    WikiLinkSuggestion("Mole", "Viejo/Mole.md", "Viejo/Mole"),
+                    WikiLinkSuggestion(
+                        "Mole",
+                        "Recetas/Mole.md",
+                        "Recetas/Mole|Mole",
+                        folder = "Recetas",
+                        summary = "La receta de la abuela",
+                        sharesName = true
+                    ),
+                    WikiLinkSuggestion("Mole", "Viejo/Mole.md", "Viejo/Mole|Mole", folder = "Viejo", sharesName = true),
+                    WikiLinkSuggestion("Ana", "people/Ana.md", "Ana|Mamá", alias = "Mamá", folder = "people", summary = "Mamá de Hector", type = "person"),
                 ),
             ),
             aNoteEditorState(text = "- leche" + NoteEditorPresenter.CONFLICT_SEPARATOR + "- pan", isResolvingConflict = true),
@@ -48,6 +56,7 @@ fun aNoteEditorState(
     hasUnsavedChanges = false,
     suggestions = persistentListOf(*suggestions.toTypedArray()),
     notePaths = persistentListOf("Recetas/Mole.md", "Súper.md"),
+    pages = persistentListOf(),
     linkEdit = null,
     isAttaching = false,
     isPreviewing = isPreviewing,

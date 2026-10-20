@@ -7,6 +7,7 @@
 
 package co.artise.android.notes.impl.markdown
 
+import co.artise.android.notes.api.NotesPage
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
@@ -87,5 +88,28 @@ class NoteLinksTest {
     @Test
     fun `web links are not note targets`() {
         assertThat(WikiLinkRewriter.targetOf("https://artise.co")).isNull()
+    }
+
+    private val pages = listOf(
+        NotesPage("people/Ana.md", "Ana", "person", "people", listOf("Mamá", "Ana María"), "Mamá de Hector", isNote = true),
+        NotesPage("clients/Ana.md", "Ana", "client", "clients", emptyList(), "Dueña de la panadería", isNote = true),
+        NotesPage("Fotos/playa.jpg", "playa.jpg", "image", "", emptyList(), "", isNote = false),
+    )
+    private val pagePaths = pages.map { it.path } + "Recetas/Mole.md"
+
+    /** `[[Mamá]]` is an alias of people/Ana.md: the link opens that note, accents and case ignored. */
+    @Test
+    fun `aliases resolve to the page`() {
+        assertThat(NoteLinkResolver.resolve("mama", pagePaths, pages)).isEqualTo(LinkResolution.Found("people/Ana.md"))
+        assertThat(NoteLinkResolver.resolve("Ana María", pagePaths, pages)).isEqualTo(LinkResolution.Found("people/Ana.md"))
+        assertThat(NoteLinkResolver.resolve("Mole", pagePaths, pages)).isEqualTo(LinkResolution.Found("Recetas/Mole.md"))
+    }
+
+    /** Two pages called "Ana": the link is ambiguous and lists both, so the person chooses; the path form is never ambiguous. */
+    @Test
+    fun `a shared name is ambiguous unless written by path`() {
+        assertThat(NoteLinkResolver.resolve("Ana", pagePaths, pages)).isEqualTo(LinkResolution.Ambiguous(listOf("people/Ana.md", "clients/Ana.md")))
+        assertThat(NoteLinkResolver.resolve("clients/Ana", pagePaths, pages)).isEqualTo(LinkResolution.Found("clients/Ana.md"))
+        assertThat(NoteLinkResolver.resolve("Leche", pagePaths, pages)).isEqualTo(LinkResolution.Missing)
     }
 }

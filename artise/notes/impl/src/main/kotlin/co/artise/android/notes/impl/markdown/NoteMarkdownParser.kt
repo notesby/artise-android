@@ -32,5 +32,6 @@ object NoteMarkdownParser {
         .includeSourceSpans(IncludeSourceSpans.BLOCKS)
         .build()
 
-    fun parse(markdown: String): Node = parser.parse(WikiLinkRewriter.rewrite(markdown))
+    /** Parses a note. Its header (`---` lines with type, aliases...) is shown as fields on the note, not as text. */
+    fun parse(markdown: String): Node = parser.parse(WikiLinkRewriter.rewrite(NoteFrontmatter.blank(markdown)))
 }

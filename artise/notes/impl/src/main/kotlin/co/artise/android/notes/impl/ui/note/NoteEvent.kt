@@ -17,6 +17,9 @@ sealed interface NoteEvent {
     /** Create the note a missing link points to, and open it to write. */
     data object CreateMissingNote : NoteEvent
 
+    /** One of the notes an ambiguous link could mean was picked: open it. */
+    data class OpenCandidate(val path: String) : NoteEvent
+
     data object StartRename : NoteEvent
 
     data class Rename(val newName: String) : NoteEvent

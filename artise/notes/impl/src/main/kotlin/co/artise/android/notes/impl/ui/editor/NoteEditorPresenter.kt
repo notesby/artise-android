@@ -18,6 +18,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import co.artise.android.notes.api.NotesPage
 import co.artise.android.notes.api.NotesRepository
 import co.artise.android.notes.api.UploadStatus
 import co.artise.android.notes.impl.markdown.ChecklistToggle
@@ -76,6 +77,7 @@ class NoteEditorPresenter(
         var isLoaded by remember { mutableStateOf(false) }
         var original by remember { mutableStateOf("") }
         var notePaths by remember { mutableStateOf<ImmutableList<String>>(persistentListOf()) }
+        var pages by remember { mutableStateOf<ImmutableList<NotesPage>>(persistentListOf()) }
         var linkEdit by remember { mutableStateOf<LinkEditState?>(null) }
         var showSaveChangesDialog by remember { mutableStateOf(false) }
         var isSaving by remember { mutableStateOf(false) }
@@ -105,7 +107,12 @@ class NoteEditorPresenter(
             notePaths = files.filter { it.isNote }.map { it.path }.toImmutableList()
             allPaths = files.map { it.path }
             sizes = files.associate { it.path to it.size }
+            pages = repository.pages(roomId).toImmutableList()
             isLoaded = true
+        }
+        LaunchedEffect(Unit) {
+            // A sync may bring new pages or aliases while the note is being written.
+            repository.changes(roomId).collect { pages = repository.pages(roomId).toImmutableList() }
         }
 
         LaunchedEffect(Unit) {
@@ -152,7 +159,7 @@ class NoteEditorPresenter(
         fun hasChanges() = isLoaded && (resolveEditId != null || value.text != original)
         val hasUnsavedChanges = hasChanges()
         val openLink = if (value.selection.collapsed) WikiLinkSuggestions.openLinkAt(text, value.selection.start) else null
-        val suggestions = openLink?.let { WikiLinkSuggestions.suggestionsFor(it.query, notePaths, currentPath = path).toImmutableList() }
+        val suggestions = openLink?.let { WikiLinkSuggestions.suggestionsFor(it.query, notePaths, currentPath = path, pages = pages).toImmutableList() }
             ?: persistentListOf()
 
         /**
@@ -236,6 +243,7 @@ class NoteEditorPresenter(
             hasUnsavedChanges = hasUnsavedChanges,
             suggestions = suggestions,
             notePaths = notePaths,
+            pages = pages,
             linkEdit = linkEdit,
             isAttaching = isAttaching,
             isPreviewing = isPreviewing,

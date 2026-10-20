@@ -23,6 +23,7 @@ import co.artise.android.notes.api.NotesChat
 import co.artise.android.notes.api.NotesException
 import co.artise.android.notes.api.NotesFile
 import co.artise.android.notes.api.NotesGraph
+import co.artise.android.notes.api.NotesPage
 import co.artise.android.notes.api.NotesRepository
 import co.artise.android.notes.api.NotesSearchResult
 import co.artise.android.notes.api.PendingEdit
@@ -132,9 +133,26 @@ class NotesSyncEngine(
         }
         val report = SyncReport(sent = push.sent, needChoice = push.needChoice, updated = pull.updated, removed = pull.removed, failed = push.failed)
         if (report != SyncReport(0, 0, 0, 0)) notifyChanged(roomId)
+        if (refreshPages(roomId)) notifyChanged(roomId)
         if (prefetchPolicy.canPrefetch()) backgroundScope.launch { prefetchPhotos(roomId) }
         Result.success(report)
     }
+
+    /**
+     * Fetches the chat's pages when the notes changed since they were last fetched (one request per change, none
+     * otherwise). A failure here doesn't fail the sync: links then resolve by file name, as before, and the next sync
+     * tries again. A server without the endpoint (an older one) simply has no pages. `true` when they changed.
+     */
+    private suspend fun refreshPages(roomId: RoomId): Boolean {
+        val tree = io { store.cachedTree(roomId) }?.tree ?: return false
+        if (io { store.pagesTree(roomId) } == tree) return false
+        val pages = api.pages(roomId).getOrElse { if (it is NotesException.NotFound) emptyList() else return false }
+        val before = io { store.pages(roomId) }
+        io { store.setPages(roomId, tree, pages) }
+        return before != pages
+    }
+
+    override suspend fun pages(roomId: RoomId): List<NotesPage> = io { store.pages(roomId) }
 
     override suspend fun onTreeChanged(roomId: RoomId, tree: String): Result<SyncReport?> {
         val known = io { store.cachedTree(roomId) }?.tree

@@ -192,13 +192,10 @@ fun NoteEditorView(
             } else {
                 LazyColumn(Modifier.heightIn(max = 240.dp)) {
                     items(state.suggestions, key = { it.path }) { suggestion ->
+                        val detail = suggestionDetail(suggestion)
                         ListItem(
                             leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Link())),
-                            supportingContent = if (suggestion.linkText == suggestion.name) {
-                                null
-                            } else {
-                                { Text(suggestion.path) }
-                            },
+                            supportingContent = detail?.let { { Text(it, maxLines = 2) } },
                             onClick = { state.eventSink(NoteEditorEvent.SelectSuggestion(suggestion)) },
                         ) {
                             Text(suggestion.name)
@@ -223,6 +220,7 @@ fun NoteEditorView(
         LinkEditDialog(
             edit = edit,
             notePaths = state.notePaths,
+            pages = state.pages,
             onSave = { state.eventSink(NoteEditorEvent.SaveLink(it)) },
             onRemove = { state.eventSink(NoteEditorEvent.RemoveLink) },
             onDismiss = { state.eventSink(NoteEditorEvent.DismissLinkEdit) },
@@ -468,6 +466,18 @@ private fun FormatAction.label(): Int = when (this) {
     FormatAction.QUOTE -> R.string.a11y_notes_format_quote
     FormatAction.NOTE_LINK -> R.string.a11y_notes_format_link
     FormatAction.WEB_LINK -> R.string.a11y_notes_format_web_link
+}
+
+/**
+ * The second line of a suggestion: the alias that matched ("Mamá"), or, when two pages share a name, where each one
+ * is and what it's about ("people · Ana, Hector's mother"), else the page's summary. Nothing for a plain note.
+ */
+@Composable
+internal fun suggestionDetail(suggestion: WikiLinkSuggestion): String? = when {
+    suggestion.alias != null -> suggestion.alias
+    suggestion.sharesName -> listOf(suggestion.folder.ifEmpty { "/" }, suggestion.summary).filter { it.isNotEmpty() }.joinToString(" · ")
+    suggestion.summary.isNotEmpty() -> suggestion.summary
+    else -> null
 }
 
 @PreviewsDayNight

@@ -202,4 +202,20 @@
     <string name="screen_notes_change_files">%1$s, on the files page</string>
     <string name="screen_notes_change_sync">A synced device</string>
     <string name="screen_notes_history_renamed" translatable="false">%1$s → %2$s</string>
+    <!-- Pages: a person, place or thing with its own note -->
+    <string name="screen_notes_choose_note_title">Which “%1$s”?</string>
+    <string name="screen_notes_choose_note_body">Two notes go by that name. Pick the one you mean.</string>
+    <string name="screen_notes_page_also_called">Also called %1$s</string>
+    <string name="screen_notes_page_type_person">Person</string>
+    <string name="screen_notes_page_type_place">Place</string>
+    <string name="screen_notes_page_type_thing">Thing</string>
+    <string name="screen_notes_page_type_client">Client</string>
+    <string name="screen_notes_page_type_document">Document</string>
+    <string name="screen_notes_page_type_project">Project</string>
+    <string name="screen_notes_page_type_pet">Pet</string>
+    <string name="screen_notes_page_type_organisation">Organisation</string>
+    <string name="screen_notes_page_type_image">Photo</string>
+    <string name="screen_notes_page_type_spreadsheet">Spreadsheet</string>
+    <string name="screen_notes_page_type_audio">Audio</string>
+    <string name="screen_notes_map_pages_hint">Notes with a ring are pages: a person, place or thing of their own.</string>
 </resources>

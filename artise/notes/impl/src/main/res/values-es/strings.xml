@@ -209,4 +209,20 @@
     <string name="screen_notes_change_app">%1$s, en la app</string>
     <string name="screen_notes_change_files">%1$s, en la página de archivos</string>
     <string name="screen_notes_change_sync">Un dispositivo sincronizado</string>
+    <!-- Páginas: una persona, lugar o cosa con su propia nota -->
+    <string name="screen_notes_choose_note_title">¿Cuál “%1$s”?</string>
+    <string name="screen_notes_choose_note_body">Dos notas se llaman así. Elige la que quieres.</string>
+    <string name="screen_notes_page_also_called">También: %1$s</string>
+    <string name="screen_notes_page_type_person">Persona</string>
+    <string name="screen_notes_page_type_place">Lugar</string>
+    <string name="screen_notes_page_type_thing">Cosa</string>
+    <string name="screen_notes_page_type_client">Cliente</string>
+    <string name="screen_notes_page_type_document">Documento</string>
+    <string name="screen_notes_page_type_project">Proyecto</string>
+    <string name="screen_notes_page_type_pet">Mascota</string>
+    <string name="screen_notes_page_type_organisation">Organización</string>
+    <string name="screen_notes_page_type_image">Foto</string>
+    <string name="screen_notes_page_type_spreadsheet">Hoja de cálculo</string>
+    <string name="screen_notes_page_type_audio">Audio</string>
+    <string name="screen_notes_map_pages_hint">Las notas con anillo son páginas: una persona, lugar o cosa con nota propia.</string>
 </resources>
