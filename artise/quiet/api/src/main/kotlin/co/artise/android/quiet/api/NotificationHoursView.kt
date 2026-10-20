@@ -146,7 +146,7 @@ internal fun clockText(context: Context, minute: Int): String {
     return android.text.format.DateFormat.getTimeFormat(context).format(time.time)
 }
 
-internal class NotificationHoursStateProvider : PreviewParameterProvider<NotificationHoursState> {
+internal class NotificationHoursStatePreviewParam : PreviewParameterProvider<NotificationHoursState> {
     private val on = NotificationHoursSettings(enabled = true)
     override val values = sequenceOf(
         aNotificationHoursState(NotificationHoursSettings()),
@@ -167,6 +167,6 @@ internal fun aNotificationHoursState(settings: NotificationHoursSettings, pickin
 
 @PreviewsDayNight
 @Composable
-internal fun NotificationHoursViewPreview(@PreviewParameter(NotificationHoursStateProvider::class) state: NotificationHoursState) = ElementPreview {
+internal fun NotificationHoursViewPreview(@PreviewParameter(NotificationHoursStatePreviewParam::class) state: NotificationHoursState) = ElementPreview {
     NotificationHoursView(state = state, onBackClick = {})
 }
