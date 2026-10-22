@@ -8,26 +8,37 @@
 package co.artise.android.notes.impl.ui.folder
 
 import android.text.format.Formatter
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import co.artise.android.notes.api.NoteAttachment
+import co.artise.android.notes.api.NotesPreview
 import co.artise.android.notes.impl.R
 import co.artise.android.notes.impl.ui.common.NoteNameProblem
 import co.artise.android.notes.impl.ui.common.NotesScaffold
+import co.artise.android.notes.impl.ui.note.photoRequest
 import co.artise.android.workspace.api.LocalWorkspaceBranding
+import coil3.compose.AsyncImage
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.libraries.designsystem.components.Announcement
@@ -55,6 +66,7 @@ fun NotesFolderView(
     onReviewChoicesClick: () -> Unit,
     onMapClick: () -> Unit,
     onMediaClick: () -> Unit,
+    onDocumentClick: (String) -> Unit,
     onHistoryClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -163,21 +175,48 @@ fun NotesFolderView(
                         modifier = Modifier.clicks { onNoteClick(entry.path) },
                         leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Document())),
                         trailingContent = if (isBusy) ListItemContent.Custom { CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) } else null,
-                        supportingContent = if (entry.hasLocalEdits) {
-                            { Text(stringResource(R.string.screen_notes_unsent)) }
-                        } else {
-                            null
+                        supportingContent = when {
+                            entry.hasLocalEdits -> {
+                                { Text(stringResource(R.string.screen_notes_unsent)) }
+                            }
+                            entry.firstLines.isNotEmpty() -> {
+                                { Text(entry.firstLines, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                            }
+                            else -> null
                         },
                     ) {
                         Text(entry.name)
                     }
-                    is NotesFolderEntry.File -> ListItem(
-                        modifier = Modifier.clicks { state.eventSink(NotesFolderEvent.OpenFile(entry)) },
-                        leadingContent = ListItemContent.Icon(IconSource.Vector(if (entry.isImage) CompoundIcons.Image() else CompoundIcons.Attachment())),
-                        trailingContent = if (isBusy) ListItemContent.Custom { CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) } else null,
-                        supportingContent = { Text(Formatter.formatShortFileSize(LocalContext.current, entry.size)) },
-                    ) {
-                        Text(entry.name)
+                    is NotesFolderEntry.File -> {
+                        val preview = state.previews[entry.path]
+                        // The row is on screen: ask what the file looks like (again when the file changed).
+                        LaunchedEffect(entry) { state.eventSink(NotesFolderEvent.LoadPreview(entry.path)) }
+                        val kind = NoteAttachment.kindOf(entry.path)
+                        val opensInApp = kind == NoteAttachment.Kind.PDF || kind == NoteAttachment.Kind.IMAGE
+                        ListItem(
+                            modifier = Modifier.clicks {
+                                if (opensInApp) onDocumentClick(entry.path) else state.eventSink(NotesFolderEvent.OpenFile(entry))
+                            },
+                            leadingContent = if (preview is NotesPreview.Image) {
+                                ListItemContent.Custom { FilePreviewThumbnail(preview, entry.name) }
+                            } else {
+                                ListItemContent.Icon(IconSource.Vector(if (entry.isImage) CompoundIcons.Image() else CompoundIcons.Attachment()))
+                            },
+                            trailingContent = if (isBusy) {
+                                ListItemContent.Custom { CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) }
+                            } else {
+                                null
+                            },
+                            supportingContent = {
+                                if (preview is NotesPreview.Text && preview.text.isNotBlank()) {
+                                    Text(preview.text.trim(), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                } else {
+                                    Text(Formatter.formatShortFileSize(LocalContext.current, entry.size))
+                                }
+                            },
+                        ) {
+                            Text(entry.name)
+                        }
                     }
                 }
             }
@@ -233,6 +272,27 @@ internal fun NotesFolderViewPreview(@PreviewParameter(NotesFolderStatePreviewPar
         onReviewChoicesClick = {},
         onMapClick = {},
         onMediaClick = {},
+        onDocumentClick = {},
         onHistoryClick = {},
     )
+}
+
+/** A document's first page or a photo, small, where the row's icon would be. */
+@Composable
+private fun FilePreviewThumbnail(preview: NotesPreview.Image, name: String) {
+    val shape = RoundedCornerShape(6.dp)
+    Box(
+        modifier = Modifier
+            .size(width = 44.dp, height = 56.dp)
+            .clip(shape)
+            .background(ElementTheme.colors.bgSubtleSecondary, shape),
+        contentAlignment = Alignment.Center,
+    ) {
+        AsyncImage(
+            model = photoRequest(preview.file.path),
+            contentDescription = name,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
 }

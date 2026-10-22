@@ -38,7 +38,7 @@ class NotesFolderManagementTest {
         assertThat(entries).containsExactly(
             NotesFolderEntry.Folder("Recetas", "Recetas", 0, 0),
             NotesFolderEntry.Folder("Viajes", "Viajes", 0, 0),
-            NotesFolderEntry.Note("Mole", "Mole.md", hasLocalEdits = false),
+            NotesFolderEntry.Note("Mole", "Mole.md", hasLocalEdits = false, firstLines = "x"),
         ).inOrder()
         assertThat(NotesFolderEntries.of(emptyList(), "Viajes", listOf("Viajes", "Viajes/Oaxaca")))
             .containsExactly(NotesFolderEntry.Folder("Oaxaca", "Viajes/Oaxaca", 0, 0))

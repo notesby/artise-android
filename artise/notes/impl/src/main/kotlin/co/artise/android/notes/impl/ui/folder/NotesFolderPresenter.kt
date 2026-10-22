@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import co.artise.android.notes.api.EditState
 import co.artise.android.notes.api.MediaInUseException
 import co.artise.android.notes.api.NotesException
+import co.artise.android.notes.api.NotesPreview
 import co.artise.android.notes.api.NotesRepository
 import co.artise.android.notes.impl.ui.chats.NotesSyncStatus
 import co.artise.android.notes.impl.ui.chats.toSyncStatus
@@ -30,8 +31,11 @@ import dev.zacsweers.metro.AssistedInject
 import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.matrix.api.core.RoomId
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.launch
 
 fun interface NotesFolderNavigator {
@@ -74,9 +78,14 @@ class NotesFolderPresenter(
         var refreshRequests by remember { mutableIntStateOf(0) }
         var showNewMenu by remember { mutableStateOf(false) }
         var isGone by remember { mutableStateOf(false) }
+        var previews by remember { mutableStateOf<ImmutableMap<String, NotesPreview>>(persistentMapOf()) }
+        // Rows ask for their preview as they appear; each file is asked for once per look at the folder.
+        val previewsRequested = remember { mutableSetOf<String>() }
 
         suspend fun reload() {
             entries = NotesFolderEntries.of(repository.files(roomId), folder, repository.folders(roomId)).toImmutableList()
+            // Files may have changed: let the rows ask again (an unchanged file's preview comes from the phone).
+            previewsRequested.clear()
             needChoiceCount = repository.edits(roomId).count { it.state != EditState.PENDING }
         }
 
@@ -118,9 +127,16 @@ class NotesFolderPresenter(
             showNewMenu = showNewMenu,
             canDeleteFolder = folder.isNotEmpty() && entries.isEmpty() && !isRefreshing,
             isGone = isGone,
+            previews = previews,
             eventSink = { event ->
                 when (event) {
                     NotesFolderEvent.Refresh -> refreshRequests++
+                    is NotesFolderEvent.LoadPreview -> if (previewsRequested.add(event.path)) {
+                        scope.launch {
+                            val preview = repository.preview(roomId, event.path, PREVIEW_SIZE)
+                            previews = (previews + (event.path to preview)).toImmutableMap()
+                        }
+                    }
                     NotesFolderEvent.DismissPrivacyNotice -> {
                         showPrivacyNotice = false
                         scope.launch { repository.markPrivacyNoticeSeen() }
@@ -370,4 +386,9 @@ class NotesFolderPresenter(
 
     /** True for [folder] itself and anything at any depth inside it. */
     private fun String.isInside(folder: String) = this == folder || startsWith("$folder/")
+
+    private companion object {
+        /** Previews are shown at 56 dp: 256 px covers a 3x screen without wasting bandwidth. */
+        const val PREVIEW_SIZE = 256
+    }
 }

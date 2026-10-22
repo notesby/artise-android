@@ -15,6 +15,7 @@ import co.artise.android.notes.api.EditKind
 import co.artise.android.notes.api.EditState
 import co.artise.android.notes.api.MediaInUseException
 import co.artise.android.notes.api.NotesException
+import co.artise.android.notes.api.NotesPreview
 import co.artise.android.notes.api.UploadStatus
 import co.artise.android.notes.impl.A_ROOM
 import co.artise.android.notes.impl.A_ROOM_ENCODED
@@ -824,5 +825,75 @@ class NotesSyncEngineTest {
         server.enqueue(tree, MockResponse().setResponseCode(304))
         engine.sync(room).getOrThrow()
         assertThat(server.requestsTo(pagesKey)).hasSize(1)
+    }
+
+    private val previewKey = "GET /chats/$A_ROOM_ENCODED/preview?path=luna.jpg&size=256"
+
+    private fun previewPng(bytes: ByteArray, etag: String) = MockResponse()
+        .setResponseCode(200)
+        .setHeader("Content-Type", "image/png")
+        .setHeader("X-Width", "256")
+        .setHeader("X-Height", "192")
+        .setHeader("ETag", etag)
+        .setBody(Buffer().write(bytes))
+
+    /** A file's preview is fetched once and kept on the phone for as long as the file's version is the same. */
+    @Test
+    fun `preview is fetched once per version of the file`() = runTest {
+        val engine = engine()
+        engine.firstSync()
+        server.enqueue(previewKey, previewPng(byteArrayOf(9, 9), "\"e1\""))
+        val first = engine.preview(room, "luna.jpg", 256) as NotesPreview.Image
+        assertThat(first.file.readBytes()).isEqualTo(byteArrayOf(9, 9))
+        assertThat(first.width).isEqualTo(256)
+        assertThat(first.height).isEqualTo(192)
+        assertThat(engine.preview(room, "luna.jpg", 256)).isEqualTo(first)
+        assertThat(server.requestsTo(previewKey)).hasSize(1)
+    }
+
+    /** When the file changes, the preview is asked again with its ETag; a 304 keeps the picture already on the phone. */
+    @Test
+    fun `a changed file revalidates its preview by etag`() = runTest {
+        val engine = engine()
+        engine.firstSync()
+        server.enqueue(previewKey, previewPng(byteArrayOf(9, 9), "\"e1\""))
+        engine.preview(room, "luna.jpg", 256)
+
+        server.enqueue(tree, treeResponse("t2", "Súper.md" to "v1", "Mole.md" to "m1", "luna.jpg" to "p2"))
+        server.enqueue(pagesKey, json(body = """{"pages": []}"""))
+        engine.sync(room).getOrThrow()
+        server.enqueue(previewKey, MockResponse().setResponseCode(304))
+        val again = engine.preview(room, "luna.jpg", 256) as NotesPreview.Image
+        assertThat(again.file.readBytes()).isEqualTo(byteArrayOf(9, 9))
+        assertThat(server.requestsTo(previewKey).last().getHeader("If-None-Match")).isEqualTo("\"e1\"")
+        // Now stored under the new version: no further request
+        engine.preview(room, "luna.jpg", 256)
+        assertThat(server.requestsTo(previewKey)).hasSize(2)
+    }
+
+    /** Office files and the like have no preview; the server's 415 is remembered so the row doesn't ask again. */
+    @Test
+    fun `files without a preview are remembered as such`() = runTest {
+        val engine = engine()
+        server.enqueue(tree, treeResponse("t1", "oferta.docx" to "d1"))
+        server.enqueue(pagesKey, json(body = """{"pages": []}"""))
+        engine.sync(room).getOrThrow()
+        val key = "GET /chats/$A_ROOM_ENCODED/preview?path=oferta.docx&size=256"
+        server.enqueue(key, error(415, "no_preview"))
+        assertThat(engine.preview(room, "oferta.docx", 256)).isEqualTo(NotesPreview.None)
+        assertThat(engine.preview(room, "oferta.docx", 256)).isEqualTo(NotesPreview.None)
+        assertThat(server.requestsTo(key)).hasSize(1)
+    }
+
+    /** Offline or a server failure: none for now, and asked again next time. */
+    @Test
+    fun `a preview that could not be fetched is asked again later`() = runTest {
+        val engine = engine()
+        engine.firstSync()
+        // Nothing routed: the mock answers 500
+        assertThat(engine.preview(room, "luna.jpg", 256)).isEqualTo(NotesPreview.None)
+        server.enqueue(previewKey, previewPng(byteArrayOf(1), "\"e1\""))
+        assertThat(engine.preview(room, "luna.jpg", 256)).isInstanceOf(NotesPreview.Image::class.java)
+        assertThat(server.requestsTo(previewKey)).hasSize(2)
     }
 }

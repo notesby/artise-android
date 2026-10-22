@@ -252,6 +252,41 @@ class NotesApiClient(
         .addPathSegment(endpoint)
         .build()
 
+    /**
+     * The file's preview: a PNG for a PDF (its first page) or a photo, the first lines for a text file, at most [size] px
+     * on the longer edge. With [etag] set, [PreviewResponse.NotModified] when the preview hasn't changed.
+     * [PreviewResponse.None] for files the server makes no preview of (`415`), can't read (`422`) or doesn't have (`404`).
+     */
+    suspend fun preview(roomId: RoomId, path: String, size: Int, etag: String? = null): Result<PreviewResponse> {
+        val url = url(roomId, "preview").newBuilder()
+            .addQueryParameter("path", path)
+            .addQueryParameter("size", size.toString())
+            .build()
+        val request = get(url).newBuilder()
+            .apply { if (etag != null) header("If-None-Match", etag) }
+            .build()
+        return send(request) { response ->
+            val contentType = response.header("Content-Type").orEmpty()
+            when {
+                response.code == HTTP_NOT_MODIFIED -> PreviewResponse.NotModified
+                contentType.startsWith("image/") -> PreviewResponse.Image(
+                    bytes = response.body.bytes(),
+                    width = response.header("X-Width")?.toIntOrNull() ?: 0,
+                    height = response.header("X-Height")?.toIntOrNull() ?: 0,
+                    etag = response.header("ETag"),
+                )
+                contentType.startsWith("text/") -> PreviewResponse.Text(response.bodyString(), etag = response.header("ETag"))
+                else -> PreviewResponse.None
+            }
+        }.recoverCatching { error ->
+            when {
+                error is NotesException.NotFound -> PreviewResponse.None
+                error is NotesException.Server && error.status in NO_PREVIEW_STATUSES -> PreviewResponse.None
+                else -> throw error
+            }
+        }
+    }
+
     private fun request(url: HttpUrl) = Request.Builder().url(url)
 
     private fun get(url: HttpUrl) = request(url).get().build()
@@ -321,8 +356,23 @@ class NotesApiClient(
 
     private companion object {
         val NO_NOTES_API = "https://notes.invalid/".toHttpUrl()
+
+        /** `415 no_preview` and `422 unreadable`: the file simply has no preview. */
+        private val NO_PREVIEW_STATUSES = setOf(415, 422)
         const val CHANGES_PAGE_SIZE = 50
         const val HTTP_UNAUTHORIZED = 401
         const val HTTP_NOT_MODIFIED = 304
     }
+}
+
+/** The server's answer to `/preview`. */
+sealed interface PreviewResponse {
+    @Suppress("ArrayInDataClass")
+    data class Image(val bytes: ByteArray, val width: Int, val height: Int, val etag: String?) : PreviewResponse
+
+    data class Text(val text: String, val etag: String?) : PreviewResponse
+
+    data object NotModified : PreviewResponse
+
+    data object None : PreviewResponse
 }

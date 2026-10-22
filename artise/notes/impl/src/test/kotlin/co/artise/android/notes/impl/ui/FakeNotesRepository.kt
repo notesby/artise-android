@@ -20,6 +20,7 @@ import co.artise.android.notes.api.NotesChat
 import co.artise.android.notes.api.NotesException
 import co.artise.android.notes.api.NotesGraph
 import co.artise.android.notes.api.NotesPage
+import co.artise.android.notes.api.NotesPreview
 import co.artise.android.notes.api.NotesRepository
 import co.artise.android.notes.api.NotesSearchResult
 import co.artise.android.notes.api.PendingEdit
@@ -166,6 +167,14 @@ class FakeNotesRepository(
     override suspend fun media(roomId: RoomId): List<MediaFile> = media.toList()
 
     override suspend fun cachedAttachment(roomId: RoomId, path: String): File? = null
+
+    val previewRequests = mutableListOf<Pair<String, Int>>()
+    var previewResult: (String) -> NotesPreview = { NotesPreview.None }
+
+    override suspend fun preview(roomId: RoomId, path: String, size: Int): NotesPreview {
+        previewRequests += path to size
+        return previewResult(path)
+    }
 
     override suspend fun deleteMedia(roomId: RoomId, path: String, removeFromNotes: Boolean): Result<Unit> =
         deleteMediaResult(path, removeFromNotes).onSuccess {

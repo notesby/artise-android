@@ -16,6 +16,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
+import co.artise.android.notes.api.NoteAttachment
 import co.artise.android.notes.api.NotesEntryPoint
 import com.bumble.appyx.core.lifecycle.subscribe
 import com.bumble.appyx.core.modality.BuildContext
@@ -71,6 +72,7 @@ import io.element.android.libraries.architecture.overlay.Overlay
 import io.element.android.libraries.architecture.overlay.operation.hide
 import io.element.android.libraries.architecture.overlay.operation.show
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
+import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.dateformatter.api.DateFormatter
 import io.element.android.libraries.dateformatter.api.DateFormatterMode
 import io.element.android.libraries.dateformatter.api.toHumanReadableDuration
@@ -206,6 +208,10 @@ class MessagesFlowNode(
         /** Artise: this chat's notes, from the icon next to the call button. */
         @Parcelize
         data object Notes : NavTarget
+
+        /** Artise: a file of this chat's notes that Ari posted, opened from the notes rather than the attachment. */
+        @Parcelize
+        data class NotesFile(val path: String) : NavTarget
 
         @Parcelize
         data object KnockRequestsList : NavTarget
@@ -529,6 +535,14 @@ class MessagesFlowNode(
                 }
                 notesEntryPoint.createNode(this, buildContext, NotesEntryPoint.Params(room.roomId), callback)
             }
+            is NavTarget.NotesFile -> {
+                val callback = object : NotesEntryPoint.Callback {
+                    override fun onDone() {
+                        backstack.pop()
+                    }
+                }
+                notesEntryPoint.createNode(this, buildContext, NotesEntryPoint.Params(room.roomId, openPath = navTarget.path), callback)
+            }
             NavTarget.PinnedMessagesList -> {
                 val callback = object : PinnedMessagesListNode.Callback {
                     override fun handleEventClick(event: TimelineItem.Event, canUseOverlay: Boolean) {
@@ -740,6 +754,11 @@ class MessagesFlowNode(
         event: TimelineItem.Event,
         canUseOverlay: Boolean,
     ): Boolean {
+        // Artise: the notes' own copy of a file opens from the notes, so the person sees its current version.
+        noteAttachmentPath(event)?.let { path ->
+            backstack.push(NavTarget.NotesFile(path))
+            return true
+        }
         val navTarget = when (event.content) {
             is TimelineItemImageContent -> {
                 buildMediaViewerNavTarget(
@@ -817,6 +836,16 @@ class MessagesFlowNode(
             }
             else -> false
         }
+    }
+
+    /**
+     * Artise: the notes path a file or photo message carries in `co.artise.note`, when the app can show that kind of file.
+     * Office files and the like stay attachments, downloaded as today.
+     */
+    private fun noteAttachmentPath(event: TimelineItem.Event): String? {
+        if (event.content !is TimelineItemFileContent && event.content !is TimelineItemImageContent) return null
+        val path = runCatchingExceptions { NoteAttachment.read(event.debugInfo.originalJson) }.getOrNull() ?: return null
+        return path.takeIf { NoteAttachment.kindOf(it) != NoteAttachment.Kind.OTHER }
     }
 
     private fun processGalleryEventClick(

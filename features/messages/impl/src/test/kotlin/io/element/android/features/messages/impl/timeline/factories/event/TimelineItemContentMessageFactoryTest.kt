@@ -606,6 +606,40 @@ class TimelineItemContentMessageFactoryTest : RobolectricTest() {
         assertThat(result).isEqualTo(expected)
     }
 
+    /** Artise: an encrypted chat's `thumbnail_file` arrives as a source with its encryption JSON, kept for the SDK to decrypt. */
+    @Test
+    fun `test create FileMessageType keeps an encrypted thumbnail`() = runTest {
+        val sut = createTimelineItemContentMessageFactory()
+        val encrypted = MediaSource(
+            url = "mxc://artise.co/thumb",
+            json = """{"url":"mxc://artise.co/thumb","key":{"k":"abc"},"iv":"iv","hashes":{"sha256":"h"},"v":"v2"}""",
+        )
+        val result = sut.create(
+            content = createMessageContent(
+                type = FileMessageType(
+                    filename = "INV-2026-004.pdf",
+                    caption = null,
+                    formattedCaption = null,
+                    source = MediaSource("mxc://artise.co/file", json = "{}"),
+                    info = FileInfo(
+                        mimetype = MimeTypes.Pdf,
+                        size = 48_213L,
+                        thumbnailInfo = ThumbnailInfo(height = 512L, width = 396L, mimetype = "image/png", size = 31_877L),
+                        thumbnailSource = encrypted,
+                    )
+                ),
+                isEdited = false,
+            ),
+            senderId = A_USER_ID,
+            senderProfile = aProfileDetails(),
+            eventId = AN_EVENT_ID,
+        )
+        val file = result as TimelineItemFileContent
+        assertThat(file.thumbnailSource).isEqualTo(encrypted)
+        assertThat(file.thumbnailSource?.json).contains("\"key\"")
+        assertThat(file.mediaSource.json).isEqualTo("{}")
+    }
+
     @Test
     fun `test create FileMessageType with info`() = runTest {
         val sut = createTimelineItemContentMessageFactory()

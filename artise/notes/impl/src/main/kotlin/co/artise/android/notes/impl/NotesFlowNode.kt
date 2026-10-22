@@ -18,6 +18,7 @@ import co.artise.android.notes.api.NotesRepository
 import co.artise.android.notes.impl.sync.NotesLiveUpdates
 import co.artise.android.notes.impl.ui.chats.NotesChatsNode
 import co.artise.android.notes.impl.ui.choices.NotesChoicesNode
+import co.artise.android.notes.impl.ui.document.NotesDocumentNode
 import co.artise.android.notes.impl.ui.editor.NoteEditorNode
 import co.artise.android.notes.impl.ui.folder.NotesFolderNode
 import co.artise.android.notes.impl.ui.graph.NotesGraphNode
@@ -89,6 +90,10 @@ class NotesFlowNode(
         @Parcelize
         data class Media(val roomId: RoomId) : NavTarget
 
+        /** A PDF or photo of the notes, in the app's own viewer. */
+        @Parcelize
+        data class Document(val roomId: RoomId, val path: String) : NavTarget
+
         /** Every change to a chat's notes: who it was for and how it was made. */
         @Parcelize
         data class Changes(val roomId: RoomId) : NavTarget
@@ -140,6 +145,8 @@ class NotesFlowNode(
 
         override fun openMedia(roomId: RoomId) = backstack.push(NavTarget.Media(roomId))
 
+        override fun openDocument(roomId: RoomId, path: String) = backstack.push(NavTarget.Document(roomId, path))
+
         override fun openHistory(roomId: RoomId) = backstack.push(NavTarget.Changes(roomId))
 
         override fun openNoteHistory(roomId: RoomId, path: String) = backstack.push(NavTarget.NoteHistory(roomId, path))
@@ -164,6 +171,7 @@ class NotesFlowNode(
         is NavTarget.Choices -> createNode<NotesChoicesNode>(buildContext, listOf(NotesChoicesNode.Inputs(navTarget.roomId), navigation))
         is NavTarget.Map -> createNode<NotesGraphNode>(buildContext, listOf(NotesGraphNode.Inputs(navTarget.roomId), navigation))
         is NavTarget.Media -> createNode<NotesMediaNode>(buildContext, listOf(NotesMediaNode.Inputs(navTarget.roomId), navigation))
+        is NavTarget.Document -> createNode<NotesDocumentNode>(buildContext, listOf(NotesDocumentNode.Inputs(navTarget.roomId, navTarget.path)))
         is NavTarget.Changes -> createNode<NotesChangesNode>(buildContext, listOf(NotesChangesNode.Inputs(navTarget.roomId), navigation))
         is NavTarget.NoteHistory -> createNode<NoteHistoryNode>(buildContext, listOf(NoteHistoryNode.Inputs(navTarget.roomId, navTarget.path), navigation))
         is NavTarget.NoteVersion -> createNode<NoteVersionNode>(
@@ -182,8 +190,8 @@ class NotesFlowNode(
 
     private companion object {
         fun initialTarget(plugins: List<Plugin>): NavTarget {
-            val roomId = plugins.filterIsInstance<NotesEntryPoint.Params>().firstOrNull()?.roomId
-            return if (roomId == null) NavTarget.Chats else NavTarget.Folder(roomId, folder = "")
+            val params = plugins.filterIsInstance<NotesEntryPoint.Params>().firstOrNull()
+            return NotesEntry.initialTarget(params?.roomId, params?.openPath)
         }
     }
 }

@@ -17,6 +17,7 @@ open class TimelineItemFileContentPreviewParam : PreviewParameterProvider<Timeli
         get() = sequenceOf(
             aTimelineItemFileContent(),
             aTimelineItemFileContent("A bigger name file.pdf"),
+            aTimelineItemFileContent("INV-2026-004.pdf", thumbnailSource = MediaSource(url = "mxc://artise.co/thumb")),
             aTimelineItemFileContent("An even bigger bigger bigger bigger bigger bigger bigger file name which doesn't fit.pdf"),
         )
 }
@@ -24,13 +25,14 @@ open class TimelineItemFileContentPreviewParam : PreviewParameterProvider<Timeli
 fun aTimelineItemFileContent(
     fileName: String = "A file.pdf",
     caption: String? = null,
+    thumbnailSource: MediaSource? = null,
 ) = TimelineItemFileContent(
     filename = fileName,
     fileSize = 100 * 1024L,
     caption = caption,
     formattedCaption = null,
     isEdited = false,
-    thumbnailSource = null,
+    thumbnailSource = thumbnailSource,
     mediaSource = MediaSource(url = ""),
     mimeType = MimeTypes.Pdf,
     formattedFileSize = "100kB",

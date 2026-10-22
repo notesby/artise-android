@@ -33,7 +33,7 @@ internal object NotesFolderEntries {
         val here = inFolder.filter { !it.path.removePrefix(prefix).contains('/') }
         val notes = here
             .filter { it.isNote }
-            .map { NotesFolderEntry.Note(noteName(it.path), it.path, it.hasLocalEdits) }
+            .map { NotesFolderEntry.Note(noteName(it.path), it.path, it.hasLocalEdits, firstLines(it.content)) }
             .sortedBy { it.name.lowercase() }
         val others = here
             .filterNot { it.isNote }
@@ -41,6 +41,28 @@ internal object NotesFolderEntries {
             .sortedBy { it.name.lowercase() }
         return folders + notes + others
     }
+
+    /**
+     * How a note starts, for its row: the first [FIRST_LINES] lines with text, without the `---` header and Markdown marks.
+     * Empty for a note not downloaded yet.
+     */
+    fun firstLines(content: String?): String {
+        if (content.isNullOrBlank()) return ""
+        val lines = content.lines()
+        val body = if (lines.first().trim() == "---") {
+            val end = lines.drop(1).indexOfFirst { it.trim() == "---" }
+            if (end >= 0) lines.drop(end + 2) else lines
+        } else {
+            lines
+        }
+        return body.asSequence()
+            .map { it.trim().trimStart('#', '>', '-', '*', ' ').removePrefix("[ ] ").removePrefix("[x] ").trim() }
+            .filter { it.isNotEmpty() }
+            .take(FIRST_LINES)
+            .joinToString("\n")
+    }
+
+    private const val FIRST_LINES = 2
 
     /** Every folder in the chat's notes, parents before children: "Recetas", "Recetas/Postres", "Viajes". */
     fun allFolders(files: List<LocalFile>): List<String> = files

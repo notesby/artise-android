@@ -218,4 +218,6 @@
     <string name="screen_notes_page_type_spreadsheet">Spreadsheet</string>
     <string name="screen_notes_page_type_audio">Audio</string>
     <string name="screen_notes_map_pages_hint">Notes with a ring are pages: a person, place or thing of their own.</string>
+    <string name="screen_notes_document_offline">Connect to the internet to open this file.</string>
+    <string name="screen_notes_document_failed">Couldn’t open this file.</string>
 </resources>

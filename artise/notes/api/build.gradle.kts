@@ -16,4 +16,6 @@ android {
 dependencies {
     api(projects.libraries.architecture)
     api(projects.libraries.matrix.api)
+    implementation(projects.libraries.core)
+    implementation(libs.serialization.json)
 }
