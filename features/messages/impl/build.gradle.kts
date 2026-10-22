@@ -33,6 +33,7 @@ dependencies {
     implementation(projects.artise.stickers.api)
     implementation(projects.artise.notes.api)
     implementation(projects.artise.linkpreview.api)
+    implementation(projects.artise.reactions.api)
     implementation(projects.artise.workspace.api)
     implementation(projects.features.forward.api)
     implementation(projects.features.location.api)

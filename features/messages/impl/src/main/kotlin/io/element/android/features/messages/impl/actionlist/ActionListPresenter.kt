@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import co.artise.android.reactions.api.AskedReactions
 import co.artise.android.workspace.api.LocalWorkspaceBranding
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
@@ -44,6 +45,7 @@ import io.element.android.features.messages.impl.timeline.model.event.canBeForwa
 import io.element.android.features.messages.impl.timeline.model.event.canReact
 import io.element.android.features.messages.impl.timeline.model.event.captionOrNull
 import io.element.android.libraries.architecture.Presenter
+import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.dateformatter.api.DateFormatter
 import io.element.android.libraries.dateformatter.api.DateFormatterMode
 import io.element.android.libraries.di.RoomScope
@@ -161,6 +163,8 @@ class DefaultActionListPresenter(
 
         if (actions.isNotEmpty() || displayEmojiReactions || verifiedUserSendFailure != VerifiedUserSendFailure.None) {
             val recentEmojis = getRecentEmojis().getOrNull()?.toImmutableList() ?: persistentListOf()
+            // Artise: a message of Ari's that waits for a reaction names the emojis it accepts; they go first.
+            val asked = runCatchingExceptions { AskedReactions.read(timelineItem.debugInfo.originalJson) }.getOrNull()
             target.value = ActionListState.Target.Success(
                 event = timelineItem,
                 sentTimeFull = dateFormatter.format(
@@ -171,10 +175,12 @@ class DefaultActionListPresenter(
                 displayEmojiReactions = displayEmojiReactions,
                 verifiedUserSendFailure = verifiedUserSendFailure,
                 actions = actions.toImmutableList(),
-                // Merge suggested and recent emojis, removing duplicates and returning at most 100
-                recentEmojis = (suggestedEmojis + recentEmojis).distinct()
+                // Artise: asked emojis first, then this person's most used ones, then the suggested defaults;
+                // no duplicates and at most 100
+                recentEmojis = AskedReactions.quickBar(asked?.emojis.orEmpty(), recentEmojis + suggestedEmojis)
                     .take(100)
-                    .toImmutableList()
+                    .toImmutableList(),
+                isProposal = asked?.isProposal == true,
             )
         } else {
             target.value = ActionListState.Target.None

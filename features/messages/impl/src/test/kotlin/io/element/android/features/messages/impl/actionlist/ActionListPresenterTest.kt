@@ -37,6 +37,7 @@ import io.element.android.libraries.matrix.api.notification.CallIntent
 import io.element.android.libraries.matrix.api.room.BaseRoom
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.matrix.api.timeline.item.event.LocalEventSendState
+import io.element.android.libraries.matrix.api.timeline.item.event.TimelineItemDebugInfoProvider
 import io.element.android.libraries.matrix.test.AN_EVENT_ID
 import io.element.android.libraries.matrix.test.A_CAPTION
 import io.element.android.libraries.matrix.test.A_MESSAGE
@@ -45,6 +46,7 @@ import io.element.android.libraries.matrix.test.A_TRANSACTION_ID
 import io.element.android.libraries.matrix.test.A_USER_ID
 import io.element.android.libraries.matrix.test.room.FakeBaseRoom
 import io.element.android.libraries.matrix.test.room.aRoomInfo
+import io.element.android.libraries.matrix.test.timeline.aTimelineItemDebugInfo
 import io.element.android.libraries.preferences.test.InMemoryAppPreferencesStore
 import io.element.android.tests.testutils.WarmUpRule
 import io.element.android.tests.testutils.test
@@ -1583,10 +1585,64 @@ class ActionListPresenterTest {
             val successState = awaitItem()
             assertThat(successState.target).isInstanceOf(ActionListState.Target.Success::class.java)
 
-            // Check items are deduplicated between suggested and recent emojis and we take at most 100 items
-            val expectedEmojis = (suggestedEmojis + persistentListOf(":)") + otherEmojis).take(100)
+            // Artise: recent (most used) emojis come before the suggested ones, deduplicated, at most 100 items
+            val expectedEmojis = (listOf("👍️", ":)", "❤️") + otherEmojis + listOf("👎️", "🔥", "👏")).take(100)
             assertThat((successState.target as ActionListState.Target.Success).recentEmojis)
                 .isEqualTo(expectedEmojis)
+        }
+    }
+
+    @Test
+    fun `present - Artise asked reactions come first and mark a proposal`() = runTest {
+        val presenter = createActionListPresenter(
+            isDeveloperModeEnabled = false,
+            recentEmojis = GetRecentEmojis { Result.success(persistentListOf("✅️", "😀")) },
+        )
+        presenter.test {
+            val initialState = awaitItem()
+            val messageEvent = aMessageEvent(
+                isMine = false,
+                debugInfoProvider = TimelineItemDebugInfoProvider {
+                    aTimelineItemDebugInfo(
+                        originalJson = """{"content":{"body":"Send it?","co.artise.reactions":["✅","❌"],"co.artise.proposal":"inbox_reply"}}"""
+                    )
+                },
+            )
+            initialState.eventSink.invoke(
+                ActionListEvent.ComputeForMessage(
+                    event = messageEvent,
+                    userEventPermissions = aUserEventPermissions(canSendReaction = true),
+                )
+            )
+            val successState = awaitItem().target as ActionListState.Target.Success
+            assertThat(successState.isProposal).isTrue()
+            // Asked first, then the most used ones, then the suggested defaults; the ✅️ variant is a duplicate
+            assertThat(successState.recentEmojis).isEqualTo(
+                (persistentListOf("✅", "❌", "😀") + suggestedEmojis).toImmutableList()
+            )
+        }
+    }
+
+    @Test
+    fun `present - a message without asked reactions keeps the bar as it was`() = runTest {
+        val presenter = createActionListPresenter(isDeveloperModeEnabled = false)
+        presenter.test {
+            val initialState = awaitItem()
+            val messageEvent = aMessageEvent(
+                isMine = false,
+                debugInfoProvider = TimelineItemDebugInfoProvider {
+                    aTimelineItemDebugInfo(originalJson = """{"content":{"msgtype":"m.text","body":"Hola"}}""")
+                },
+            )
+            initialState.eventSink.invoke(
+                ActionListEvent.ComputeForMessage(
+                    event = messageEvent,
+                    userEventPermissions = aUserEventPermissions(canSendReaction = true),
+                )
+            )
+            val successState = awaitItem().target as ActionListState.Target.Success
+            assertThat(successState.isProposal).isFalse()
+            assertThat(successState.recentEmojis).isEqualTo(suggestedEmojis)
         }
     }
 }

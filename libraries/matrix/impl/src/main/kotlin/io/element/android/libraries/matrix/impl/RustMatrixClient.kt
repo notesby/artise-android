@@ -860,7 +860,8 @@ class RustMatrixClient(
 
     override suspend fun getRecentEmojis(): Result<List<String>> = withContext(sessionDispatcher) {
         runCatchingExceptions {
-            innerClient.getRecentEmojis().map { it.emoji }
+            // Artise: most used first, so the quick-reaction bar starts with what this person actually uses
+            innerClient.getRecentEmojis().sortedByDescending { it.count }.map { it.emoji }
         }
     }
 

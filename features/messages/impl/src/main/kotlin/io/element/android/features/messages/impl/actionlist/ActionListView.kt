@@ -32,7 +32,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.SheetValue
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberBottomSheetState
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
@@ -54,6 +57,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import co.artise.android.reactions.api.AskedReactions
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemAction
@@ -86,6 +90,8 @@ import io.element.android.libraries.designsystem.components.avatar.Avatar
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.designsystem.components.avatar.AvatarType
 import io.element.android.libraries.designsystem.components.list.ListItemContent
+import io.element.android.libraries.designsystem.components.tooltip.PlainTooltip
+import io.element.android.libraries.designsystem.components.tooltip.TooltipBox
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.text.toSp
@@ -234,6 +240,7 @@ private fun ActionListViewContent(
                         EmojiReactionsRow(
                             recentEmojis = target.recentEmojis,
                             highlightedEmojis = target.event.reactionsState.highlightedKeys,
+                            isProposal = target.isProposal,
                             onEmojiReactionClick = onEmojiReactionClick,
                             onCustomReactionClick = onCustomReactionClick,
                             modifier = Modifier.fillMaxWidth(),
@@ -365,6 +372,7 @@ private val emojiRippleRadius = 24.dp
 private fun EmojiReactionsRow(
     recentEmojis: ImmutableList<String>,
     highlightedEmojis: ImmutableList<String>,
+    isProposal: Boolean,
     onEmojiReactionClick: (String) -> Unit,
     onCustomReactionClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -406,6 +414,7 @@ private fun EmojiReactionsRow(
                         },
                     emoji = emoji,
                     isHighlighted = isHighlighted,
+                    label = AskedReactions.proposalLabel(emoji, isProposal)?.let { stringResource(it) },
                     onClick = onEmojiReactionClick
                 )
             }
@@ -476,10 +485,40 @@ private fun VerifiedUserSendFailureView(
     )
 }
 
+/**
+ * One emoji of the quick-reaction bar.
+ *
+ * Artise: [label] names what the reaction does on one of Ari's proposals ("Approve", "Decline"). It replaces the
+ * accessibility click label and shows as a tooltip on a long press.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EmojiButton(
     emoji: String,
     isHighlighted: Boolean,
+    onClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    label: String? = null,
+) {
+    if (label == null) {
+        EmojiButtonContent(emoji, isHighlighted, label = null, onClick = onClick, modifier = modifier)
+    } else {
+        TooltipBox(
+            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+            tooltip = { PlainTooltip { Text(label) } },
+            state = rememberTooltipState(),
+            modifier = modifier,
+        ) {
+            EmojiButtonContent(emoji, isHighlighted, label = label, onClick = onClick)
+        }
+    }
+}
+
+@Composable
+private fun EmojiButtonContent(
+    emoji: String,
+    isHighlighted: Boolean,
+    label: String?,
     onClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -488,7 +527,7 @@ private fun EmojiButton(
     } else {
         Color.Transparent
     }
-    val a11yClickLabel = a11yReactionAction(
+    val a11yClickLabel = label ?: a11yReactionAction(
         emoji = emoji,
         userAlreadyReacted = isHighlighted,
     )
