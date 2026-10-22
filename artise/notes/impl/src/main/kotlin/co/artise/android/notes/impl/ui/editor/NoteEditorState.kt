@@ -46,7 +46,16 @@ data class NoteEditorState(
     val canUndo: Boolean,
     val canRedo: Boolean,
     val showSaveChangesDialog: Boolean,
+    /** The find bar, while open: what's typed and where it appears in the text being edited. */
+    val find: EditorFind?,
     val eventSink: (NoteEditorEvent) -> Unit,
+)
+
+/** Finding in the editor: [matches] are character ranges of [NoteEditorState.value], [current] the one in view. */
+data class EditorFind(
+    val query: String,
+    val matches: ImmutableList<IntRange>,
+    val current: Int,
 )
 
 enum class AttachError {

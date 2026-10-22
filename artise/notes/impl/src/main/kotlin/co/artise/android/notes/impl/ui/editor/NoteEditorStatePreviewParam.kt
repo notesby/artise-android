@@ -36,6 +36,7 @@ open class NoteEditorStatePreviewParam : PreviewParameterProvider<NoteEditorStat
             ),
             aNoteEditorState(text = "- leche" + NoteEditorPresenter.CONFLICT_SEPARATOR + "- pan", isResolvingConflict = true),
             aNoteEditorState(showSaveChangesDialog = true),
+            aNoteEditorState(find = EditorFind(query = "leche", matches = persistentListOf(2..6), current = 0)),
             aNoteEditorState(isPreviewing = true),
         )
 }
@@ -46,6 +47,7 @@ fun aNoteEditorState(
     isResolvingConflict: Boolean = false,
     suggestions: List<WikiLinkSuggestion> = emptyList(),
     showSaveChangesDialog: Boolean = false,
+    find: EditorFind? = null,
     isPreviewing: Boolean = false,
 ) = NoteEditorState(
     title = "Súper",
@@ -67,5 +69,6 @@ fun aNoteEditorState(
     canUndo = true,
     canRedo = false,
     showSaveChangesDialog = showSaveChangesDialog,
+    find = find,
     eventSink = {},
 )

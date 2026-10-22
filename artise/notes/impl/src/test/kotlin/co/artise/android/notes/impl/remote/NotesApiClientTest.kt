@@ -11,6 +11,8 @@ import co.artise.android.notes.api.ChangeAuthor
 import co.artise.android.notes.api.FileChange
 import co.artise.android.notes.api.NotesException
 import co.artise.android.notes.api.NotesPage
+import co.artise.android.notes.api.NotesText
+import co.artise.android.notes.api.NotesTextPage
 import co.artise.android.notes.api.ServerCopy
 import co.artise.android.notes.impl.A_ROOM
 import co.artise.android.notes.impl.A_ROOM_ENCODED
@@ -376,5 +378,30 @@ class NotesApiClientTest {
         // Anything else is still a failure
         server.enqueue(previewKey, error(500, "boom"))
         assertThat(client.preview(room, "docs/Recetario.pdf", 256).isFailure).isTrue()
+    }
+
+    @Test
+    fun `text reads a document page by page`() = runTest {
+        server.enqueue(
+            "GET /chats/$A_ROOM_ENCODED/text?path=docs%2FRecetario.pdf",
+            json(body = """{"path": "docs/Recetario.pdf", "version": "3f9c", "pages": [{"n": 1, "text": "Mole poblano"}, {"n": 2, "text": ""}]}"""),
+        )
+        val text = client().text(room, "docs/Recetario.pdf").getOrThrow()
+        assertThat(text).isEqualTo(NotesText("docs/Recetario.pdf", "3f9c", listOf(NotesTextPage(1, "Mole poblano"), NotesTextPage(2, ""))))
+        assertThat(server.requests.single().getHeader("Authorization")).isEqualTo("Bearer token-1")
+    }
+
+    /** `413 too_big`, `415 no_text` and `404` are failures the viewer turns into "search isn't available". */
+    @Test
+    fun `text failures keep their meaning`() = runTest {
+        val key = "GET /chats/$A_ROOM_ENCODED/text?path=big.pdf"
+        val client = client()
+        server.enqueue(key, error(413, "too_big"))
+        assertThat(client.text(room, "big.pdf").exceptionOrNull()).isInstanceOf(NotesException.TooBig::class.java)
+        server.enqueue(key, error(415, "no_text"))
+        val noText = client.text(room, "big.pdf").exceptionOrNull() as NotesException.Server
+        assertThat(noText.status).isEqualTo(415)
+        server.enqueue(key, error(404, "not_found"))
+        assertThat(client.text(room, "big.pdf").exceptionOrNull()).isInstanceOf(NotesException.NotFound::class.java)
     }
 }

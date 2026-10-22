@@ -9,7 +9,9 @@ package co.artise.android.notes.impl.ui.document
 
 import androidx.compose.runtime.Immutable
 import co.artise.android.notes.api.NoteAttachment
+import co.artise.android.notes.impl.ui.find.FindMatch
 import co.artise.android.notes.impl.ui.note.OpenFileRequest
+import kotlinx.collections.immutable.ImmutableList
 
 /** A PDF or photo of the chat's notes, read through the Notes API so it is the current version. */
 @Immutable
@@ -23,8 +25,26 @@ data class NotesDocumentState(
     val problem: DocumentProblem?,
     /** The file to hand to another app, once. */
     val openFile: OpenFileRequest?,
+    /** The find bar, while open. */
+    val find: DocumentFind?,
     val eventSink: (NotesDocumentEvent) -> Unit,
 )
+
+/**
+ * Finding in a document: the server's text page by page ([pages], index = page from 0), what's typed, every match
+ * and the one in view. [isUnavailable] when the server has no text for this file (too big, scanned, another kind).
+ */
+@Immutable
+data class DocumentFind(
+    val query: String,
+    val pages: ImmutableList<String>,
+    val matches: ImmutableList<FindMatch>,
+    val current: Int,
+    val isLoading: Boolean,
+    val isUnavailable: Boolean,
+) {
+    val currentMatch: FindMatch? get() = matches.getOrNull(current)
+}
 
 enum class DocumentProblem {
     /** Not on the phone yet and no connection. */
@@ -44,4 +64,14 @@ sealed interface NotesDocumentEvent {
     data class FileOpenHandled(val opened: Boolean) : NotesDocumentEvent
 
     data object DismissProblem : NotesDocumentEvent
+
+    data object OpenFind : NotesDocumentEvent
+
+    data class FindQueryChanged(val query: String) : NotesDocumentEvent
+
+    data object FindNext : NotesDocumentEvent
+
+    data object FindPrevious : NotesDocumentEvent
+
+    data object CloseFind : NotesDocumentEvent
 }

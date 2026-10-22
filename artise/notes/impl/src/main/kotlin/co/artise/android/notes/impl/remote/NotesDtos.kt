@@ -167,3 +167,9 @@ internal data class DeletedFolderDto(val path: String, val notes: Int = 0, val f
 
 @Serializable
 internal data class CurrentDto(val path: String, val version: String, val content: String? = null)
+
+@Serializable
+internal data class TextDto(val path: String, val version: String = "", val pages: List<TextPageDto> = emptyList())
+
+@Serializable
+internal data class TextPageDto(val n: Int, val text: String = "")

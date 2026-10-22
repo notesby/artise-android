@@ -9,6 +9,8 @@ package co.artise.android.notes.impl.ui.document
 
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import co.artise.android.notes.api.NoteAttachment
+import co.artise.android.notes.impl.ui.find.FindMatch
+import kotlinx.collections.immutable.persistentListOf
 
 open class NotesDocumentStatePreviewParam : PreviewParameterProvider<NotesDocumentState> {
     override val values: Sequence<NotesDocumentState>
@@ -17,6 +19,21 @@ open class NotesDocumentStatePreviewParam : PreviewParameterProvider<NotesDocume
             aNotesDocumentState(isLoading = false, problem = DocumentProblem.OFFLINE),
             aNotesDocumentState(isLoading = false, problem = DocumentProblem.FAILED),
             aNotesDocumentState(title = "luna.jpg", kind = NoteAttachment.Kind.IMAGE, isLoading = false, problem = DocumentProblem.NO_APP),
+            aNotesDocumentState(
+                isLoading = false,
+                find = DocumentFind(
+                    query = "mole",
+                    pages = persistentListOf("Mole poblano con chiles", "Más mole"),
+                    matches = persistentListOf(FindMatch(0, 0, 4), FindMatch(1, 4, 8)),
+                    current = 1,
+                    isLoading = false,
+                    isUnavailable = false,
+                ),
+            ),
+            aNotesDocumentState(
+                isLoading = false,
+                find = DocumentFind("", persistentListOf(), persistentListOf(), 0, isLoading = false, isUnavailable = true),
+            ),
         )
 }
 
@@ -26,6 +43,7 @@ fun aNotesDocumentState(
     file: String? = null,
     isLoading: Boolean = true,
     problem: DocumentProblem? = null,
+    find: DocumentFind? = null,
 ) = NotesDocumentState(
     title = title,
     kind = kind,
@@ -33,5 +51,6 @@ fun aNotesDocumentState(
     isLoading = isLoading,
     problem = problem,
     openFile = null,
+    find = find,
     eventSink = {},
 )

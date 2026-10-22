@@ -7,14 +7,17 @@
 
 package co.artise.android.notes.impl.background
 
+import android.os.Build
 import androidx.work.NetworkType
 import co.artise.android.notes.api.NotesBackgroundNetwork
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
+@Config(sdk = [Build.VERSION_CODES.TIRAMISU])
 class NotesBackgroundPolicyTest {
     private val wifi = NotesConnection(isConnected = true, isUnmetered = true, isDataSaverOn = false)
     private val mobile = NotesConnection(isConnected = true, isUnmetered = false, isDataSaverOn = false)

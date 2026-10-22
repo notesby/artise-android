@@ -10,6 +10,7 @@ package co.artise.android.notes.impl.ui.editor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -22,6 +23,7 @@ import co.artise.android.notes.api.NotesPage
 import co.artise.android.notes.api.NotesRepository
 import co.artise.android.notes.api.UploadStatus
 import co.artise.android.notes.impl.markdown.ChecklistToggle
+import co.artise.android.notes.impl.ui.find.TextFinder
 import co.artise.android.notes.impl.ui.folder.NotesFolderEntries
 import co.artise.android.notes.impl.ui.note.EmbedState
 import co.artise.android.notes.impl.ui.note.NoteEmbedRemover
@@ -86,6 +88,16 @@ class NoteEditorPresenter(
         var lastTypingAt by remember { mutableLongStateOf(0L) }
         var isAttaching by remember { mutableStateOf(false) }
         var isPreviewing by remember { mutableStateOf(false) }
+        // The find bar: null while closed. Matches follow the text as it changes, unsaved edits included.
+        var findQuery by remember { mutableStateOf<String?>(null) }
+        var findCurrent by remember { mutableIntStateOf(0) }
+        val findMatches = remember(findQuery, value.text) {
+            TextFinder.find(findQuery.orEmpty(), listOf(value.text)).map { it.start until it.end }.toImmutableList()
+        }
+        val find = findQuery?.let { EditorFind(it, findMatches, findCurrent.coerceIn(0, (findMatches.size - 1).coerceAtLeast(0))) }
+
+        // Counted again on each tap, from the text as it is then (not as it was when the state was built).
+        fun matchCount() = TextFinder.find(findQuery.orEmpty(), listOf(value.text)).size
         var allPaths by remember { mutableStateOf(emptyList<String>()) }
         var sizes by remember { mutableStateOf(emptyMap<String, Long>()) }
         var uploads by remember { mutableStateOf<Map<String, UploadStatus>>(emptyMap()) }
@@ -247,6 +259,7 @@ class NoteEditorPresenter(
             linkEdit = linkEdit,
             isAttaching = isAttaching,
             isPreviewing = isPreviewing,
+            find = find,
             embeds = remember(embeds, uploads) { embeds.withUploads(uploads) },
             openFile = openFile,
             openFileProblem = openFileProblem,
@@ -299,6 +312,19 @@ class NoteEditorPresenter(
                     }
                     NoteEditorEvent.DismissAttachError -> attachError = null
                     NoteEditorEvent.TogglePreview -> isPreviewing = !isPreviewing
+                    NoteEditorEvent.OpenFind -> {
+                        // Matches show in the text being edited, not the preview
+                        isPreviewing = false
+                        findQuery = findQuery ?: ""
+                        findCurrent = 0
+                    }
+                    is NoteEditorEvent.FindQueryChanged -> {
+                        findQuery = event.query
+                        findCurrent = 0
+                    }
+                    NoteEditorEvent.FindNext -> findCurrent = TextFinder.next(findCurrent, matchCount())
+                    NoteEditorEvent.FindPrevious -> findCurrent = TextFinder.previous(findCurrent, matchCount())
+                    NoteEditorEvent.CloseFind -> findQuery = null
                     is NoteEditorEvent.ToggleTask -> ChecklistToggle.toggle(value.text, event.lineIndex)?.let {
                         // "[ ]" and "[x]" are the same length, so the cursor stays valid.
                         commit(value.copy(text = it), isTyping = false)

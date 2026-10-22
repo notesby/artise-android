@@ -34,6 +34,17 @@ sealed interface NoteEditorEvent {
     /** Switch between editing the text and previewing the finished note. */
     data object TogglePreview : NoteEditorEvent
 
+    /** The find bar: open it, type in it, move between matches, close it. */
+    data object OpenFind : NoteEditorEvent
+
+    data class FindQueryChanged(val query: String) : NoteEditorEvent
+
+    data object FindNext : NoteEditorEvent
+
+    data object FindPrevious : NoteEditorEvent
+
+    data object CloseFind : NoteEditorEvent
+
     /** In the preview, a checklist item was tapped: tick it in the text. */
     data class ToggleTask(val lineIndex: Int) : NoteEditorEvent
 

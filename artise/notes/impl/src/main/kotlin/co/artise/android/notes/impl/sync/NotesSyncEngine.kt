@@ -27,6 +27,8 @@ import co.artise.android.notes.api.NotesPage
 import co.artise.android.notes.api.NotesPreview
 import co.artise.android.notes.api.NotesRepository
 import co.artise.android.notes.api.NotesSearchResult
+import co.artise.android.notes.api.NotesText
+import co.artise.android.notes.api.NotesTextPage
 import co.artise.android.notes.api.PendingEdit
 import co.artise.android.notes.api.SyncReport
 import co.artise.android.notes.api.UploadStatus
@@ -55,6 +57,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import timber.log.Timber
 import java.io.File
 import java.security.MessageDigest
@@ -445,6 +449,37 @@ class NotesSyncEngine(
             }
         }
     }
+
+    override suspend fun documentText(roomId: RoomId, path: String): Result<NotesText> {
+        val version = io { store.file(roomId, path) }?.version.orEmpty()
+        val cacheFile = textCacheFileFor(roomId, path)
+        val kept = io { readCachedText(cacheFile) }
+        if (kept != null && version.isNotEmpty() && kept.version == version) return Result.success(kept)
+        return api.text(roomId, path).fold(
+            onSuccess = { text ->
+                io {
+                    val cached = CachedText(text.path, text.version, text.pages.map { it.n to it.text })
+                    cacheFile.writeText(Json.encodeToString(CachedText.serializer(), cached))
+                }
+                Result.success(text)
+            },
+            onFailure = { error -> if (kept != null && error is NotesException.Network) Result.success(kept) else Result.failure(error) },
+        )
+    }
+
+    private fun readCachedText(file: File): NotesText? {
+        if (!file.exists()) return null
+        val cached = runCatchingExceptions { Json.decodeFromString(CachedText.serializer(), file.readText()) }.getOrNull() ?: return null
+        return NotesText(cached.path, cached.version, cached.pages.map { (n, text) -> NotesTextPage(n, text) })
+    }
+
+    private fun textCacheFileFor(roomId: RoomId, path: String): File {
+        val key = sha256("${roomId.value}/$path").take(24) + ".json"
+        return File(File(attachmentsDir, TEXTS_FOLDER), key).also { it.parentFile?.mkdirs() }
+    }
+
+    @Serializable
+    private data class CachedText(val path: String, val version: String, val pages: List<Pair<Int, String>>)
 
     /** One preview per file and size, in a subfolder of the attachments so [trimCache] never counts them as attachments. */
     private fun previewFileFor(roomId: RoomId, path: String, size: Int): File {
@@ -887,6 +922,7 @@ class NotesSyncEngine(
         const val ATTACHMENTS_CACHE_FOLDER = "notes_attachments"
 
         const val PREVIEWS_FOLDER = "previews"
+        const val TEXTS_FOLDER = "texts"
 
         /** Room on the phone for downloaded photos and files, for all workspaces together; files waiting to upload aren't counted or removed. */
         const val MAX_CACHE_BYTES = 300L * 1024 * 1024

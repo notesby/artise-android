@@ -896,4 +896,45 @@ class NotesSyncEngineTest {
         assertThat(engine.preview(room, "luna.jpg", 256)).isInstanceOf(NotesPreview.Image::class.java)
         assertThat(server.requestsTo(previewKey)).hasSize(2)
     }
+
+    private val textKey = "GET /chats/$A_ROOM_ENCODED/text?path=Mole.md"
+
+    private fun textResponse(version: String, text: String) =
+        json(body = """{"path": "Mole.md", "version": "$version", "pages": [{"n": 1, "text": "$text"}]}""")
+
+    /** A document's text is fetched once per version of the file; a new version fetches again. */
+    @Test
+    fun `document text is cached by path and version`() = runTest {
+        val engine = engine()
+        engine.firstSync()
+        server.enqueue(textKey, textResponse("m1", "# Mole"))
+        val first = engine.documentText(room, "Mole.md").getOrThrow()
+        assertThat(first.pages.single().text).isEqualTo("# Mole")
+        assertThat(engine.documentText(room, "Mole.md").getOrThrow()).isEqualTo(first)
+        assertThat(server.requestsTo(textKey)).hasSize(1)
+
+        server.enqueue(tree, treeResponse("t2", "Súper.md" to "v1", "Mole.md" to "m2", "luna.jpg" to "p1"))
+        server.enqueue(noteKey("Mole.md"), note("Mole.md", "m2", "# Mole rojo"))
+        server.enqueue(pagesKey, json(body = """{"pages": []}"""))
+        engine.sync(room).getOrThrow()
+        server.enqueue(textKey, textResponse("m2", "# Mole rojo"))
+        assertThat(engine.documentText(room, "Mole.md").getOrThrow().pages.single().text).isEqualTo("# Mole rojo")
+        assertThat(server.requestsTo(textKey)).hasSize(2)
+    }
+
+    /** Offline after the file changed: the text from the previous version is better than nothing; other failures pass through. */
+    @Test
+    fun `document text falls back to the phone's copy only when offline`() = runTest {
+        val engine = engine()
+        server.enqueue(tree, treeResponse("t1", "big.pdf" to "b1"))
+        server.enqueue(pagesKey, json(body = """{"pages": []}"""))
+        engine.sync(room).getOrThrow()
+        val key = "GET /chats/$A_ROOM_ENCODED/text?path=big.pdf"
+        server.enqueue(key, error(413, "too_big"))
+        assertThat(engine.documentText(room, "big.pdf").exceptionOrNull()).isInstanceOf(NotesException.TooBig::class.java)
+        // Not cached: asked again next time
+        server.enqueue(key, error(413, "too_big"))
+        engine.documentText(room, "big.pdf")
+        assertThat(server.requestsTo(key)).hasSize(2)
+    }
 }
