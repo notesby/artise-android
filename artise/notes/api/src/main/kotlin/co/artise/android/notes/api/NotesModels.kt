@@ -193,3 +193,9 @@ sealed interface NotesPreview {
     /** No preview for this kind of file (Office files, audio...), or none could be made. */
     data object None : NotesPreview
 }
+
+/** A document's text for searching, page by page; [version] changes when the file does. */
+data class NotesText(val path: String, val version: String, val pages: List<NotesTextPage>)
+
+/** One page of text; [n] from 1, as the viewer shows pages. A scanned page with no text layer is empty. */
+data class NotesTextPage(val n: Int, val text: String)

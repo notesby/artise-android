@@ -99,6 +99,13 @@ interface NotesRepository {
     suspend fun preview(roomId: RoomId, path: String, size: Int): NotesPreview
 
     /**
+     * The document's text page by page, for finding words in the viewer, fetched once per version of the file and kept on
+     * the phone. Fails with [NotesException.TooBig] (too long or unreadable), [NotesException.Server] 415 (no text for this
+     * kind) or [NotesException.NotFound].
+     */
+    suspend fun documentText(roomId: RoomId, path: String): Result<NotesText>
+
+    /**
      * Deletes a photo or file. It needs a connection: the notes are refreshed and the server is asked which notes use
      * it, so nothing in use is deleted by mistake. When notes use it, it fails with [MediaInUseException], unless
      * [removeFromNotes], which first takes it out of those notes. A file not uploaded yet is just dropped.

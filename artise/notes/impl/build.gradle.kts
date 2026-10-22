@@ -17,6 +17,12 @@ plugins {
 
 android {
     namespace = "co.artise.android.notes.impl"
+
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
 }
 
 setupDependencyInjection()

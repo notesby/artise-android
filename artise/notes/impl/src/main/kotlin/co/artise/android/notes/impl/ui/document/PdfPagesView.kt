@@ -9,8 +9,11 @@ package co.artise.android.notes.impl.ui.document
 
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.RectF
 import android.graphics.pdf.PdfRenderer
+import android.os.Build
 import android.os.ParcelFileDescriptor
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -33,12 +36,15 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.designsystem.theme.components.CircularProgressIndicator
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -69,6 +75,26 @@ internal fun PdfPagesView(
             items(document.pageCount) { index ->
                 PdfPageItem(document, index, widthPx, overlay)
             }
+        }
+    }
+}
+
+/** Rectangles over a page: every match lightly, the [current] one strongly. [bounds] are in page points. */
+@Composable
+internal fun PdfHighlights(document: PdfDocument, page: Int, bounds: ImmutableList<RectF>, current: RectF?, modifier: Modifier = Modifier) {
+    val (pageWidth, pageHeight) = document.pageSize(page)
+    val matchColor = ElementTheme.colors.bgAccentRest.copy(alpha = 0.3f)
+    val currentColor = ElementTheme.colors.bgAccentRest.copy(alpha = 0.65f)
+    Canvas(modifier = modifier.fillMaxSize()) {
+        if (pageWidth == 0 || pageHeight == 0) return@Canvas
+        val scaleX = size.width / pageWidth
+        val scaleY = size.height / pageHeight
+        bounds.forEach { rect ->
+            drawRect(
+                color = if (rect == current) currentColor else matchColor,
+                topLeft = Offset(rect.left * scaleX, rect.top * scaleY),
+                size = Size((rect.right - rect.left) * scaleX, (rect.bottom - rect.top) * scaleY),
+            )
         }
     }
 }
@@ -113,7 +139,7 @@ internal class PdfDocument private constructor(
 
     /** Width over height, from the page's own size in points. */
     fun aspectRatio(index: Int): Float {
-        val (width, height) = sizes.getOrPut(index) { renderer.openPage(index).use { it.width to it.height } }
+        val (width, height) = pageSize(index)
         return if (height == 0) 1f else width.toFloat() / height
     }
 
@@ -128,6 +154,22 @@ internal class PdfDocument private constructor(
             }
         }
     }
+
+    /**
+     * Where [needles] appear on the page, as rectangles in page points, for highlighting. Android 15's renderer can look
+     * text up; older phones get an empty list and the viewer shows the snippet instead.
+     */
+    suspend fun searchBounds(index: Int, needles: Collection<String>): List<RectF> = withContext(Dispatchers.IO) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM || needles.isEmpty()) return@withContext emptyList()
+        lock.withLock {
+            renderer.openPage(index).use { page ->
+                needles.flatMap { needle -> runCatchingExceptions { page.searchText(needle) }.getOrDefault(emptyList()).flatMap { it.bounds } }
+            }
+        }
+    }
+
+    /** The page's size in points, width then height. */
+    fun pageSize(index: Int): Pair<Int, Int> = sizes.getOrPut(index) { renderer.openPage(index).use { it.width to it.height } }
 
     override fun close() {
         renderer.close()

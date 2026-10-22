@@ -23,6 +23,7 @@ import co.artise.android.notes.api.NotesPage
 import co.artise.android.notes.api.NotesPreview
 import co.artise.android.notes.api.NotesRepository
 import co.artise.android.notes.api.NotesSearchResult
+import co.artise.android.notes.api.NotesText
 import co.artise.android.notes.api.PendingEdit
 import co.artise.android.notes.api.SyncReport
 import co.artise.android.notes.api.UploadStatus
@@ -167,6 +168,14 @@ class FakeNotesRepository(
     override suspend fun media(roomId: RoomId): List<MediaFile> = media.toList()
 
     override suspend fun cachedAttachment(roomId: RoomId, path: String): File? = null
+
+    val textRequests = mutableListOf<String>()
+    var documentTextResult: (String) -> Result<NotesText> = { Result.failure(NotesException.Server(415, "no_text")) }
+
+    override suspend fun documentText(roomId: RoomId, path: String): Result<NotesText> {
+        textRequests += path
+        return documentTextResult(path)
+    }
 
     val previewRequests = mutableListOf<Pair<String, Int>>()
     var previewResult: (String) -> NotesPreview = { NotesPreview.None }

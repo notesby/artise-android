@@ -25,6 +25,8 @@ import co.artise.android.notes.api.NotesFile
 import co.artise.android.notes.api.NotesGraph
 import co.artise.android.notes.api.NotesPage
 import co.artise.android.notes.api.NotesSearchResult
+import co.artise.android.notes.api.NotesText
+import co.artise.android.notes.api.NotesTextPage
 import co.artise.android.notes.api.NotesTree
 import co.artise.android.notes.api.OutgoingLink
 import co.artise.android.notes.api.SavedNote
@@ -284,6 +286,15 @@ class NotesApiClient(
                 error is NotesException.Server && error.status in NO_PREVIEW_STATUSES -> PreviewResponse.None
                 else -> throw error
             }
+        }
+    }
+
+    /** The document's text page by page, for search; `413 too_big`, `415 no_text` and `404` come back as failures. */
+    suspend fun text(roomId: RoomId, path: String): Result<NotesText> {
+        val url = url(roomId, "text").newBuilder().addQueryParameter("path", path).build()
+        return call(get(url)) { body ->
+            val dto = json.decodeFromString<TextDto>(body)
+            NotesText(dto.path, dto.version, dto.pages.map { NotesTextPage(it.n, it.text) })
         }
     }
 

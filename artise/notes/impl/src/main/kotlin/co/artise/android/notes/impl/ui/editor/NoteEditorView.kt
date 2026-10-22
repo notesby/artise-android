@@ -55,7 +55,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -67,6 +69,8 @@ import androidx.core.content.ContextCompat
 import co.artise.android.notes.impl.R
 import co.artise.android.notes.impl.markdown.NoteLink
 import co.artise.android.notes.impl.markdown.NoteMarkdownView
+import co.artise.android.notes.impl.ui.find.FindBar
+import co.artise.android.notes.impl.ui.find.FindHighlightTransformation
 import co.artise.android.notes.impl.ui.note.EmbedState
 import co.artise.android.notes.impl.ui.note.NoteEmbedView
 import co.artise.android.notes.impl.ui.note.UploadActionsDialog
@@ -111,6 +115,9 @@ fun NoteEditorView(
                 titleStr = state.title,
                 navigationIcon = { BackButton(onClick = { state.eventSink(NoteEditorEvent.Back) }) },
                 actions = {
+                    IconButton(onClick = { state.eventSink(NoteEditorEvent.OpenFind) }, enabled = !state.isLoading) {
+                        Icon(imageVector = CompoundIcons.Search(), contentDescription = stringResource(R.string.a11y_notes_find))
+                    }
                     // Eye: see the finished note (photos, links, checkboxes); pencil: back to editing.
                     IconButton(onClick = { state.eventSink(NoteEditorEvent.TogglePreview) }, enabled = !state.isLoading) {
                         if (state.isPreviewing) {
@@ -149,23 +156,63 @@ fun NoteEditorView(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             }
+            state.find?.let { find ->
+                FindBar(
+                    query = find.query,
+                    matchCount = find.matches.size,
+                    current = find.current,
+                    onQueryChange = { state.eventSink(NoteEditorEvent.FindQueryChanged(it)) },
+                    onNext = { state.eventSink(NoteEditorEvent.FindNext) },
+                    onPrevious = { state.eventSink(NoteEditorEvent.FindPrevious) },
+                    onClose = { state.eventSink(NoteEditorEvent.CloseFind) },
+                )
+            }
             if (state.isPreviewing) {
                 NotePreview(state, Modifier.weight(1f))
                 return@Column
             }
-            BasicTextField(
-                value = state.value,
-                onValueChange = { state.eventSink(NoteEditorEvent.ValueChanged(it)) },
-                visualTransformation = LivePreviewTransformation(state.rawLines, livePreviewStyles()),
-                enabled = !state.isLoading,
-                // Roomy lines, like the reading view, so editing doesn't feel cramped.
-                textStyle = ElementTheme.typography.fontBodyLgRegular.copy(color = ElementTheme.colors.textPrimary, lineHeight = 1.6.em),
-                cursorBrush = SolidColor(ElementTheme.colors.textPrimary),
+            val livePreview = LivePreviewTransformation(state.rawLines, livePreviewStyles())
+            val transformation = state.find?.takeIf { it.matches.isNotEmpty() }?.let { find ->
+                FindHighlightTransformation(
+                    inner = livePreview,
+                    matches = find.matches,
+                    current = find.current,
+                    matchColor = ElementTheme.colors.bgAccentRest.copy(alpha = 0.25f),
+                    currentColor = ElementTheme.colors.bgAccentRest.copy(alpha = 0.6f),
+                )
+            } ?: livePreview
+            // The text scrolls as a whole (not inside the field), so the find bar can bring a match into view.
+            val scrollState = rememberScrollState()
+            var textLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
+            val currentMatch = state.find?.matches?.getOrNull(state.find.current)
+            LaunchedEffect(currentMatch, textLayout == null) {
+                val layout = textLayout ?: return@LaunchedEffect
+                val match = currentMatch ?: return@LaunchedEffect
+                val shownOffset = transformation.filter(AnnotatedString(state.value.text)).offsetMapping.originalToTransformed(match.first)
+                val line = layout.getLineForOffset(shownOffset.coerceIn(0, layout.layoutInput.text.length))
+                val target = (layout.getLineTop(line) - scrollState.viewportSize / 3).toInt().coerceAtLeast(0)
+                scrollState.animateScrollTo(target)
+            }
+            Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .padding(16.dp),
-            )
+                    .verticalScroll(scrollState)
+            ) {
+                BasicTextField(
+                    value = state.value,
+                    onValueChange = { state.eventSink(NoteEditorEvent.ValueChanged(it)) },
+                    visualTransformation = transformation,
+                    enabled = !state.isLoading,
+                    // Roomy lines, like the reading view, so editing doesn't feel cramped.
+                    textStyle = ElementTheme.typography.fontBodyLgRegular.copy(color = ElementTheme.colors.textPrimary, lineHeight = 1.6.em),
+                    cursorBrush = SolidColor(ElementTheme.colors.textPrimary),
+                    onTextLayout = { textLayout = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                )
+            }
             if (state.isAttaching) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
                 Text(
