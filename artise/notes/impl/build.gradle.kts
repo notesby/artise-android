@@ -56,6 +56,7 @@ dependencies {
     implementation("org.commonmark:commonmark-ext-autolink:0.30.0")
     implementation(libs.androidx.compose.material.icons)
     implementation(libs.coil.compose)
+    implementation(libs.telephoto.zoomableimage)
     implementation(projects.services.analytics.api)
     implementation(libs.appyx.core)
 

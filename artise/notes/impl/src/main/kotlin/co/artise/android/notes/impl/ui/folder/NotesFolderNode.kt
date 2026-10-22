@@ -48,6 +48,9 @@ class NotesFolderNode(
 
         fun openMedia(roomId: RoomId)
 
+        /** A PDF or photo, in the app's own viewer. */
+        fun openDocument(roomId: RoomId, path: String)
+
         /** The chat's change history. */
         fun openHistory(roomId: RoomId)
     }
@@ -67,6 +70,7 @@ class NotesFolderNode(
             onReviewChoicesClick = { callback.openChoices(inputs.roomId) },
             onMapClick = { callback.openMap(inputs.roomId) },
             onMediaClick = { callback.openMedia(inputs.roomId) },
+            onDocumentClick = { callback.openDocument(inputs.roomId, it) },
             onHistoryClick = { callback.openHistory(inputs.roomId) },
             modifier = modifier,
         )

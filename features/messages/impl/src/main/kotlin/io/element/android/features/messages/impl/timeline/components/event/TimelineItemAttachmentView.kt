@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -42,6 +43,8 @@ fun TimelineItemAttachmentView(
     onContentLayoutChange: (ContentAvoidingLayoutData) -> Unit,
     modifier: Modifier = Modifier,
     contentValidationValue: ContentValidationValue = ContentValidationValue.Valid,
+    // Artise: a small picture of the document (a PDF's first page) in place of the icon
+    thumbnail: (@Composable () -> Unit)? = null,
 ) {
     Column(
         modifier = modifier,
@@ -53,6 +56,7 @@ fun TimelineItemAttachmentView(
             fileExtensionAndSize = fileExtensionAndSize,
             isLoading = !contentValidationValue.isValidated(),
             onContentLayoutChange = onContentLayoutChange,
+            thumbnail = thumbnail,
         )
     }
 }
@@ -66,8 +70,12 @@ private fun TimelineItemAttachmentHeaderView(
     isLoading: Boolean,
     onContentLayoutChange: (ContentAvoidingLayoutData) -> Unit,
     modifier: Modifier = Modifier,
+    thumbnail: (@Composable () -> Unit)? = null,
 ) {
     val iconSize = 36.dp
+    // Artise: a thumbnail is taller than the icon box, like a sheet of paper
+    val leadingWidth = if (thumbnail != null) 44.dp else iconSize
+    val leadingHeight = if (thumbnail != null) 56.dp else iconSize
     val spacing = 8.dp
     Row(
         modifier = modifier,
@@ -76,11 +84,14 @@ private fun TimelineItemAttachmentHeaderView(
     ) {
         Box(
             modifier = Modifier
-                .size(iconSize)
+                .size(width = leadingWidth, height = leadingHeight)
+                .clip(RoundedCornerShape(4.dp))
                 .background(ElementTheme.colors.bgCanvasDefault, RoundedCornerShape(4.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            if (isLoading) {
+            if (thumbnail != null && !isLoading) {
+                thumbnail()
+            } else if (isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(24.dp),
                     color = ElementTheme.colors.iconPrimary,
@@ -110,7 +121,7 @@ private fun TimelineItemAttachmentHeaderView(
                 overflow = TextOverflow.Ellipsis,
                 onTextLayout = ContentAvoidingLayout.measureLastTextLine(
                     onContentLayoutChange = onContentLayoutChange,
-                    extraWidth = iconSize + spacing
+                    extraWidth = leadingWidth + spacing
                 ),
             )
         }

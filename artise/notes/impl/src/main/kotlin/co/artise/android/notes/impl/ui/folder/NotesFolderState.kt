@@ -8,10 +8,12 @@
 package co.artise.android.notes.impl.ui.folder
 
 import androidx.compose.runtime.Immutable
+import co.artise.android.notes.api.NotesPreview
 import co.artise.android.notes.impl.ui.chats.NotesSyncStatus
 import co.artise.android.notes.impl.ui.common.NoteNameProblem
 import co.artise.android.notes.impl.ui.note.OpenFileRequest
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableMap
 
 data class NotesFolderState(
     /** The chat's name at the top level, else the folder's name. */
@@ -38,6 +40,8 @@ data class NotesFolderState(
     val canDeleteFolder: Boolean,
     /** This folder was deleted: leave it. */
     val isGone: Boolean,
+    /** What the photos and documents here look like, by path, as the rows ask for them. */
+    val previews: ImmutableMap<String, NotesPreview>,
     val eventSink: (NotesFolderEvent) -> Unit,
 )
 
@@ -91,8 +95,8 @@ sealed interface NotesFolderEntry {
     /** A subfolder, with how many notes and other files it holds at any depth. */
     data class Folder(override val name: String, override val path: String, val noteCount: Int, val fileCount: Int) : NotesFolderEntry
 
-    /** A note; [hasLocalEdits] marks edits not sent yet. */
-    data class Note(override val name: String, override val path: String, val hasLocalEdits: Boolean) : NotesFolderEntry
+    /** A note; [hasLocalEdits] marks edits not sent yet; [firstLines] is how it starts, for the row. */
+    data class Note(override val name: String, override val path: String, val hasLocalEdits: Boolean, val firstLines: String = "") : NotesFolderEntry
 
     /** A photo or other file; [size] in bytes. */
     data class File(override val name: String, override val path: String, val isImage: Boolean, val size: Long) : NotesFolderEntry

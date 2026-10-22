@@ -86,7 +86,7 @@ class NotesPresentersTest {
             assertThat(state.entries).containsExactly(
                 NotesFolderEntry.Folder("Fotos", "Fotos", 0, 1),
                 NotesFolderEntry.Folder("Recetas", "Recetas", 2, 0),
-                NotesFolderEntry.Note("Súper", "Súper.md", hasLocalEdits = true),
+                NotesFolderEntry.Note("Súper", "Súper.md", hasLocalEdits = true, firstLines = "text"),
             ).inOrder()
             assertThat(state.showPrivacyNotice).isFalse()
             assertThat(repository.syncCount).isEqualTo(1)
@@ -102,7 +102,7 @@ class NotesPresentersTest {
             assertThat(state.title).isEqualTo("Recetas")
             assertThat(state.entries).containsExactly(
                 NotesFolderEntry.Folder("Postres", "Recetas/Postres", 1, 0),
-                NotesFolderEntry.Note("Mole", "Recetas/Mole.md", hasLocalEdits = false),
+                NotesFolderEntry.Note("Mole", "Recetas/Mole.md", hasLocalEdits = false, firstLines = "text"),
             ).inOrder()
         }
     }

@@ -28,6 +28,7 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.jsonObject
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
+import okio.Buffer
 import org.junit.After
 import org.junit.Test
 
@@ -318,5 +319,62 @@ class NotesApiClientTest {
         val link = client().links(room, "Súper.md").getOrThrow().outgoing.single()
         assertThat(link.path).isNull()
         assertThat(link.candidates).containsExactly("people/Ana.md", "clients/Ana.md").inOrder()
+    }
+
+    private val previewKey = "GET /chats/$A_ROOM_ENCODED/preview?path=docs%2FRecetario.pdf&size=256"
+
+    private fun png(bytes: ByteArray, etag: String = "\"p1\"") = MockResponse()
+        .setResponseCode(200)
+        .setHeader("Content-Type", "image/png")
+        .setHeader("X-Width", "396")
+        .setHeader("X-Height", "512")
+        .setHeader("ETag", etag)
+        .setBody(Buffer().write(bytes))
+
+    /** `/preview` is asked with the encoded path, the size and the token; a PNG comes back with its measures and ETag. */
+    @Test
+    fun `preview requests a picture`() = runTest {
+        server.enqueue(previewKey, png(byteArrayOf(1, 2, 3)))
+        val answer = client().preview(room, "docs/Recetario.pdf", 256).getOrThrow() as PreviewResponse.Image
+        assertThat(answer.bytes).isEqualTo(byteArrayOf(1, 2, 3))
+        assertThat(answer.width).isEqualTo(396)
+        assertThat(answer.height).isEqualTo(512)
+        assertThat(answer.etag).isEqualTo("\"p1\"")
+        val request = server.requests.single()
+        assertThat(request.getHeader("Authorization")).isEqualTo("Bearer token-1")
+        assertThat(request.getHeader("If-None-Match")).isNull()
+    }
+
+    @Test
+    fun `preview reads the first lines of a text file`() = runTest {
+        server.enqueue(
+            "GET /chats/$A_ROOM_ENCODED/preview?path=lista.csv&size=128",
+            MockResponse().setResponseCode(200).setHeader("Content-Type", "text/plain; charset=utf-8").setHeader("ETag", "\"t1\"").setBody("a,b\n1,2"),
+        )
+        val answer = client().preview(room, "lista.csv", 128).getOrThrow()
+        assertThat(answer).isEqualTo(PreviewResponse.Text("a,b\n1,2", etag = "\"t1\""))
+    }
+
+    @Test
+    fun `preview sends the etag it has and accepts not modified`() = runTest {
+        server.enqueue(previewKey, MockResponse().setResponseCode(304))
+        val answer = client().preview(room, "docs/Recetario.pdf", 256, etag = "\"p1\"").getOrThrow()
+        assertThat(answer).isEqualTo(PreviewResponse.NotModified)
+        assertThat(server.requests.single().getHeader("If-None-Match")).isEqualTo("\"p1\"")
+    }
+
+    /** No preview for Office files (415), a broken file (422) or a missing one (404): none, not an error. */
+    @Test
+    fun `preview is none for files the server cannot show`() = runTest {
+        val client = client()
+        server.enqueue(previewKey, error(415, "no_preview"))
+        assertThat(client.preview(room, "docs/Recetario.pdf", 256).getOrThrow()).isEqualTo(PreviewResponse.None)
+        server.enqueue(previewKey, error(422, "unreadable"))
+        assertThat(client.preview(room, "docs/Recetario.pdf", 256).getOrThrow()).isEqualTo(PreviewResponse.None)
+        server.enqueue(previewKey, error(404, "not_found"))
+        assertThat(client.preview(room, "docs/Recetario.pdf", 256).getOrThrow()).isEqualTo(PreviewResponse.None)
+        // Anything else is still a failure
+        server.enqueue(previewKey, error(500, "boom"))
+        assertThat(client.preview(room, "docs/Recetario.pdf", 256).isFailure).isTrue()
     }
 }

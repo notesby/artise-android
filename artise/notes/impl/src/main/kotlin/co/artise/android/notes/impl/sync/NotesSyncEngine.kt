@@ -24,6 +24,7 @@ import co.artise.android.notes.api.NotesException
 import co.artise.android.notes.api.NotesFile
 import co.artise.android.notes.api.NotesGraph
 import co.artise.android.notes.api.NotesPage
+import co.artise.android.notes.api.NotesPreview
 import co.artise.android.notes.api.NotesRepository
 import co.artise.android.notes.api.NotesSearchResult
 import co.artise.android.notes.api.PendingEdit
@@ -36,6 +37,7 @@ import co.artise.android.notes.impl.attachments.PrefetchPolicy
 import co.artise.android.notes.impl.local.NotesLocalStore
 import co.artise.android.notes.impl.media.NoteReferences
 import co.artise.android.notes.impl.remote.NotesApiClient
+import co.artise.android.notes.impl.remote.PreviewResponse
 import co.artise.android.notes.impl.remote.TreeResponse
 import co.artise.android.notes.impl.ui.note.NoteEmbedRemover
 import co.artise.android.notes.impl.ui.note.NoteEmbeds
@@ -420,6 +422,34 @@ class NotesSyncEngine(
             total -= file.length()
             file.delete()
         }
+    }
+
+    override suspend fun preview(roomId: RoomId, path: String, size: Int): NotesPreview {
+        val version = io { store.file(roomId, path) }?.version.orEmpty()
+        val cache = PreviewCache(previewFileFor(roomId, path, size))
+        val kept = io { cache.read() }
+        // Same version of the file: the preview on the phone is current, whatever the connection.
+        if (kept != null && version.isNotEmpty() && kept.version == version) return kept.preview
+        val answer = api.preview(roomId, path, size, etag = kept?.etag).getOrElse { return kept?.preview ?: NotesPreview.None }
+        return io {
+            when (answer) {
+                is PreviewResponse.NotModified -> kept?.also { cache.write(it.copy(version = version)) }?.preview ?: NotesPreview.None
+                is PreviewResponse.Image -> {
+                    cache.imageFile.writeBytes(answer.bytes)
+                    NotesPreview.Image(cache.imageFile, answer.width, answer.height).also {
+                        cache.write(PreviewCache.Entry(version, answer.etag, it))
+                    }
+                }
+                is PreviewResponse.Text -> NotesPreview.Text(answer.text).also { cache.write(PreviewCache.Entry(version, answer.etag, it)) }
+                PreviewResponse.None -> NotesPreview.None.also { cache.write(PreviewCache.Entry(version, etag = null, it)) }
+            }
+        }
+    }
+
+    /** One preview per file and size, in a subfolder of the attachments so [trimCache] never counts them as attachments. */
+    private fun previewFileFor(roomId: RoomId, path: String, size: Int): File {
+        val key = sha256("${roomId.value}/$path").take(24) + "-$size"
+        return File(File(attachmentsDir, PREVIEWS_FOLDER), key).also { it.parentFile?.mkdirs() }
     }
 
     /** One file per attachment and version: a changed photo is downloaded again, an unchanged one never. */
@@ -855,6 +885,8 @@ class NotesSyncEngine(
 
         /** The phone folder holding every workspace's downloaded copies, one subfolder each (see NotesBindingContainer). */
         const val ATTACHMENTS_CACHE_FOLDER = "notes_attachments"
+
+        const val PREVIEWS_FOLDER = "previews"
 
         /** Room on the phone for downloaded photos and files, for all workspaces together; files waiting to upload aren't counted or removed. */
         const val MAX_CACHE_BYTES = 300L * 1024 * 1024

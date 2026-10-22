@@ -11,6 +11,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import co.artise.android.notes.impl.ui.chats.NotesSyncStatus
 import co.artise.android.notes.impl.ui.common.NoteNameProblem
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
 
 open class NotesFolderStatePreviewParam : PreviewParameterProvider<NotesFolderState> {
     override val values: Sequence<NotesFolderState>
@@ -42,7 +43,7 @@ fun aNotesFolderState(
     entries: List<NotesFolderEntry> = listOf(
         NotesFolderEntry.Folder("Recetas", "Recetas", 12, 3),
         NotesFolderEntry.Note("Súper", "Súper.md", hasLocalEdits = true),
-        NotesFolderEntry.Note("Vacaciones", "Vacaciones.md", hasLocalEdits = false),
+        NotesFolderEntry.Note("Vacaciones", "Vacaciones.md", hasLocalEdits = false, firstLines = "Playa en julio\nHotel con alberca"),
         NotesFolderEntry.File("luna.jpg", "luna.jpg", isImage = true, size = 250_000),
     ),
     sync: NotesSyncStatus = NotesSyncStatus.OK,
@@ -68,5 +69,6 @@ fun aNotesFolderState(
     showNewMenu = showNewMenu,
     canDeleteFolder = canDeleteFolder,
     isGone = false,
+    previews = persistentMapOf(),
     eventSink = {},
 )

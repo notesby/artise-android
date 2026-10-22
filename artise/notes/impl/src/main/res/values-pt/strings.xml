@@ -225,4 +225,6 @@
     <string name="screen_notes_page_type_spreadsheet">Planilha</string>
     <string name="screen_notes_page_type_audio">Áudio</string>
     <string name="screen_notes_map_pages_hint">Notas com anel são páginas: uma pessoa, lugar ou coisa com nota própria.</string>
+    <string name="screen_notes_document_offline">Conecte-se à internet para abrir este arquivo.</string>
+    <string name="screen_notes_document_failed">Não foi possível abrir este arquivo.</string>
 </resources>

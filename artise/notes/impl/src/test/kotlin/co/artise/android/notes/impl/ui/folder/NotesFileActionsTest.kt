@@ -56,7 +56,7 @@ class NotesFileActionsTest {
         val entries = NotesFolderEntries.of(listOf(note("Mole.md"), file("luna.jpg"), file("Viajes/mapa.pdf"), note("Viajes/Oaxaca.md")), "")
         assertThat(entries).containsExactly(
             NotesFolderEntry.Folder("Viajes", "Viajes", 1, 1),
-            NotesFolderEntry.Note("Mole", "Mole.md", hasLocalEdits = false),
+            NotesFolderEntry.Note("Mole", "Mole.md", hasLocalEdits = false, firstLines = "x"),
             NotesFolderEntry.File("luna.jpg", "luna.jpg", isImage = true, size = 1000),
         ).inOrder()
         assertThat(NotesFolderEntries.allFolders(listOf(note("A/B/c.md"), file("D/e.jpg")))).containsExactly("A", "A/B", "D").inOrder()

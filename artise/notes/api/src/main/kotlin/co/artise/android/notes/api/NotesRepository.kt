@@ -93,6 +93,12 @@ interface NotesRepository {
     suspend fun cachedAttachment(roomId: RoomId, path: String): File?
 
     /**
+     * The file's preview at most [size] px on its longer edge (128, 256, 512 or 1024), fetched once per version of the file
+     * and kept on the phone. [NotesPreview.None] when the server has none for it, and when it can't be reached.
+     */
+    suspend fun preview(roomId: RoomId, path: String, size: Int): NotesPreview
+
+    /**
      * Deletes a photo or file. It needs a connection: the notes are refreshed and the server is asked which notes use
      * it, so nothing in use is deleted by mistake. When notes use it, it fails with [MediaInUseException], unless
      * [removeFromNotes], which first takes it out of those notes. A file not uploaded yet is just dropped.

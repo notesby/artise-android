@@ -8,6 +8,7 @@
 package co.artise.android.notes.api
 
 import io.element.android.libraries.matrix.api.core.RoomId
+import java.io.File
 
 /** A chat whose notes the user can open. [tree] changes whenever anything in its notes changes. */
 data class NotesChat(
@@ -180,3 +181,15 @@ data class NotesChangesPage(
     val changes: List<NotesChange>,
     val more: Boolean,
 )
+
+/** What a file looks like before opening it, from the server's `/preview`: a small picture, the first lines, or nothing. */
+sealed interface NotesPreview {
+    /** A PDF's first page or a photo scaled down, as a PNG on the phone; [width] and [height] in pixels. */
+    data class Image(val file: File, val width: Int, val height: Int) : NotesPreview
+
+    /** The first lines of a text file. */
+    data class Text(val text: String) : NotesPreview
+
+    /** No preview for this kind of file (Office files, audio...), or none could be made. */
+    data object None : NotesPreview
+}
