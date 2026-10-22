@@ -29,6 +29,8 @@ data class ActionListState(
             val recentEmojis: ImmutableList<String>,
             val verifiedUserSendFailure: VerifiedUserSendFailure,
             val actions: ImmutableList<TimelineItemAction>,
+            /** Artise: true when the message is one of Ari's proposals, so ✅ and ❌ read "Approve" and "Decline". */
+            val isProposal: Boolean = false,
         ) : Target
     }
 }

@@ -49,6 +49,20 @@ open class ActionListStatePreviewParam : PreviewParameterProvider<ActionListStat
                         recentEmojis = suggestedEmojis,
                     )
                 ),
+                // Artise: one of Ari's proposals asks for ✅ and ❌
+                anActionListState(
+                    target = ActionListState.Target.Success(
+                        event = aTimelineItemEvent(
+                            timelineItemReactions = reactionsState
+                        ),
+                        sentTimeFull = "January 1, 1970 at 12:00 AM",
+                        displayEmojiReactions = true,
+                        verifiedUserSendFailure = VerifiedUserSendFailure.None,
+                        actions = aTimelineItemActionList(),
+                        recentEmojis = (persistentListOf("✅", "❌") + suggestedEmojis).toImmutableList(),
+                        isProposal = true,
+                    )
+                ),
                 anActionListState(
                     target = ActionListState.Target.Success(
                         event = aTimelineItemEvent(
