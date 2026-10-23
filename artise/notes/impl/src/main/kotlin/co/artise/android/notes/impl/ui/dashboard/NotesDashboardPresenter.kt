@@ -53,11 +53,18 @@ class NotesDashboardPresenter(
             file?.title?.takeIf { it.isNotBlank() }?.let { title = it }
             canEdit = file?.isReadOnly != true
         }
+        LaunchedEffect(Unit) {
+            // Edited (the editor's save, then the sync that sends it) or changed by someone else: drawn again.
+            repository.changes(roomId).collect { attempts++ }
+        }
         LaunchedEffect(attempts) {
-            isLoading = true
-            problem = null
+            // Shown as it is while it's drawn again; the spinner only the first time.
+            isLoading = html == null
             repository.dashboard(roomId, path).fold(
-                onSuccess = { html = it },
+                onSuccess = {
+                    html = it
+                    problem = null
+                },
                 onFailure = { error ->
                     problem = if (error is NotesException.Server && error.status == HTTP_NO_DASHBOARD) {
                         DashboardProblem.NOT_A_DASHBOARD

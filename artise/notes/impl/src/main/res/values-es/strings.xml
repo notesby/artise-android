@@ -340,7 +340,7 @@
     <string name="screen_notes_dashboard_problem_missing">«%1$s»: no existe esa gráfica.</string>
     <string name="screen_notes_dashboard_problem_unclosed">Un «::: columns» no se cierra con una línea que solo diga «:::».</string>
     <string name="screen_notes_dashboard_problem_nested">Un bloque de columnas no puede tener otro dentro.</string>
-    <string name="screen_notes_dashboard_problem_too_many">%1$d gráficas: un tablero muestra las primeras %2$d.</string>
+    <string name="screen_notes_dashboard_problem_too_many">Este tablero tiene %1$d gráficas; muestra las primeras %2$d.</string>
     <string name="screen_notes_dashboard_problem_accent">El color principal «%1$s» no es un color como #22408A.</string>
     <string name="screen_notes_dashboard_problem_palette">El color «%1$s» del tema no es un color como #22408A.</string>
     <string name="screen_notes_dashboard_problem_mode">El modo del tema debe ser light, dark o auto, no «%1$s».</string>

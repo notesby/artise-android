@@ -46,6 +46,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.toColorInt
 import co.artise.android.notes.api.NotesPreview
 import co.artise.android.notes.impl.R
 import co.artise.android.notes.impl.dashboard.DashboardBlock
@@ -355,7 +356,7 @@ private fun ThemeSheet(theme: DashboardTheme, onChange: (DashboardTheme) -> Unit
 /** A colour to choose; `null` is the workspace's own (marked "A"). */
 @Composable
 private fun Swatch(color: String?, selected: Boolean, onClick: () -> Unit) {
-    val fill = color?.takeIf { HEX.matches(it) }?.let { Color(android.graphics.Color.parseColor(it)) }
+    val fill = color?.takeIf { HEX.matches(it) }?.let { Color(it.toColorInt()) }
     Box(
         modifier = Modifier
             .size(32.dp)
