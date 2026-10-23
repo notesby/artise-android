@@ -19,9 +19,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import co.artise.android.notes.api.NoteAttachment
 import co.artise.android.notes.api.NotesPage
+import co.artise.android.notes.api.NotesPreview
 import co.artise.android.notes.api.NotesRepository
 import co.artise.android.notes.api.UploadStatus
+import co.artise.android.notes.impl.dashboard.DashboardText
 import co.artise.android.notes.impl.markdown.ChecklistToggle
 import co.artise.android.notes.impl.ui.find.TextFinder
 import co.artise.android.notes.impl.ui.folder.NotesFolderEntries
@@ -49,6 +52,9 @@ import java.io.File
 fun interface NoteEditorNavigator {
     /** The editor is done: saved, discarded, or left without changes. */
     fun onDone()
+
+    /** A dashboard's chart was tapped: the chart's screen. */
+    fun openChart(path: String) {}
 }
 
 /**
@@ -105,6 +111,11 @@ class NoteEditorPresenter(
         var openFile by remember { mutableStateOf<OpenFileRequest?>(null) }
         var openFileProblem by remember { mutableStateOf(false) }
         var attachError by remember { mutableStateOf<AttachError?>(null) }
+        // A dashboard: the layout first; its charts' pictures as the layout asks; the chat's charts for + Chart.
+        var showDashboardLayout by remember { mutableStateOf(true) }
+        var chartPreviews by remember { mutableStateOf<ImmutableMap<String, NotesPreview>>(persistentMapOf()) }
+        var chartChoices by remember { mutableStateOf<ImmutableList<ChartChoice>>(persistentListOf()) }
+        val previewsAsked = remember { mutableSetOf<String>() }
 
         LaunchedEffect(Unit) {
             val initial = if (resolveEditId != null) {
@@ -119,6 +130,10 @@ class NoteEditorPresenter(
             notePaths = files.filter { it.isNote }.map { it.path }.toImmutableList()
             allPaths = files.map { it.path }
             sizes = files.associate { it.path to it.size }
+            chartChoices = files.filter { it.kind == NoteAttachment.Kind.CHART }
+                .map { ChartChoice(it.path, it.title?.takeIf { title -> title.isNotBlank() } ?: NotesFolderEntries.noteName(it.path)) }
+                .sortedBy { it.title.lowercase() }
+                .toImmutableList()
             pages = repository.pages(roomId).toImmutableList()
             isLoaded = true
         }
@@ -165,6 +180,20 @@ class NoteEditorPresenter(
         }
 
         val text = value.text
+        val dashboard = remember(isLoaded, text, allPaths, chartPreviews, chartChoices, showDashboardLayout) {
+            if (isLoaded && DashboardText.isDashboard(text)) {
+                DashboardEditing(
+                    blocks = DashboardText.blocks(text, allPaths),
+                    problems = DashboardText.problems(text, allPaths),
+                    previews = chartPreviews,
+                    charts = chartChoices,
+                    theme = DashboardText.theme(text),
+                    showLayout = showDashboardLayout,
+                )
+            } else {
+                null
+            }
+        }
 
         // A combined text is unsaved from the start: the choice isn't made until it's saved.
         // A function, so event handlers see the text as it is now, not as it was when this state was built.
@@ -232,6 +261,12 @@ class NoteEditorPresenter(
             linkEdit = null
         }
 
+        /** A change made from the dashboard's layout: one undo step, the cursor kept where it can be. */
+        fun changeText(newText: String) {
+            if (newText == value.text) return
+            commit(TextFieldValue(newText, TextRange(minOf(value.selection.start, newText.length))), isTyping = false)
+        }
+
         fun save() {
             if (isSaving) return
             isSaving = true
@@ -260,6 +295,7 @@ class NoteEditorPresenter(
             isAttaching = isAttaching,
             isPreviewing = isPreviewing,
             find = find,
+            dashboard = dashboard,
             embeds = remember(embeds, uploads) { embeds.withUploads(uploads) },
             openFile = openFile,
             openFileProblem = openFileProblem,
@@ -313,8 +349,9 @@ class NoteEditorPresenter(
                     NoteEditorEvent.DismissAttachError -> attachError = null
                     NoteEditorEvent.TogglePreview -> isPreviewing = !isPreviewing
                     NoteEditorEvent.OpenFind -> {
-                        // Matches show in the text being edited, not the preview
+                        // Matches show in the text being edited, not the preview or a dashboard's layout
                         isPreviewing = false
+                        showDashboardLayout = false
                         findQuery = findQuery ?: ""
                         findCurrent = 0
                     }
@@ -374,6 +411,27 @@ class NoteEditorPresenter(
                         navigator.onDone()
                     }
                     NoteEditorEvent.DismissSaveChangesDialog -> showSaveChangesDialog = false
+                    NoteEditorEvent.ToggleDashboardLayout -> showDashboardLayout = !showDashboardLayout
+                    is NoteEditorEvent.EditDashboardText -> {
+                        val lines = value.text.lines()
+                        val offset = lines.take(event.line.coerceIn(0, lines.size)).sumOf { it.length + 1 }.coerceAtMost(value.text.length)
+                        value = value.copy(selection = TextRange(offset))
+                        showDashboardLayout = false
+                    }
+                    is NoteEditorEvent.RemoveDashboardLine -> changeText(DashboardText.removeLine(value.text, event.line))
+                    is NoteEditorEvent.InsertChart -> changeText(DashboardText.insertChart(value.text, event.path))
+                    is NoteEditorEvent.MoveDashboardChart -> changeText(DashboardText.moveInColumns(value.text, event.line, event.delta))
+                    is NoteEditorEvent.SetDashboardTheme -> changeText(DashboardText.withTheme(value.text, event.theme))
+                    is NoteEditorEvent.OpenChart -> navigator.openChart(event.path)
+                    is NoteEditorEvent.LoadChartPreview -> if (previewsAsked.add(event.path + "|" + event.dark)) {
+                        scope.launch {
+                            repository.cachedPreview(roomId, event.path, CHART_PREVIEW_SIZE, event.dark)?.let {
+                                chartPreviews = (chartPreviews + (event.path to it)).toImmutableMap()
+                            }
+                            val fresh = repository.preview(roomId, event.path, CHART_PREVIEW_SIZE, event.dark)
+                            chartPreviews = (chartPreviews + (event.path to fresh)).toImmutableMap()
+                        }
+                    }
                 }
             },
         )
@@ -408,6 +466,9 @@ class NoteEditorPresenter(
     }
 
     companion object {
+        /** A dashboard's chart pictures, as wide as the screen. */
+        const val CHART_PREVIEW_SIZE = 512
+
         /** A pause in typing this long starts a new undo step. */
         const val TYPING_PAUSE_MILLIS = 1_000L
 

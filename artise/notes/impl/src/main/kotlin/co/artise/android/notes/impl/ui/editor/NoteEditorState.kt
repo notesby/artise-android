@@ -48,6 +48,8 @@ data class NoteEditorState(
     val showSaveChangesDialog: Boolean,
     /** The find bar, while open: what's typed and where it appears in the text being edited. */
     val find: EditorFind?,
+    /** A dashboard's layout and charts; `null` for any other note. */
+    val dashboard: DashboardEditing?,
     val eventSink: (NoteEditorEvent) -> Unit,
 )
 

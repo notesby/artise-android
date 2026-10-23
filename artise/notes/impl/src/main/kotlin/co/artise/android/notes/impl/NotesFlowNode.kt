@@ -149,7 +149,8 @@ class NotesFlowNode(
         NoteHistoryNode.Callback,
         NotesChartNode.Callback,
         NotesDashboardNode.Callback,
-        ChartEditorNode.Callback {
+        ChartEditorNode.Callback,
+        NoteEditorNode.Callback {
         override fun openChat(roomId: RoomId) = backstack.push(NavTarget.Folder(roomId, folder = ""))
 
         override fun openFolder(roomId: RoomId, folder: String) = backstack.push(NavTarget.Folder(roomId, folder))
@@ -204,7 +205,7 @@ class NotesFlowNode(
         is NavTarget.Search -> createNode<NotesSearchNode>(buildContext, listOf(NotesSearchNode.Inputs(navTarget.roomId), navigation))
         is NavTarget.Editor -> createNode<NoteEditorNode>(
             buildContext,
-            listOf(NoteEditorNode.Inputs(navTarget.roomId, navTarget.path, navTarget.resolveEditId)),
+            listOf(NoteEditorNode.Inputs(navTarget.roomId, navTarget.path, navTarget.resolveEditId), navigation),
         )
         is NavTarget.Choices -> createNode<NotesChoicesNode>(buildContext, listOf(NotesChoicesNode.Inputs(navTarget.roomId), navigation))
         is NavTarget.Map -> createNode<NotesGraphNode>(buildContext, listOf(NotesGraphNode.Inputs(navTarget.roomId), navigation))
