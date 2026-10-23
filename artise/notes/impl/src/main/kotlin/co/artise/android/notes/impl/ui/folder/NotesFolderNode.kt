@@ -54,6 +54,9 @@ class NotesFolderNode(
         /** A chart as the server draws it. */
         fun openChart(roomId: RoomId, path: String)
 
+        /** The chart editor for a new chart named [title], to be written at [path] on its first Save. */
+        fun newChart(roomId: RoomId, path: String, title: String)
+
         /** A dashboard's page as the server draws it. */
         fun openDashboard(roomId: RoomId, path: String)
 
@@ -63,7 +66,15 @@ class NotesFolderNode(
 
     private val inputs: Inputs = inputs()
     private val callback: Callback = callback()
-    private val presenter = presenterFactory.create(inputs.roomId, inputs.folder) { path -> callback.openEditor(inputs.roomId, path) }
+    private val presenter = presenterFactory.create(
+        inputs.roomId,
+        inputs.folder,
+        object : NotesFolderNavigator {
+            override fun openEditor(path: String) = callback.openEditor(inputs.roomId, path)
+
+            override fun openNewChart(path: String, title: String) = callback.newChart(inputs.roomId, path, title)
+        },
+    )
 
     @Composable
     override fun View(modifier: Modifier) {

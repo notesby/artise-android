@@ -28,6 +28,7 @@ import co.artise.android.notes.api.NotesRepository
 import co.artise.android.notes.api.NotesSearchResult
 import co.artise.android.notes.api.NotesText
 import co.artise.android.notes.api.PendingEdit
+import co.artise.android.notes.api.RecordType
 import co.artise.android.notes.api.SyncReport
 import co.artise.android.notes.api.UploadStatus
 import io.element.android.libraries.matrix.api.core.RoomId
@@ -213,6 +214,19 @@ class FakeNotesRepository(
     override suspend fun dashboard(roomId: RoomId, path: String): Result<String> {
         dashboardRequests += path
         return dashboardResult(path)
+    }
+
+    var recordTypesResult: Result<List<RecordType>> = Result.success(emptyList())
+
+    override suspend fun recordTypes(roomId: RoomId): Result<List<RecordType>> = recordTypesResult
+
+    /** The text of each unsaved chart drawn, in order. */
+    val chartPreviewRequests = mutableListOf<String>()
+    var chartPreviewResult: (String) -> Result<ByteArray> = { Result.success(byteArrayOf(1)) }
+
+    override suspend fun chartPreview(roomId: RoomId, content: String, size: Int, dark: Boolean): Result<ByteArray> {
+        chartPreviewRequests += content
+        return chartPreviewResult(content)
     }
 
     val exportRequests = mutableListOf<Triple<String, ExportFormat, String>>()

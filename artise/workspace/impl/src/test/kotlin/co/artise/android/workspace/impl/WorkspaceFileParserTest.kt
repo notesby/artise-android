@@ -7,6 +7,7 @@
 
 package co.artise.android.workspace.impl
 
+import co.artise.android.workspace.api.WorkspaceBranding
 import co.artise.android.workspace.api.WorkspaceConfig
 import co.artise.android.workspace.api.WorkspaceLinks
 import co.artise.android.workspace.api.WorkspaceOAuth
@@ -141,5 +142,28 @@ class WorkspaceFileParserTest {
         )!!
         assertThat(wrongTypes.minAndroidVersionCode).isNull()
         assertThat(wrongTypes.assistantUserId).isNull()
+    }
+
+    /** An admin's chart palette: valid colours only, at most eight; the branding falls back to the accent alone. */
+    @Test
+    fun `the chart palette is read`() {
+        val config = WorkspaceFileParser.parse(
+            """{"co.artise.workspace": {"colors": {"accent": "#1F6FEB", "palette": ["#22408A", "red", "#EB6834", 3,
+               "#000001", "#000002", "#000003", "#000004", "#000005", "#000006", "#000007"]}}}""".trimIndent(),
+        )
+        assertThat(config?.chartPalette).containsExactly(
+            0xFF22408A,
+            0xFFEB6834,
+            0xFF000001,
+            0xFF000002,
+            0xFF000003,
+            0xFF000004,
+            0xFF000005,
+            0xFF000006,
+        ).inOrder()
+        assertThat(WorkspaceBranding.of(config).chartColors.take(2)).containsExactly("#22408A", "#EB6834").inOrder()
+        val accentOnly = WorkspaceFileParser.parse("""{"co.artise.workspace": {"colors": {"accent": "#1F6FEB"}}}""")
+        assertThat(WorkspaceBranding.of(accentOnly).chartColors).containsExactly("#1F6FEB")
+        assertThat(WorkspaceBranding.Default.chartColors).isEmpty()
     }
 }

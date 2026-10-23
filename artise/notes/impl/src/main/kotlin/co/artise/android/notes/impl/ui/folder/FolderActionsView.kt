@@ -75,6 +75,9 @@ internal fun FolderActionsAndDialogs(state: NotesFolderState) {
                 ActionItem(stringResource(R.string.screen_notes_new_note), IconSource.Vector(CompoundIcons.Document())) {
                     state.eventSink(NotesFolderEvent.StartNewNote)
                 }
+                ActionItem(stringResource(R.string.screen_notes_new_chart), IconSource.Vector(CompoundIcons.Chart())) {
+                    state.eventSink(NotesFolderEvent.StartNewChart)
+                }
                 ActionItem(stringResource(R.string.screen_notes_new_folder), IconSource.Vector(CompoundIcons.Folder())) {
                     state.eventSink(NotesFolderEvent.StartCreateFolder)
                 }

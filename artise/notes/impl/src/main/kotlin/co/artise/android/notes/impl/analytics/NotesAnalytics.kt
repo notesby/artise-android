@@ -28,6 +28,7 @@ enum class NotesScreen : VectorAnalyticsScreen {
     NotesMedia,
     NotesDocument,
     NotesChart,
+    ChartEditor,
     NotesDashboard,
     NotesHistory,
     NoteHistory,

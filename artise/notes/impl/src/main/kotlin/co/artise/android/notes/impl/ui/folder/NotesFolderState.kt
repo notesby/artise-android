@@ -26,7 +26,7 @@ data class NotesFolderState(
     val showPrivacyNotice: Boolean,
     /** Edits in this chat waiting for the person to choose a version. */
     val needChoiceCount: Int,
-    /** The "new note" name dialog, when open. */
+    /** The name dialog for a new note or chart, when open. */
     val newNote: NewNoteDialog?,
     /** The note or file held down: its actions (rename, move, delete) are showing. */
     val actionsFor: NotesFolderEntry?,
@@ -35,7 +35,7 @@ data class NotesFolderState(
     val busyPath: String?,
     /** A file to hand to another app, once. */
     val openFile: OpenFileRequest?,
-    /** The "+" choice is open: a new note or a new folder. */
+    /** The "+" choice is open: a new note, chart or folder. */
     val showNewMenu: Boolean,
     /** A folder (not the top level) with nothing in it: offer to delete it. */
     val canDeleteFolder: Boolean,
@@ -85,7 +85,13 @@ enum class FileProblem {
 }
 
 /** The name dialog for a new note, with the problem found in the last name tried. */
-data class NewNoteDialog(val problem: NoteNameProblem?)
+data class NewNoteDialog(val problem: NoteNameProblem?, val kind: NewFileKind = NewFileKind.NOTE)
+
+/** What "+" makes: a note here, or a chart in `charts/`. */
+enum class NewFileKind {
+    NOTE,
+    CHART,
+}
 
 @Immutable
 sealed interface NotesFolderEntry {

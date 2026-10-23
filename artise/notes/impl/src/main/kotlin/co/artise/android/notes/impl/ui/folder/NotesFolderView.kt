@@ -239,10 +239,11 @@ fun NotesFolderView(
         }
     }
     state.newNote?.let { dialog ->
+        val isChart = dialog.kind == NewFileKind.CHART
         TextFieldDialog(
-            title = stringResource(R.string.screen_notes_new_note),
+            title = stringResource(if (isChart) R.string.screen_notes_new_chart else R.string.screen_notes_new_note),
             value = null,
-            placeholder = stringResource(R.string.screen_notes_new_note_placeholder),
+            placeholder = stringResource(if (isChart) R.string.screen_notes_new_chart_placeholder else R.string.screen_notes_new_note_placeholder),
             onSubmit = { state.eventSink(NotesFolderEvent.CreateNote(it)) },
             onDismissRequest = { state.eventSink(NotesFolderEvent.CancelNewNote) },
             // Blank names can't be submitted; other problems come back from the attempt and show under the field.

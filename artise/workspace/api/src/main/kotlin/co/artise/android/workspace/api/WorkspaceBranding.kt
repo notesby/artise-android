@@ -30,6 +30,8 @@ data class WorkspaceBranding(
     val assistantUserId: String? = null,
     /** Whom "Escribirle al administrador" writes to. */
     val contactUserId: String? = null,
+    /** The charts' colours, `#RRGGBB`: the admin's palette, else the accent alone; empty for Artise's own. */
+    val chartColors: List<String> = emptyList(),
 ) {
     /** Whether the notes screens can be offered (the server has a Notes API). */
     val hasNotes: Boolean get() = links?.notesApi != null
@@ -61,10 +63,13 @@ data class WorkspaceBranding(
                 links = config.links,
                 assistantUserId = config.assistantUserId,
                 contactUserId = config.contactUserId,
+                chartColors = config.chartPalette.ifEmpty { listOfNotNull(config.accentColor) }.map(::hex),
             )
         }
     }
 }
+
+private fun hex(argb: Long): String = "#%06X".format(argb and 0xFFFFFF)
 
 /** Feature names from the workspace file that match Artise screens on Android. */
 object WorkspaceFeatures {

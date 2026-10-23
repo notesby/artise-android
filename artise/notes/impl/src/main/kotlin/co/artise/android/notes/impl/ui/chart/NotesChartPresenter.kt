@@ -59,6 +59,10 @@ class NotesChartPresenter(
             fileTitle = file?.title?.takeIf { it.isNotBlank() }
             canEdit = file?.isReadOnly != true
         }
+        LaunchedEffect(Unit) {
+            // Saved in the editor, or changed by someone else and pulled by a sync: drawn again.
+            repository.changes(roomId).collect { attempts++ }
+        }
         LaunchedEffect(attempts, dark) {
             isLoading = true
             repository.chart(roomId, path, dark).fold(
