@@ -46,6 +46,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.toColorInt
 import co.artise.android.notes.api.RecordType
 import co.artise.android.notes.impl.R
 import co.artise.android.notes.impl.chart.ChartCheck
@@ -315,7 +316,7 @@ private fun Colors(state: ChartEditorState) {
 
 @Composable
 private fun ColorDot(color: String?, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
-    val fill = color?.let { Color(android.graphics.Color.parseColor(it)) }
+    val fill = color?.let { Color(it.toColorInt()) }
     val label = color ?: stringResource(R.string.screen_notes_chart_color_auto)
     Box(
         modifier = Modifier

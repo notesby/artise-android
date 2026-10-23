@@ -8,6 +8,7 @@
 package co.artise.android.notes.impl.ui.editor
 
 import androidx.compose.ui.text.input.TextFieldValue
+import co.artise.android.notes.impl.dashboard.DashboardTheme
 
 sealed interface NoteEditorEvent {
     /** Typing, or the cursor moving (including a tap, which may hit a checkbox or a link). */
@@ -73,4 +74,27 @@ sealed interface NoteEditorEvent {
     data object DiscardChanges : NoteEditorEvent
 
     data object DismissSaveChangesDialog : NoteEditorEvent
+
+    /** A dashboard: between the layout (charts drawn) and the Markdown text. */
+    data object ToggleDashboardLayout : NoteEditorEvent
+
+    /** The text block starting at [line] was tapped in the layout: the text, with the cursor there. */
+    data class EditDashboardText(val line: Int) : NoteEditorEvent
+
+    /** Takes a chart's line out of the dashboard (the chart itself stays in the notes). */
+    data class RemoveDashboardLine(val line: Int) : NoteEditorEvent
+
+    /** + Chart: `![[path]]` on a line of its own at the end. */
+    data class InsertChart(val path: String) : NoteEditorEvent
+
+    /** Moves the chart on [line] one place within its columns block: [delta] -1 or +1. */
+    data class MoveDashboardChart(val line: Int, val delta: Int) : NoteEditorEvent
+
+    /** Writes [theme] into the front matter (or takes it out when it's empty). */
+    data class SetDashboardTheme(val theme: DashboardTheme) : NoteEditorEvent
+
+    data class OpenChart(val path: String) : NoteEditorEvent
+
+    /** A chart's tile is on screen: fetch its picture for the screen's light or [dark]. */
+    data class LoadChartPreview(val path: String, val dark: Boolean) : NoteEditorEvent
 }

@@ -20,6 +20,7 @@ import co.artise.android.notes.api.MediaInUseException
 import co.artise.android.notes.api.NotesException
 import co.artise.android.notes.api.NotesPreview
 import co.artise.android.notes.api.NotesRepository
+import co.artise.android.notes.impl.dashboard.DashboardText
 import co.artise.android.notes.impl.ui.chats.NotesSyncStatus
 import co.artise.android.notes.impl.ui.chats.toSyncStatus
 import co.artise.android.notes.impl.ui.common.NoteNameProblem
@@ -154,6 +155,10 @@ class NotesFolderPresenter(
                     NotesFolderEvent.StartNewChart -> {
                         showNewMenu = false
                         newNote = NewNoteDialog(problem = null, kind = NewFileKind.CHART)
+                    }
+                    NotesFolderEvent.StartNewDashboard -> {
+                        showNewMenu = false
+                        newNote = NewNoteDialog(problem = null, kind = NewFileKind.DASHBOARD)
                     }
                     NotesFolderEvent.CancelNewNote -> newNote = null
                     is NotesFolderEvent.ShowActions -> actionsFor = event.entry
@@ -300,6 +305,21 @@ class NotesFolderPresenter(
                                 newNote = null
                                 navigator.openNewChart(path, event.name.trim())
                             }
+                        }
+                    } else if (newNote?.kind == NewFileKind.DASHBOARD) {
+                        scope.launch {
+                            val path = NoteNames.freeDashboardPath(event.name, repository.files(roomId).map { it.path })
+                            if (path == null) {
+                                newNote = NewNoteDialog(NoteNameProblem.INVALID, NewFileKind.DASHBOARD)
+                                return@launch
+                            }
+                            repository.createNote(roomId, path, DashboardText.newDashboard(event.name.trim()))
+                                .onSuccess {
+                                    newNote = null
+                                    repository.syncInBackground(roomId)
+                                    navigator.openEditor(path)
+                                }
+                                .onFailure { newNote = NewNoteDialog(NoteNameProblem.EXISTS, NewFileKind.DASHBOARD) }
                         }
                     } else {
                         scope.launch {

@@ -17,6 +17,9 @@ sealed interface NotesFolderEvent {
     /** A new chart: its name is asked, then the chart editor opens (nothing is written until Save). */
     data object StartNewChart : NotesFolderEvent
 
+    /** A new dashboard: its name is asked, then it's made in `dashboards/` and opens in the editor. */
+    data object StartNewDashboard : NotesFolderEvent
+
     /** Create a note called [name] in this folder and open it in the editor; for a new chart, open the chart editor. */
     data class CreateNote(val name: String) : NotesFolderEvent
 

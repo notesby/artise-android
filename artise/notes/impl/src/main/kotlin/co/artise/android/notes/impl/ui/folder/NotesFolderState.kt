@@ -87,10 +87,11 @@ enum class FileProblem {
 /** The name dialog for a new note, with the problem found in the last name tried. */
 data class NewNoteDialog(val problem: NoteNameProblem?, val kind: NewFileKind = NewFileKind.NOTE)
 
-/** What "+" makes: a note here, or a chart in `charts/`. */
+/** What "+" makes: a note here, a chart in `charts/` or a dashboard in `dashboards/`. */
 enum class NewFileKind {
     NOTE,
     CHART,
+    DASHBOARD,
 }
 
 @Immutable

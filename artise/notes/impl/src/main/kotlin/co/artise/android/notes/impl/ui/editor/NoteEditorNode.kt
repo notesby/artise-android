@@ -39,7 +39,24 @@ class NoteEditorNode(
     data class Inputs(val roomId: RoomId, val path: String, val resolveEditId: Long?) : NodeInputs
 
     private val inputs: Inputs = inputs()
-    private val presenter = presenterFactory.create(inputs.roomId, inputs.path, inputs.resolveEditId, ::navigateUp)
+    interface Callback : Plugin {
+        /** A dashboard's chart was tapped. */
+        fun openChart(roomId: RoomId, path: String)
+    }
+
+    private val callback = plugins.filterIsInstance<Callback>().firstOrNull()
+    private val presenter = presenterFactory.create(
+        inputs.roomId,
+        inputs.path,
+        inputs.resolveEditId,
+        object : NoteEditorNavigator {
+            override fun onDone() = navigateUp()
+
+            override fun openChart(path: String) {
+                callback?.openChart(inputs.roomId, path)
+            }
+        },
+    )
 
     @Composable
     override fun View(modifier: Modifier) {

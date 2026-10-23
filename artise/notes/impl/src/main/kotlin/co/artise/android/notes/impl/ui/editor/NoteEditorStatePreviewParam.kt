@@ -10,6 +10,7 @@ package co.artise.android.notes.impl.ui.editor
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
+import co.artise.android.notes.impl.dashboard.DashboardText
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentMapOf
 
@@ -38,6 +39,7 @@ open class NoteEditorStatePreviewParam : PreviewParameterProvider<NoteEditorStat
             aNoteEditorState(showSaveChangesDialog = true),
             aNoteEditorState(find = EditorFind(query = "leche", matches = persistentListOf(2..6), current = 0)),
             aNoteEditorState(isPreviewing = true),
+            aNoteEditorState(text = aDashboardText(), dashboard = aDashboardEditing()),
         )
 }
 
@@ -49,6 +51,7 @@ fun aNoteEditorState(
     showSaveChangesDialog: Boolean = false,
     find: EditorFind? = null,
     isPreviewing: Boolean = false,
+    dashboard: DashboardEditing? = null,
 ) = NoteEditorState(
     title = "Súper",
     value = TextFieldValue(text, TextRange(cursor)),
@@ -70,5 +73,22 @@ fun aNoteEditorState(
     canRedo = false,
     showSaveChangesDialog = showSaveChangesDialog,
     find = find,
+    dashboard = dashboard,
     eventSink = {},
 )
+
+internal fun aDashboardEditing(showLayout: Boolean = true): DashboardEditing {
+    val text = aDashboardText()
+    val paths = listOf("charts/ventas.chart", "charts/cobros.chart")
+    return DashboardEditing(
+        blocks = DashboardText.blocks(text, paths),
+        problems = DashboardText.problems(text, paths),
+        previews = persistentMapOf(),
+        charts = persistentListOf(ChartChoice("charts/ventas.chart", "Ventas por mes"), ChartChoice("charts/cobros.chart", "Cobros")),
+        theme = DashboardText.theme(text),
+        showLayout = showLayout,
+    )
+}
+
+internal fun aDashboardText() = "---\ntype: dashboard\ntitle: Octubre\ntheme: {accent: \"#22408A\", mode: auto}\n---\n" +
+    "## Ventas\n![[charts/ventas.chart]]\n::: columns\n![[charts/cobros.chart]]\n![[clientes.chart]]\n:::\nNotas del mes."

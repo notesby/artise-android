@@ -115,6 +115,16 @@ fun NoteEditorView(
                 titleStr = state.title,
                 navigationIcon = { BackButton(onClick = { state.eventSink(NoteEditorEvent.Back) }) },
                 actions = {
+                    state.dashboard?.let { dashboard ->
+                        // A dashboard: its charts laid out, or its Markdown text.
+                        IconButton(onClick = { state.eventSink(NoteEditorEvent.ToggleDashboardLayout) }) {
+                            if (dashboard.showLayout) {
+                                Icon(imageVector = CompoundIcons.Document(), contentDescription = stringResource(R.string.a11y_notes_dashboard_text))
+                            } else {
+                                Icon(imageVector = CompoundIcons.Chart(), contentDescription = stringResource(R.string.a11y_notes_dashboard_layout))
+                            }
+                        }
+                    }
                     IconButton(onClick = { state.eventSink(NoteEditorEvent.OpenFind) }, enabled = !state.isLoading) {
                         Icon(imageVector = CompoundIcons.Search(), contentDescription = stringResource(R.string.a11y_notes_find))
                     }
@@ -169,6 +179,13 @@ fun NoteEditorView(
             }
             if (state.isPreviewing) {
                 NotePreview(state, Modifier.weight(1f))
+                return@Column
+            }
+            val dashboard = state.dashboard
+            if (dashboard != null && dashboard.showLayout) {
+                DashboardLayout(dashboard, state.eventSink, Modifier.weight(1f).fillMaxWidth())
+                HorizontalDivider()
+                DashboardToolbar(dashboard, state.eventSink)
                 return@Column
             }
             val livePreview = LivePreviewTransformation(state.rawLines, livePreviewStyles())
