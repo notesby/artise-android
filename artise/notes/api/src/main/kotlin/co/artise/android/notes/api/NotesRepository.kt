@@ -106,6 +106,13 @@ interface NotesRepository {
     suspend fun documentText(roomId: RoomId, path: String): Result<NotesText>
 
     /**
+     * A Word, Excel or PowerPoint file as the server's PDF conversion, to read in the app's viewer; fetched once per version
+     * of the file and kept on the phone. Fails with [NotesException.Server] 415 (not an Office file, or an older server),
+     * 422 (couldn't be converted), [NotesException.TooBig] or [NotesException.NotFound].
+     */
+    suspend fun officePdf(roomId: RoomId, path: String): Result<File>
+
+    /**
      * Deletes a photo or file. It needs a connection: the notes are refreshed and the server is asked which notes use
      * it, so nothing in use is deleted by mistake. When notes use it, it fails with [MediaInUseException], unless
      * [removeFromNotes], which first takes it out of those notes. A file not uploaded yet is just dropped.

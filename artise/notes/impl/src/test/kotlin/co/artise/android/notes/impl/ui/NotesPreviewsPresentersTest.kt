@@ -23,6 +23,7 @@ import com.google.common.truth.Truth.assertThat
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.tests.testutils.consumeItemsUntilPredicate
 import io.element.android.tests.testutils.test
+import io.element.android.tests.testutils.testCoroutineDispatchers
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import java.io.File
@@ -68,7 +69,7 @@ class NotesPreviewsPresentersTest {
         val pdf = Files.createTempFile("doc", ".pdf").toFile()
         val repository = FakeNotesRepository()
         repository.attachmentResult = { Result.success(pdf) }
-        NotesDocumentPresenter(room, "docs/Recetario.pdf", repository).test {
+        NotesDocumentPresenter(room, "docs/Recetario.pdf", repository, testCoroutineDispatchers()).test {
             val state = consumeItemsUntilPredicate { !it.isLoading }.last()
             assertThat(state.title).isEqualTo("Recetario.pdf")
             assertThat(state.kind).isEqualTo(NoteAttachment.Kind.PDF)
@@ -94,7 +95,7 @@ class NotesPreviewsPresentersTest {
             attempts++
             if (attempts == 1) Result.failure(NotesException.Network(IllegalStateException())) else Result.success(File("/tmp/luna.jpg"))
         }
-        NotesDocumentPresenter(room, "Fotos/luna.jpg", repository).test {
+        NotesDocumentPresenter(room, "Fotos/luna.jpg", repository, testCoroutineDispatchers()).test {
             val offline = consumeItemsUntilPredicate { !it.isLoading }.last()
             assertThat(offline.problem).isEqualTo(DocumentProblem.OFFLINE)
             assertThat(offline.kind).isEqualTo(NoteAttachment.Kind.IMAGE)
@@ -110,8 +111,65 @@ class NotesPreviewsPresentersTest {
     fun `document reports other failures`() = runTest {
         val repository = FakeNotesRepository()
         repository.attachmentResult = { Result.failure(NotesException.NotFound("gone")) }
-        NotesDocumentPresenter(room, "docs/Recetario.pdf", repository).test {
+        NotesDocumentPresenter(room, "docs/Recetario.pdf", repository, testCoroutineDispatchers()).test {
             assertThat(consumeItemsUntilPredicate { !it.isLoading }.last().problem).isEqualTo(DocumentProblem.FAILED)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    /** A CSV reads as its text, and find works on it without asking the server. */
+    @Test
+    fun `document shows a csv as text and finds in it`() = runTest {
+        val csv = Files.createTempFile("gastos", ".csv").toFile().apply { writeText("fecha,monto\n2026-10-01,120\n2026-10-02,Camión 80\n") }
+        val repository = FakeNotesRepository()
+        repository.attachmentResult = { Result.success(csv) }
+        NotesDocumentPresenter(room, "gastos.csv", repository, testCoroutineDispatchers()).test {
+            val shown = consumeItemsUntilPredicate { !it.isLoading }.last()
+            assertThat(shown.kind).isEqualTo(NoteAttachment.Kind.TABLE)
+            assertThat(shown.tableText).startsWith("fecha,monto")
+            assertThat(shown.pdfFile).isNull()
+            assertThat(shown.canFind).isTrue()
+            shown.eventSink(NotesDocumentEvent.OpenFind)
+            consumeItemsUntilPredicate { it.find != null }.last().eventSink(NotesDocumentEvent.FindQueryChanged("camion"))
+            val found = consumeItemsUntilPredicate { it.find?.matches?.size == 1 }.last()
+            assertThat(found.find?.isUnavailable).isFalse()
+            assertThat(repository.textRequests).isEmpty()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    /** An Office file shows the server's PDF conversion; "Open with" still hands over the original. */
+    @Test
+    fun `document shows an office file as its pdf`() = runTest {
+        val docx = Files.createTempFile("oferta", ".docx").toFile()
+        val pdf = Files.createTempFile("oferta", ".pdf").toFile()
+        val repository = FakeNotesRepository()
+        repository.attachmentResult = { Result.success(docx) }
+        repository.officePdfResult = { Result.success(pdf) }
+        NotesDocumentPresenter(room, "docs/oferta.docx", repository, testCoroutineDispatchers()).test {
+            val shown = consumeItemsUntilPredicate { !it.isLoading }.last()
+            assertThat(shown.kind).isEqualTo(NoteAttachment.Kind.OFFICE)
+            assertThat(shown.file).isEqualTo(docx.absolutePath)
+            assertThat(shown.pdfFile).isEqualTo(pdf.absolutePath)
+            assertThat(shown.canFind).isTrue()
+            shown.eventSink(NotesDocumentEvent.OpenWith)
+            assertThat(consumeItemsUntilPredicate { it.openFile != null }.last().openFile).isEqualTo(OpenFileRequest(docx.absolutePath, "oferta.docx"))
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    /** No conversion (an older server): the original is still there to open with another app, without find. */
+    @Test
+    fun `document without an office conversion offers open with`() = runTest {
+        val docx = Files.createTempFile("oferta", ".docx").toFile()
+        val repository = FakeNotesRepository()
+        repository.attachmentResult = { Result.success(docx) }
+        NotesDocumentPresenter(room, "oferta.docx", repository, testCoroutineDispatchers()).test {
+            val shown = consumeItemsUntilPredicate { !it.isLoading }.last()
+            assertThat(shown.file).isEqualTo(docx.absolutePath)
+            assertThat(shown.pdfFile).isNull()
+            assertThat(shown.problem).isNull()
+            assertThat(shown.canFind).isFalse()
             cancelAndIgnoreRemainingEvents()
         }
     }

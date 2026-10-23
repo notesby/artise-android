@@ -30,12 +30,19 @@ object NoteAttachment {
         PDF,
         IMAGE,
 
-        /** No viewer or editor in the app (Office files, audio...): the file downloads as any attachment. */
+        /** A CSV file: read in the app as text. */
+        TABLE,
+
+        /** Word, Excel or PowerPoint: read in the app as the server's PDF conversion. */
+        OFFICE,
+
+        /** No viewer or editor in the app (audio, archives...): the file downloads as any attachment. */
         OTHER,
     }
 
     private val noteExtensions = setOf("md", "txt")
     private val imageExtensions = setOf("jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "avif", "bmp")
+    private val officeExtensions = setOf("docx", "doc", "odt", "rtf", "xlsx", "xls", "ods", "pptx", "ppt", "odp")
 
     /** The notes path of the file the event's JSON carries, or null for an ordinary attachment. */
     fun read(eventJson: String?): String? {
@@ -50,6 +57,8 @@ object NoteAttachment {
         in noteExtensions -> Kind.NOTE
         "pdf" -> Kind.PDF
         in imageExtensions -> Kind.IMAGE
+        "csv" -> Kind.TABLE
+        in officeExtensions -> Kind.OFFICE
         else -> Kind.OTHER
     }
 }

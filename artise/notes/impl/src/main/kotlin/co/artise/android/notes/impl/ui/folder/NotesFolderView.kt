@@ -192,7 +192,7 @@ fun NotesFolderView(
                         // The row is on screen: ask what the file looks like (again when the file changed).
                         LaunchedEffect(entry) { state.eventSink(NotesFolderEvent.LoadPreview(entry.path)) }
                         val kind = NoteAttachment.kindOf(entry.path)
-                        val opensInApp = kind == NoteAttachment.Kind.PDF || kind == NoteAttachment.Kind.IMAGE
+                        val opensInApp = kind != NoteAttachment.Kind.NOTE && kind != NoteAttachment.Kind.OTHER
                         ListItem(
                             modifier = Modifier.clicks {
                                 if (opensInApp) onDocumentClick(entry.path) else state.eventSink(NotesFolderEvent.OpenFile(entry))

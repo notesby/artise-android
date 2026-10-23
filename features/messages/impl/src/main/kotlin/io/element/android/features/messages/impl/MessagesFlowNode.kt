@@ -368,6 +368,10 @@ class MessagesFlowNode(
                         backstack.push(NavTarget.Notes)
                     }
 
+                    override fun navigateToNotesFile(path: String) {
+                        backstack.push(NavTarget.NotesFile(path))
+                    }
+
                     override fun navigateToKnockRequestsList() {
                         backstack.push(NavTarget.KnockRequestsList)
                     }

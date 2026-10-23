@@ -227,6 +227,11 @@
     <string name="screen_notes_map_pages_hint">Notas com anel são páginas: uma pessoa, lugar ou coisa com nota própria.</string>
     <string name="screen_notes_document_offline">Conecte-se à internet para abrir este arquivo.</string>
     <string name="screen_notes_document_failed">Não foi possível abrir este arquivo.</string>
+    <string name="screen_notes_document_open_with_hint">Use “Abrir com” para ver este arquivo em outro app.</string>
+    <string name="screen_notes_card_draft">Rascunho</string>
+    <string name="screen_notes_card_created">Documento novo</string>
+    <string name="screen_notes_card_changed">Atualizado</string>
+    <string name="a11y_notes_card_open">Abrir %1$s</string>
     <string name="screen_notes_find_hint">Buscar no documento</string>
     <string name="screen_notes_find_count">%1$d de %2$d</string>
     <string name="screen_notes_find_none">Sem ocorrências</string>

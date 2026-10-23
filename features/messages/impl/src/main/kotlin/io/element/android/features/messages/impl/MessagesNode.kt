@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
+import co.artise.android.notes.api.DocumentCardRenderer
 import co.artise.android.stickers.api.StickerPickerRenderer
 import co.artise.android.workspace.api.LocalWorkspaceBranding
 import co.artise.android.workspace.api.WorkspaceFeatures
@@ -37,6 +38,8 @@ import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.knockrequests.api.banner.KnockRequestsBannerRenderer
 import io.element.android.features.messages.impl.actionlist.ActionListPresenter
 import io.element.android.features.messages.impl.actionlist.model.TimelineItemActionPostProcessor
+import io.element.android.features.messages.impl.artise.DocumentCardsHost
+import io.element.android.features.messages.impl.artise.LocalDocumentCards
 import io.element.android.features.messages.impl.artise.LocalOpenNotes
 import io.element.android.features.messages.impl.attachments.Attachment
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerEvent
@@ -116,6 +119,7 @@ class MessagesNode(
     private val emojiPickerRenderer: EmojiPickerRenderer,
     private val stickerPickerRenderer: StickerPickerRenderer,
     private val dispatchers: CoroutineDispatchers,
+    private val documentCardRenderer: DocumentCardRenderer,
 ) : Node(buildContext, plugins = plugins), MessagesNavigator {
     data class Inputs(
         val focusedEventId: EventId?,
@@ -160,6 +164,9 @@ class MessagesNode(
 
         /** Artise: this chat's notes. */
         fun navigateToNotes()
+
+        /** Artise: one file of this chat's notes, opened in the notes (a document card was tapped). */
+        fun navigateToNotesFile(path: String)
         fun navigateToPinnedMessagesList()
         fun navigateToKnockRequestsList()
         fun navigateToDeveloperSettings()
@@ -290,6 +297,7 @@ class MessagesNode(
         var showStickerPicker by remember { mutableStateOf(false) }
         val stickerButtonLabel = stringResource(StickersR.string.screen_stickers_open)
         val stickerButton = remember(stickerButtonLabel) { StickerButton(stickerButtonLabel) { showStickerPicker = true } }
+        val documentCards = remember { DocumentCardsHost(room.roomId, documentCardRenderer, callback::navigateToNotesFile) }
         CompositionLocalProvider(
             LocalTimelineItemPresenterFactories provides timelineItemPresenterFactories,
             LocalEventContentValidationState provides eventContentValidationCache,
@@ -297,6 +305,8 @@ class MessagesNode(
             LocalStickerButton provides stickerButton.takeIf { LocalWorkspaceBranding.current.hasFeature(WorkspaceFeatures.STICKERS) },
             // Artise: the notes shortcut only when the workspace's server has notes.
             LocalOpenNotes provides callback::navigateToNotes.takeIf { LocalWorkspaceBranding.current.hasNotes },
+            // Artise: Ari's document cards, also only with notes.
+            LocalDocumentCards provides documentCards.takeIf { LocalWorkspaceBranding.current.hasNotes },
         ) {
             val state = presenter.present()
 

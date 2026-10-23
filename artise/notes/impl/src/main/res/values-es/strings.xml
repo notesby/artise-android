@@ -227,6 +227,11 @@
     <string name="screen_notes_map_pages_hint">Las notas con anillo son páginas: una persona, lugar o cosa con nota propia.</string>
     <string name="screen_notes_document_offline">Conéctate a internet para abrir este archivo.</string>
     <string name="screen_notes_document_failed">No se pudo abrir este archivo.</string>
+    <string name="screen_notes_document_open_with_hint">Usa «Abrir con» para ver este archivo en otra app.</string>
+    <string name="screen_notes_card_draft">Borrador</string>
+    <string name="screen_notes_card_created">Documento nuevo</string>
+    <string name="screen_notes_card_changed">Actualizado</string>
+    <string name="a11y_notes_card_open">Abrir %1$s</string>
     <string name="screen_notes_find_hint">Buscar en el documento</string>
     <string name="screen_notes_find_count">%1$d de %2$d</string>
     <string name="screen_notes_find_none">Sin coincidencias</string>

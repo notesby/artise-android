@@ -9,12 +9,14 @@
 package io.element.android.features.messages.impl.timeline.factories.event
 
 import co.artise.android.linkpreview.api.LinkPreviewReader
+import co.artise.android.notes.api.DocumentCards
 import dev.zacsweers.metro.Inject
 import io.element.android.features.location.api.Location
 import io.element.android.features.messages.impl.timeline.model.event.RtcNotificationState
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemEventContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemLegacyCallInviteContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemLocationContent
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemNoticeContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemRtcNotificationContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemUnknownContent
@@ -46,6 +48,7 @@ import io.element.android.libraries.matrix.api.timeline.item.event.getDisambigua
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.services.toolbox.api.strings.StringProvider
+import kotlinx.collections.immutable.toImmutableList
 
 @Inject
 class TimelineItemContentFactory(
@@ -73,7 +76,23 @@ class TimelineItemContentFactory(
             senderProfile = eventTimelineItem.senderProfile,
             roomMembers = roomMembers,
         )
-        return content.withLinkPreview(eventTimelineItem)
+        return content.withLinkPreview(eventTimelineItem).withDocuments(eventTimelineItem)
+    }
+
+    /**
+     * Artise: the notes documents a message of Ari's is about travel inside its content as `co.artise.documents`, read from
+     * the (decrypted) event's JSON: the latest edit first, as Ari edits its progress message into the reply.
+     */
+    private fun TimelineItemEventContent.withDocuments(eventTimelineItem: EventTimelineItem): TimelineItemEventContent {
+        if (this !is TimelineItemTextContent && this !is TimelineItemNoticeContent) return this
+        val debugInfo = eventTimelineItem.timelineItemDebugInfoProvider()
+        val cards = DocumentCards.read(debugInfo.latestEditedJson, debugInfo.originalJson)
+        if (cards.isEmpty()) return this
+        return when (this) {
+            is TimelineItemTextContent -> copy(documents = cards.toImmutableList())
+            is TimelineItemNoticeContent -> copy(documents = cards.toImmutableList())
+            else -> this
+        }
     }
 
     /**

@@ -467,6 +467,22 @@ class NotesSyncEngine(
         )
     }
 
+    override suspend fun officePdf(roomId: RoomId, path: String): Result<File> {
+        val version = io { store.file(roomId, path) }?.version.orEmpty()
+        val cached = cacheFileFor(roomId, "$path.pdf", version)
+        if (version.isNotEmpty() && io { cached.exists() }) {
+            io { cached.setLastModified(clock.epochMillis()) }
+            return Result.success(cached)
+        }
+        return api.pdf(roomId, path).map { bytes ->
+            io {
+                cached.writeBytes(bytes)
+                trimCache()
+            }
+            cached
+        }
+    }
+
     private fun readCachedText(file: File): NotesText? {
         if (!file.exists()) return null
         val cached = runCatchingExceptions { Json.decodeFromString(CachedText.serializer(), file.readText()) }.getOrNull() ?: return null

@@ -193,11 +193,13 @@ private fun ListBlock(list: Node, ordered: Boolean, start: Int, actions: NoteAct
 
 @Composable
 private fun CodeBlock(literal: String) {
+    val (text, findModifier) = rememberFindHighlights(AnnotatedString(literal.trimEnd()))
     Text(
-        text = literal.trimEnd(),
+        text = text,
         style = ElementTheme.typography.fontBodyMdRegular.copy(fontFamily = FontFamily.Monospace),
         modifier = Modifier
             .fillMaxWidth()
+            .then(findModifier)
             .background(ElementTheme.colors.bgSubtleSecondary, RoundedCornerShape(8.dp))
             .horizontalScroll(rememberScrollState())
             .padding(12.dp),
@@ -219,10 +221,16 @@ private fun TableView(table: TableBlock, onLinkClick: (NoteLink) -> Unit) {
                     appendInlines(cell, onLinkClick, linkColor, codeBackground)
                 }
             }
-            Text(text, style = style)
+            TableRowText(text, style)
             first = false
         }
     }
+}
+
+@Composable
+private fun TableRowText(text: AnnotatedString, style: TextStyle) {
+    val (shown, findModifier) = rememberFindHighlights(text)
+    Text(shown, style = style, modifier = findModifier)
 }
 
 /** A paragraph split around its embeds: runs of text, and the photos or files between them. */
@@ -286,7 +294,9 @@ private fun InlineText(nodes: ImmutableList<Node>, style: TextStyle, onLinkClick
     val text = remember(nodes, linkColor, codeBackground) {
         buildAnnotatedString { appendInlines(nodes.asSequence(), onLinkClick, linkColor, codeBackground) }.trimmed()
     }
-    if (text.isNotEmpty()) Text(text = text, style = style, color = ElementTheme.colors.textPrimary)
+    if (text.isEmpty()) return
+    val (shown, findModifier) = rememberFindHighlights(text)
+    Text(text = shown, style = style, color = ElementTheme.colors.textPrimary, modifier = findModifier)
 }
 
 /** Without the spaces and line breaks an embed leaves at the start or end of a text run. */

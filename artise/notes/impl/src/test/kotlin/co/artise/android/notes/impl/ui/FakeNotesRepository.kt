@@ -177,6 +177,10 @@ class FakeNotesRepository(
         return documentTextResult(path)
     }
 
+    var officePdfResult: (String) -> Result<File> = { Result.failure(NotesException.Server(415, "no_pdf")) }
+
+    override suspend fun officePdf(roomId: RoomId, path: String): Result<File> = officePdfResult(path)
+
     val previewRequests = mutableListOf<Pair<String, Int>>()
     var previewResult: (String) -> NotesPreview = { NotesPreview.None }
 
