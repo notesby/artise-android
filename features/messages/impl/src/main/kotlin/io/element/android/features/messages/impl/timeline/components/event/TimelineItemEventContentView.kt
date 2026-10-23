@@ -28,6 +28,8 @@ import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.unit.dp
 import co.artise.android.linkpreview.api.LinkPreviewView
 import io.element.android.compound.theme.ElementTheme
+import io.element.android.features.messages.impl.artise.DocumentCardsView
+import io.element.android.features.messages.impl.artise.LocalDocumentCards
 import io.element.android.features.messages.impl.timeline.TimelineEvent
 import io.element.android.features.messages.impl.timeline.di.LocalTimelineItemPresenterFactories
 import io.element.android.features.messages.impl.timeline.di.rememberPresenter
@@ -40,6 +42,7 @@ import io.element.android.features.messages.impl.timeline.model.event.TimelineIt
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemImageContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemLegacyCallInviteContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemLocationContent
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemNoticeContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemPollContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemRedactedContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemRtcNotificationContent
@@ -147,7 +150,25 @@ fun TimelineItemEventContentView(
                 )
                 is TimelineItemTextBasedContent -> {
                     val linkPreview = (content as? TimelineItemTextContent)?.linkPreview
-                    if (linkPreview == null) {
+                    val documents = (content as? TimelineItemTextContent)?.documents ?: (content as? TimelineItemNoticeContent)?.documents
+                    if (!documents.isNullOrEmpty() && LocalDocumentCards.current != null) {
+                        // Artise: Ari's documents as cards under the text (and its link preview); the time goes below them.
+                        SideEffect { calculatedOnContentLayoutChange(ContentAvoidingLayoutData.NotOverlapping) }
+                        Column {
+                            TimelineItemTextView(content = content, onLinkClick = onLinkClick, onLinkLongClick = onLinkLongClick)
+                            if (linkPreview != null) {
+                                LinkPreviewView(
+                                    preview = linkPreview,
+                                    onClick = { url -> onLinkClick(Link(url = url, text = url)) },
+                                    modifier = Modifier
+                                        .padding(top = 6.dp)
+                                        .widthIn(max = 320.dp)
+                                        .fillMaxWidth(),
+                                )
+                            }
+                            DocumentCardsView(documents, modifier = Modifier.padding(top = 6.dp))
+                        }
+                    } else if (linkPreview == null) {
                         TimelineItemTextView(
                             content = content,
                             onLinkClick = onLinkClick,

@@ -220,6 +220,11 @@
     <string name="screen_notes_map_pages_hint">Notes with a ring are pages: a person, place or thing of their own.</string>
     <string name="screen_notes_document_offline">Connect to the internet to open this file.</string>
     <string name="screen_notes_document_failed">Couldn’t open this file.</string>
+    <string name="screen_notes_document_open_with_hint">Use “Open with” to see this file in another app.</string>
+    <string name="screen_notes_card_draft">Draft</string>
+    <string name="screen_notes_card_created">New document</string>
+    <string name="screen_notes_card_changed">Updated</string>
+    <string name="a11y_notes_card_open">Open %1$s</string>
     <string name="screen_notes_find_hint">Find in document</string>
     <string name="screen_notes_find_count">%1$d of %2$d</string>
     <string name="screen_notes_find_none">No matches</string>

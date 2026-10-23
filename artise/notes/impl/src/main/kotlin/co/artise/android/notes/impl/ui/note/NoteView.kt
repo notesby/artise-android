@@ -7,6 +7,8 @@
 
 package co.artise.android.notes.impl.ui.note
 
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
@@ -17,21 +19,28 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import co.artise.android.notes.impl.R
+import co.artise.android.notes.impl.markdown.LocalNoteFind
+import co.artise.android.notes.impl.markdown.NoteFind
 import co.artise.android.notes.impl.markdown.NoteLink
 import co.artise.android.notes.impl.markdown.NoteMarkdownView
+import co.artise.android.notes.impl.ui.find.FindBar
 import co.artise.android.notes.impl.ui.folder.NotesFolderEntries
 import co.artise.android.notes.impl.ui.folder.nameProblemText
 import io.element.android.compound.theme.ElementTheme
@@ -69,10 +78,20 @@ fun NoteView(
     onHistoryClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val uriHandler = LocalUriHandler.current
     val context = LocalContext.current
     state.openFile?.let { request ->
         LaunchedEffect(request) { state.eventSink(NoteEvent.FileOpenHandled(opened = context.openDownloadedFile(request))) }
+    }
+    // Finding words as the note reads: the bar under the top bar, matches painted in the text, the current one scrolled to.
+    var find by remember { mutableStateOf<NoteFind?>(null) }
+    val scrollState = rememberScrollState()
+    var viewportTop by remember { mutableFloatStateOf(0f) }
+    val openFind = find
+    if (openFind != null) {
+        LaunchedEffect(openFind, openFind.current, openFind.query, openFind.matchCount > 0) {
+            val top = openFind.currentTop() ?: return@LaunchedEffect
+            scrollState.animateScrollBy(top - viewportTop - FIND_SCROLL_MARGIN)
+        }
     }
     Scaffold(
         modifier = modifier,
@@ -80,7 +99,14 @@ fun NoteView(
             TopAppBar(
                 titleStr = state.title,
                 navigationIcon = { BackButton(onClick = onBackClick) },
-                actions = { NoteActions(state, onEditClick, onHistoryClick) },
+                actions = {
+                    if (state.content != null && find == null) {
+                        IconButton(onClick = { find = NoteFind() }) {
+                            Icon(imageVector = CompoundIcons.Search(), contentDescription = stringResource(R.string.a11y_notes_find))
+                        }
+                    }
+                    NoteActions(state, onEditClick, onHistoryClick)
+                },
             )
         },
     ) { padding ->
@@ -89,7 +115,34 @@ fun NoteView(
                 .padding(padding)
                 .consumeWindowInsets(padding)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+        ) {
+            if (openFind != null) {
+                FindBar(
+                    query = openFind.query,
+                    matchCount = openFind.matchCount,
+                    current = openFind.current,
+                    onQueryChange = openFind::onQueryChange,
+                    onNext = openFind::next,
+                    onPrevious = openFind::previous,
+                    onClose = { find = null },
+                )
+            }
+            CompositionLocalProvider(LocalNoteFind provides openFind) {
+                NoteBody(state, onBacklinkClick, scrollState) { viewportTop = it }
+            }
+        }
+    }
+    NoteDialogs(state)
+}
+
+@Composable
+private fun NoteBody(state: NoteState, onBacklinkClick: (String) -> Unit, scrollState: ScrollState, onViewportTop: (Float) -> Unit) {
+    val uriHandler = LocalUriHandler.current
+        Column(
+            Modifier
+                .fillMaxSize()
+                .onGloballyPositioned { onViewportTop(it.boundsInRoot().top) }
+                .verticalScroll(scrollState)
         ) {
             if (state.hasLocalEdits) {
                 Text(
@@ -134,9 +187,9 @@ fun NoteView(
             HorizontalDivider(Modifier.padding(top = 8.dp))
             Backlinks(state.backlinks, onBacklinkClick)
         }
-    }
-    NoteDialogs(state)
 }
+
+private const val FIND_SCROLL_MARGIN = 160f
 
 @Composable
 private fun RowScope.NoteActions(state: NoteState, onEditClick: () -> Unit, onHistoryClick: () -> Unit) {

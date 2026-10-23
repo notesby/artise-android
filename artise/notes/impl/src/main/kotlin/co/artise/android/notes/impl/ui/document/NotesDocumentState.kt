@@ -13,7 +13,7 @@ import co.artise.android.notes.impl.ui.find.FindMatch
 import co.artise.android.notes.impl.ui.note.OpenFileRequest
 import kotlinx.collections.immutable.ImmutableList
 
-/** A PDF or photo of the chat's notes, read through the Notes API so it is the current version. */
+/** A PDF, photo, CSV or Office file of the chat's notes, read through the Notes API so it is the current version. */
 @Immutable
 data class NotesDocumentState(
     /** The file's name. */
@@ -21,6 +21,10 @@ data class NotesDocumentState(
     val kind: NoteAttachment.Kind,
     /** The copy on the phone, once downloaded. */
     val file: String?,
+    /** What the PDF viewer shows: the file itself for a PDF, the server's conversion for an Office file, once there. */
+    val pdfFile: String? = null,
+    /** A CSV's text, once read. */
+    val tableText: String? = null,
     val isLoading: Boolean,
     val problem: DocumentProblem?,
     /** The file to hand to another app, once. */
@@ -28,7 +32,10 @@ data class NotesDocumentState(
     /** The find bar, while open. */
     val find: DocumentFind?,
     val eventSink: (NotesDocumentEvent) -> Unit,
-)
+) {
+    /** Finding is on offer once there's something to search: a PDF (or an Office file's conversion), or a CSV's text. */
+    val canFind: Boolean get() = file != null && (pdfFile != null || tableText != null)
+}
 
 /**
  * Finding in a document: the server's text page by page ([pages], index = page from 0), what's typed, every match

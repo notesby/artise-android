@@ -41,8 +41,11 @@ class NoteAttachmentTest {
         assertThat(NoteAttachment.kindOf("Fotos/luna.jpg")).isEqualTo(NoteAttachment.Kind.IMAGE)
         assertThat(NoteAttachment.kindOf("Fotos/luna.HEIC")).isEqualTo(NoteAttachment.Kind.IMAGE)
         // Office files have no viewer or editor in the app
-        assertThat(NoteAttachment.kindOf("oferta.docx")).isEqualTo(NoteAttachment.Kind.OTHER)
-        assertThat(NoteAttachment.kindOf("ventas.xlsx")).isEqualTo(NoteAttachment.Kind.OTHER)
+        assertThat(NoteAttachment.kindOf("oferta.docx")).isEqualTo(NoteAttachment.Kind.OFFICE)
+        assertThat(NoteAttachment.kindOf("ventas.XLSX")).isEqualTo(NoteAttachment.Kind.OFFICE)
+        assertThat(NoteAttachment.kindOf("junta.pptx")).isEqualTo(NoteAttachment.Kind.OFFICE)
+        assertThat(NoteAttachment.kindOf("gastos.csv")).isEqualTo(NoteAttachment.Kind.TABLE)
+        assertThat(NoteAttachment.kindOf("cancion.mp3")).isEqualTo(NoteAttachment.Kind.OTHER)
         assertThat(NoteAttachment.kindOf("sinextension")).isEqualTo(NoteAttachment.Kind.OTHER)
     }
 }

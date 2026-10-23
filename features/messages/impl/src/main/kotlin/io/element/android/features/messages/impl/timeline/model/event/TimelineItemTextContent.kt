@@ -9,8 +9,11 @@
 package io.element.android.features.messages.impl.timeline.model.event
 
 import co.artise.android.linkpreview.api.LinkPreview
+import co.artise.android.notes.api.DocumentCard
 import io.element.android.libraries.htmlrenderer.api.DocumentNode
 import io.element.android.libraries.matrix.ui.messages.toPlainText
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import org.jsoup.nodes.Document
 
 data class TimelineItemTextContent(
@@ -21,6 +24,8 @@ data class TimelineItemTextContent(
     override val messageTree: DocumentNode? = null,
     /** Artise: the preview of a link in the message, built by the sender's phone and sent inside the message. */
     val linkPreview: LinkPreview? = null,
+    /** Artise: the notes documents Ari made or changed in this turn, shown as cards under the text. */
+    val documents: ImmutableList<DocumentCard> = persistentListOf(),
 ) : TimelineItemTextBasedContent {
     override val type: String = "TimelineItemTextContent"
     override val plainText: String = htmlDocument?.toPlainText() ?: body

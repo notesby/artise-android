@@ -25,14 +25,16 @@ class NotesEntryTest {
         assertThat(NotesEntry.initialTarget(room, null)).isEqualTo(NotesFlowNode.NavTarget.Folder(room, ""))
     }
 
-    /** A file Ari posted: notes in the editor, PDFs and photos in the viewer, anything else in its folder. */
+    /** A file Ari posted: notes read formatted, PDFs, photos, CSVs and Office files in the viewer, anything else in its folder. */
     @Test
     fun `a file opens by its kind`() {
-        assertThat(NotesEntry.initialTarget(room, "Recetas/Mole.md")).isEqualTo(NotesFlowNode.NavTarget.Editor(room, "Recetas/Mole.md", null))
-        assertThat(NotesEntry.initialTarget(room, "notas.txt")).isEqualTo(NotesFlowNode.NavTarget.Editor(room, "notas.txt", null))
+        assertThat(NotesEntry.initialTarget(room, "Recetas/Mole.md")).isEqualTo(NotesFlowNode.NavTarget.Note(room, "Recetas/Mole.md"))
+        assertThat(NotesEntry.initialTarget(room, "notas.txt")).isEqualTo(NotesFlowNode.NavTarget.Note(room, "notas.txt"))
         assertThat(NotesEntry.initialTarget(room, "docs/Recetario.pdf")).isEqualTo(NotesFlowNode.NavTarget.Document(room, "docs/Recetario.pdf"))
         assertThat(NotesEntry.initialTarget(room, "Fotos/luna.jpg")).isEqualTo(NotesFlowNode.NavTarget.Document(room, "Fotos/luna.jpg"))
-        assertThat(NotesEntry.initialTarget(room, "docs/oferta.docx")).isEqualTo(NotesFlowNode.NavTarget.Folder(room, "docs"))
-        assertThat(NotesEntry.initialTarget(room, "oferta.docx")).isEqualTo(NotesFlowNode.NavTarget.Folder(room, ""))
+        assertThat(NotesEntry.initialTarget(room, "docs/oferta.docx")).isEqualTo(NotesFlowNode.NavTarget.Document(room, "docs/oferta.docx"))
+        assertThat(NotesEntry.initialTarget(room, "gastos.csv")).isEqualTo(NotesFlowNode.NavTarget.Document(room, "gastos.csv"))
+        assertThat(NotesEntry.initialTarget(room, "audio/nota.m4a")).isEqualTo(NotesFlowNode.NavTarget.Folder(room, "audio"))
+        assertThat(NotesEntry.initialTarget(room, "nota.m4a")).isEqualTo(NotesFlowNode.NavTarget.Folder(room, ""))
     }
 }

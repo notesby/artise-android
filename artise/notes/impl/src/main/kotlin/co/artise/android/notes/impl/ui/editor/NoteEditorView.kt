@@ -389,7 +389,7 @@ private fun PhotoStrip(
 
 /** Live preview's looks, from the theme: headings as the reading view shows them, links in link colour. */
 @Composable
-private fun livePreviewStyles(): LivePreviewStyles {
+internal fun livePreviewStyles(): LivePreviewStyles {
     val typography = ElementTheme.typography
     val colors = ElementTheme.colors
     return LivePreviewStyles(

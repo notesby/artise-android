@@ -16,9 +16,12 @@ internal object NotesEntry {
         if (roomId == null) return NotesFlowNode.NavTarget.Chats
         if (openPath == null) return NotesFlowNode.NavTarget.Folder(roomId, folder = "")
         return when (NoteAttachment.kindOf(openPath)) {
-            NoteAttachment.Kind.NOTE -> NotesFlowNode.NavTarget.Editor(roomId, openPath, resolveEditId = null)
+            // Read formatted first, with find; the pencil there opens the editor.
+            NoteAttachment.Kind.NOTE -> NotesFlowNode.NavTarget.Note(roomId, openPath)
             NoteAttachment.Kind.PDF,
-            NoteAttachment.Kind.IMAGE -> NotesFlowNode.NavTarget.Document(roomId, openPath)
+            NoteAttachment.Kind.IMAGE,
+            NoteAttachment.Kind.TABLE,
+            NoteAttachment.Kind.OFFICE -> NotesFlowNode.NavTarget.Document(roomId, openPath)
             // Nothing in the app shows it: its folder, where "Open" hands it to another app.
             NoteAttachment.Kind.OTHER -> NotesFlowNode.NavTarget.Folder(roomId, folder = openPath.substringBeforeLast('/', ""))
         }

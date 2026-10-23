@@ -23,6 +23,7 @@ import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.services.toolbox.test.systemclock.FakeSystemClock
 import io.element.android.tests.testutils.consumeItemsUntilPredicate
 import io.element.android.tests.testutils.test
+import io.element.android.tests.testutils.testCoroutineDispatchers
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import java.nio.file.Files
@@ -74,7 +75,7 @@ class NotesFindPresentersTest {
         repository.documentTextResult = {
             Result.success(NotesText("docs/Recetario.pdf", "3f9c", listOf(NotesTextPage(2, "chiles y chocolate"), NotesTextPage(1, "Mole poblano. Más MOLE."))))
         }
-        NotesDocumentPresenter(room, "docs/Recetario.pdf", repository).test {
+        NotesDocumentPresenter(room, "docs/Recetario.pdf", repository, testCoroutineDispatchers()).test {
             val shown = consumeItemsUntilPredicate { it.file != null }.last()
             assertThat(shown.find).isNull()
             assertThat(repository.textRequests).isEmpty()
@@ -107,7 +108,7 @@ class NotesFindPresentersTest {
             val repository = FakeNotesRepository()
             repository.attachmentResult = { Result.success(Files.createTempFile("doc", ".pdf").toFile()) }
             repository.documentTextResult = { Result.failure(failure) }
-            NotesDocumentPresenter(room, "docs/Recetario.pdf", repository).test {
+            NotesDocumentPresenter(room, "docs/Recetario.pdf", repository, testCoroutineDispatchers()).test {
                 consumeItemsUntilPredicate { it.file != null }.last().eventSink(NotesDocumentEvent.OpenFind)
                 val state = consumeItemsUntilPredicate { it.find?.isUnavailable == true }.last()
                 assertThat(state.find?.isLoading).isFalse()

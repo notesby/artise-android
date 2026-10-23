@@ -298,6 +298,12 @@ class NotesApiClient(
         }
     }
 
+    /** A Word, Excel or PowerPoint file converted to PDF by the server; `415 no_pdf` for other kinds. */
+    suspend fun pdf(roomId: RoomId, path: String): Result<ByteArray> {
+        val url = url(roomId, "pdf").newBuilder().addQueryParameter("path", path).build()
+        return send(get(url)) { it.body.bytes() }
+    }
+
     private fun request(url: HttpUrl) = Request.Builder().url(url)
 
     private fun get(url: HttpUrl) = request(url).get().build()
