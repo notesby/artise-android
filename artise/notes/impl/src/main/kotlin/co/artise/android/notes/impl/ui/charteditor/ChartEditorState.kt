@@ -33,6 +33,8 @@ data class ChartEditorState(
     val serverMessage: String?,
     val preview: ChartPreviewImage?,
     val isPreviewing: Boolean,
+    /** The preview needs a connection: the last one stays, dimmed. */
+    val previewOffline: Boolean,
     /** The record types this chat keeps, for a sourced chart; empty until loaded (or none). */
     val recordTypes: ImmutableList<RecordType>,
     val isSaving: Boolean,
@@ -64,8 +66,8 @@ sealed interface ChartEditorEvent {
     /** kpi only: the change against the row before. */
     data class SetCompare(val compare: Boolean) : ChartEditorEvent
 
-    /** The colour of series [index] (from 0); `null` leaves it to the workspace's palette. */
-    data class SetColor(val index: Int, val color: String?) : ChartEditorEvent
+    /** The colour of series [index] (from 0), those before it filled from [palette]; `null`: the workspace's for all. */
+    data class SetColor(val index: Int, val color: String?, val palette: List<String> = emptyList()) : ChartEditorEvent
 
     /** The Data or Source tab: only one is written. */
     data class UseSource(val useSource: Boolean) : ChartEditorEvent
@@ -82,8 +84,8 @@ sealed interface ChartEditorEvent {
 
     data class RemoveColumn(val column: Int) : ChartEditorEvent
 
-    /** Rows copied from a spreadsheet (tabs between cells, a line per row) put in from [row], [column]. */
-    data class Paste(val row: Int, val column: Int, val text: String) : ChartEditorEvent
+    /** Rows copied from a spreadsheet (tabs between cells, a line per row): they replace the table. */
+    data class Paste(val text: String) : ChartEditorEvent
 
     data class SetSource(val source: ChartSource) : ChartEditorEvent
 

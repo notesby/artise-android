@@ -98,11 +98,18 @@ interface NotesRepository {
      *
      * A chart or a dashboard is drawn for a [dark] or light screen, and is asked again every time (a chart that reads
      * records changes while its file doesn't): an unchanged picture costs a `304`. Show [cachedPreview] meanwhile.
+     * [kind]: what a card says the file is, which wins over the phone's list (a dashboard is a `.md`).
      */
-    suspend fun preview(roomId: RoomId, path: String, size: Int, dark: Boolean = false): NotesPreview
+    suspend fun preview(roomId: RoomId, path: String, size: Int, dark: Boolean = false, kind: NoteAttachment.Kind? = null): NotesPreview
 
     /** The preview kept on the phone, never fetched; `null` when there's none yet. */
-    suspend fun cachedPreview(roomId: RoomId, path: String, size: Int, dark: Boolean = false): NotesPreview?
+    suspend fun cachedPreview(
+        roomId: RoomId,
+        path: String,
+        size: Int,
+        dark: Boolean = false,
+        kind: NoteAttachment.Kind? = null,
+    ): NotesPreview?
 
     /**
      * A chart as data and as an SVG for a [dark] or light screen. Fails with [NotesException.Server] 415 (not a chart),
@@ -123,8 +130,9 @@ interface NotesRepository {
     suspend fun dashboard(roomId: RoomId, path: String): Result<String>
 
     /**
-     * The file made now to share: a chart as PNG or PDF, a dashboard or note as PDF, saved on the phone as [name] plus the
-     * format's extension. Never kept beyond the next export. Fails with [NotesException.Server] 415 (that kind can't be
+     * The file made now to share: a chart as PNG or PDF, a dashboard or note as PDF, saved on the phone under the name the
+     * server gives it (`Content-Disposition`), else [name] plus the format's extension. Never kept beyond the next
+     * export. Fails with [NotesException.Server] 415 (that kind can't be
      * that format), 422 or 503.
      */
     suspend fun export(roomId: RoomId, path: String, format: ExportFormat, name: String): Result<NotesExport>

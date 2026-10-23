@@ -11,7 +11,6 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -19,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -29,9 +29,10 @@ import androidx.core.content.FileProvider
 import co.artise.android.notes.api.ExportFormat
 import co.artise.android.notes.api.NotesExport
 import co.artise.android.notes.impl.R
-import io.element.android.compound.theme.ElementTheme
+import co.artise.android.workspace.api.LocalWorkspaceBranding
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.libraries.designsystem.components.dialogs.AlertDialog
+import io.element.android.libraries.designsystem.components.dialogs.ConfirmationDialog
 import io.element.android.libraries.designsystem.components.dialogs.ErrorDialog
 import io.element.android.libraries.designsystem.theme.components.CircularProgressIndicator
 import io.element.android.libraries.designsystem.theme.components.DropdownMenu
@@ -43,13 +44,21 @@ import kotlinx.collections.immutable.ImmutableList
 import timber.log.Timber
 
 /**
- * The top bar's Share: a menu with the [formats] the server can make of the document and "Ask Ari for a link"; a spinner
- * while the file is made. The file goes to the system share sheet (WhatsApp, email, files) once it's ready.
+ * The top bar's Share: a menu with the [formats] the server can make of the document, then "Ask Ari for a link"; a
+ * spinner in place of the icon while the file is made. The file goes to the system share sheet (WhatsApp, email,
+ * files) once it's ready. [pdfLabel]: how the PDF item reads ("PDF", or "Share as PDF" in a note).
  */
 @Composable
-internal fun ShareAction(state: DocumentShareState, formats: ImmutableList<ExportFormat>, title: String) {
+internal fun ShareAction(
+    state: DocumentShareState,
+    formats: ImmutableList<ExportFormat>,
+    title: String,
+    pdfLabel: Int = R.string.screen_notes_share_pdf,
+) {
     var showMenu by remember { mutableStateOf(false) }
+    var confirmAsk by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val branding = LocalWorkspaceBranding.current
     state.ready?.let { export ->
         LaunchedEffect(export) {
             context.shareExport(export)
@@ -58,8 +67,8 @@ internal fun ShareAction(state: DocumentShareState, formats: ImmutableList<Expor
     }
     Box {
         if (state.exporting != null) {
-            val preparing = stringResource(R.string.a11y_notes_share_preparing)
-            Box(modifier = Modifier.size(48.dp).semantics { contentDescription = preparing }, contentAlignment = androidx.compose.ui.Alignment.Center) {
+            val preparing = stringResource(R.string.a11y_notes_exporting)
+            Box(modifier = Modifier.size(48.dp).semantics { contentDescription = preparing }, contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
             }
         } else {
@@ -70,46 +79,53 @@ internal fun ShareAction(state: DocumentShareState, formats: ImmutableList<Expor
         DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
             formats.forEach { format ->
                 DropdownMenuItem(
-                    text = { Text(stringResource(if (format == ExportFormat.PNG) R.string.screen_notes_share_png else R.string.screen_notes_share_pdf)) },
+                    text = { Text(stringResource(if (format == ExportFormat.PNG) R.string.screen_notes_share_picture else pdfLabel)) },
                     onClick = {
                         showMenu = false
                         state.eventSink(DocumentShareEvent.Export(format, title))
                     },
                 )
             }
-            if (state.chat?.canAsk == true) {
-                val request = stringResource(R.string.screen_notes_share_ask_link_message, title)
+            if (state.canAskLink) {
                 DropdownMenuItem(
-                    text = {
-                        Column {
-                            Text(stringResource(R.string.screen_notes_share_ask_link))
-                            if (state.chat.othersSee) {
-                                Text(
-                                    text = stringResource(R.string.screen_notes_share_ask_link_note),
-                                    style = ElementTheme.typography.fontBodySmRegular,
-                                    color = ElementTheme.colors.textSecondary,
-                                )
-                            }
-                        }
-                    },
+                    text = { Text(withAssistant(stringResource(R.string.screen_notes_ask_link), branding.assistantName)) },
                     onClick = {
                         showMenu = false
-                        state.eventSink(DocumentShareEvent.AskForLink(request))
+                        confirmAsk = true
                     },
                 )
             }
         }
     }
-    ShareDialogs(state)
+    if (confirmAsk) {
+        val request = withAssistant(stringResource(R.string.screen_notes_ask_link_message, title), branding.assistantName)
+        ConfirmationDialog(
+            title = withAssistant(stringResource(R.string.screen_notes_ask_link), branding.assistantName),
+            content = stringResource(R.string.screen_notes_ask_link_note),
+            submitText = stringResource(R.string.screen_notes_share),
+            onSubmitClick = {
+                confirmAsk = false
+                val mention = branding.assistantUserId?.let { Mention(it, branding.assistantName) }
+                state.eventSink(DocumentShareEvent.AskForLink(request, mention))
+            },
+            onDismiss = { confirmAsk = false },
+        )
+    }
+    ShareDialogs(state, branding.assistantName)
 }
 
+/** Strings name the assistant "Ari": the workspace's own name for it instead. */
+internal fun withAssistant(text: String, assistantName: String): String = text.replace(Regex("""\bAri\b"""), assistantName)
+
 @Composable
-private fun ShareDialogs(state: DocumentShareState) {
+private fun ShareDialogs(state: DocumentShareState, assistantName: String) {
     val dismiss = { state.eventSink(DocumentShareEvent.DismissDialog) }
     when (state.problem) {
-        ShareProblem.EXPORT_FAILED -> ErrorDialog(content = stringResource(R.string.screen_notes_share_export_failed), onSubmit = dismiss)
-        ShareProblem.LINK_FAILED -> ErrorDialog(content = stringResource(R.string.screen_notes_share_ask_link_failed), onSubmit = dismiss)
-        null -> if (state.linkAsked) AlertDialog(content = stringResource(R.string.screen_notes_share_ask_link_sent), onDismiss = dismiss)
+        ShareProblem.EXPORT_FAILED -> ErrorDialog(content = stringResource(R.string.screen_notes_export_failed), onSubmit = dismiss)
+        ShareProblem.LINK_FAILED -> ErrorDialog(content = stringResource(R.string.screen_notes_ask_link_failed), onSubmit = dismiss)
+        null -> if (state.linkAsked) {
+            AlertDialog(content = withAssistant(stringResource(R.string.screen_notes_ask_link_sent), assistantName), onDismiss = dismiss)
+        }
     }
 }
 

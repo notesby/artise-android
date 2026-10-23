@@ -27,9 +27,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -37,6 +41,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -98,6 +103,13 @@ fun ChartEditorView(
                 title = { Text(stringResource(if (state.isNew) R.string.screen_notes_new_chart else R.string.screen_notes_chart_editor_title)) },
                 navigationIcon = { BackButton(onClick = onBackClick) },
                 actions = {
+                    // "Show file": the YAML itself, and back to the fields (read again from the text).
+                    IconButton(onClick = { state.eventSink(ChartEditorEvent.ShowFile(!state.showFile)) }, enabled = !state.isLoading) {
+                        Icon(
+                            imageVector = if (state.showFile) CompoundIcons.Chart() else CompoundIcons.Code(),
+                            contentDescription = stringResource(R.string.screen_notes_chart_show_file),
+                        )
+                    }
                     if (state.isSaving) {
                         CircularProgressIndicator(modifier = Modifier.padding(horizontal = 16.dp).size(20.dp), strokeWidth = 2.dp)
                     } else {
@@ -122,13 +134,6 @@ fun ChartEditorView(
         ) {
             item { ChartPreview(state) }
             item { Problems(state) }
-            item {
-                SwitchRow(
-                    text = stringResource(R.string.screen_notes_chart_show_file),
-                    checked = state.showFile,
-                    onCheckedChange = { state.eventSink(ChartEditorEvent.ShowFile(it)) },
-                )
-            }
             if (state.showFile) {
                 item { FileText(state) }
             } else {
@@ -163,9 +168,10 @@ private fun ChartPreview(state: ChartEditorState) {
             val request = remember(preview) { ImageRequest.Builder(context).data(preview.bytes).build() }
             AsyncImage(
                 model = request,
-                contentDescription = stringResource(R.string.a11y_notes_chart_preview),
+                contentDescription = stringResource(R.string.screen_notes_chart_preview),
                 contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize(),
+                // While there's a problem (or no connection), the last picture is no longer the chart: dimmed.
+                modifier = Modifier.fillMaxSize().alpha(if (state.check != null || state.previewOffline) DIMMED else 1f),
             )
         } else {
             Icon(imageVector = CompoundIcons.Chart(), contentDescription = null, tint = ElementTheme.colors.iconTertiary, modifier = Modifier.size(40.dp))
@@ -182,9 +188,16 @@ private fun Problems(state: ChartEditorState) {
         state.check?.let { Text(text = checkText(it), style = ElementTheme.typography.fontBodyMdRegular, color = ElementTheme.colors.textCriticalPrimary) }
         // The server's own words, as they come.
         state.serverMessage?.let { Text(text = it, style = ElementTheme.typography.fontBodyMdRegular, color = ElementTheme.colors.textCriticalPrimary) }
+        if (state.previewOffline) {
+            Text(
+                text = stringResource(R.string.screen_notes_chart_preview_offline),
+                style = ElementTheme.typography.fontBodySmRegular,
+                color = ElementTheme.colors.textSecondary,
+            )
+        }
         if (state.fileUnreadable) {
             Text(
-                text = stringResource(R.string.screen_notes_chart_file_unreadable),
+                text = stringResource(R.string.screen_notes_chart_text_only),
                 style = ElementTheme.typography.fontBodyMdRegular,
                 color = ElementTheme.colors.textSecondary,
             )
@@ -229,7 +242,7 @@ private fun FormFields(state: ChartEditorState) {
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
-        if (form.type == ChartType.KPI.value) {
+        if (form.type == ChartType.KPI.value || form.compare.isNotEmpty()) {
             SwitchRow(
                 text = stringResource(R.string.screen_notes_chart_field_compare),
                 checked = form.compare.isNotEmpty(),
@@ -270,7 +283,10 @@ private fun TypePicker(selected: String, onSelect: (String) -> Unit) {
     }
 }
 
-/** One colour per series: the workspace's palette, or a colour of one's own; none means the palette's own order. */
+/**
+ * One colour per drawn series, in order: the workspace's palette or one's own. Picking one for a later series fills
+ * those before it from the palette; "Workspace colours" clears them all.
+ */
 @Composable
 private fun Colors(state: ChartEditorState) {
     val series = state.form.drawnSeries
@@ -278,22 +294,31 @@ private fun Colors(state: ChartEditorState) {
     val palette = LocalWorkspaceBranding.current.chartColors
     var customFor by remember { mutableStateOf<Int?>(null) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(stringResource(R.string.screen_notes_chart_colors), style = ElementTheme.typography.fontBodySmMedium, color = ElementTheme.colors.textSecondary)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(R.string.screen_notes_chart_field_colors),
+                style = ElementTheme.typography.fontBodySmMedium,
+                color = ElementTheme.colors.textSecondary,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(
+                text = stringResource(R.string.screen_notes_chart_color_workspace),
+                enabled = state.form.colors.isNotEmpty(),
+                onClick = { state.eventSink(ChartEditorEvent.SetColor(0, null)) },
+            )
+        }
         series.take(MAX_COLORS).forEachIndexed { index, name ->
             val current = state.form.colors.getOrNull(index)
-            // The file's colours go in order: one can be set once the one before it is.
-            val canSet = index <= state.form.colors.size
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(name, modifier = Modifier.width(96.dp), maxLines = 1)
                 Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    ColorDot(color = null, selected = current == null, enabled = true) { state.eventSink(ChartEditorEvent.SetColor(index, null)) }
-                    palette.forEach { hex ->
-                        ColorDot(color = hex, selected = current.equals(hex, ignoreCase = true), enabled = canSet) {
-                            state.eventSink(ChartEditorEvent.SetColor(index, hex))
+                    (palette + listOfNotNull(current)).distinct().forEach { hex ->
+                        ColorDot(color = hex, selected = current.equals(hex, ignoreCase = true)) {
+                            state.eventSink(ChartEditorEvent.SetColor(index, hex, palette))
                         }
                     }
-                    IconButton(onClick = { customFor = index }, enabled = canSet) {
-                        Icon(imageVector = CompoundIcons.Edit(), contentDescription = stringResource(R.string.screen_notes_chart_color_custom))
+                    IconButton(onClick = { customFor = index }) {
+                        Icon(imageVector = CompoundIcons.Edit(), contentDescription = stringResource(R.string.screen_notes_chart_color_for, name))
                     }
                 }
             }
@@ -301,11 +326,11 @@ private fun Colors(state: ChartEditorState) {
     }
     customFor?.let { index ->
         TextFieldDialog(
-            title = stringResource(R.string.screen_notes_chart_color_custom),
+            title = stringResource(R.string.screen_notes_chart_color_for, series[index]),
             value = state.form.colors.getOrNull(index),
             placeholder = "#22408A",
             onSubmit = {
-                state.eventSink(ChartEditorEvent.SetColor(index, it.trim().uppercase()))
+                state.eventSink(ChartEditorEvent.SetColor(index, it.trim().uppercase(), palette))
                 customFor = null
             },
             onDismissRequest = { customFor = null },
@@ -315,24 +340,20 @@ private fun Colors(state: ChartEditorState) {
 }
 
 @Composable
-private fun ColorDot(color: String?, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
-    val fill = color?.let { Color(it.toColorInt()) }
-    val label = color ?: stringResource(R.string.screen_notes_chart_color_auto)
+private fun ColorDot(color: String, selected: Boolean, onClick: () -> Unit) {
+    val fill = Color(color.toColorInt())
     Box(
         modifier = Modifier
             .size(32.dp)
             .clip(CircleShape)
-            .background(fill ?: ElementTheme.colors.bgSubtleSecondary)
+            .background(fill)
             .border(
                 if (selected) 3.dp else 1.dp,
                 if (selected) ElementTheme.colors.borderInteractivePrimary else ElementTheme.colors.borderInteractiveSecondary,
                 CircleShape
             )
-            .clickable(enabled = enabled, onClickLabel = label, role = Role.RadioButton, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (fill == null) Text("A", style = ElementTheme.typography.fontBodySmMedium, color = ElementTheme.colors.textSecondary)
-    }
+            .clickable(onClickLabel = color, role = Role.RadioButton, onClick = onClick),
+    )
 }
 
 @Composable
@@ -343,14 +364,14 @@ private fun DataOrSource(state: ChartEditorState) {
             count = 2,
             selected = !state.form.usesSource,
             onClick = { state.eventSink(ChartEditorEvent.UseSource(false)) },
-            text = stringResource(R.string.screen_notes_chart_tab_data),
+            text = stringResource(R.string.screen_notes_chart_data),
         )
         SegmentedButton(
             index = 1,
             count = 2,
             selected = state.form.usesSource,
             onClick = { state.eventSink(ChartEditorEvent.UseSource(true)) },
-            text = stringResource(R.string.screen_notes_chart_tab_source),
+            text = stringResource(R.string.screen_notes_chart_source),
         )
     }
 }
@@ -368,7 +389,7 @@ private fun DataGrid(state: ChartEditorState) {
                     GridCell(value = name, isHeader = true, onValueChange = { state.eventSink(ChartEditorEvent.SetColumnName(c, it)) })
                     if (c > 0) {
                         IconButton(onClick = { state.eventSink(ChartEditorEvent.RemoveColumn(c)) }) {
-                            Icon(imageVector = CompoundIcons.Close(), contentDescription = stringResource(R.string.a11y_notes_chart_remove_column, name))
+                            Icon(imageVector = CompoundIcons.Close(), contentDescription = stringResource(R.string.screen_notes_chart_remove_column))
                         }
                     }
                 }
@@ -380,7 +401,7 @@ private fun DataGrid(state: ChartEditorState) {
                         if (c > 0) Box(modifier = Modifier.width(48.dp))
                     }
                     IconButton(onClick = { state.eventSink(ChartEditorEvent.RemoveRow(r)) }) {
-                        Icon(imageVector = CompoundIcons.Delete(), contentDescription = stringResource(R.string.a11y_notes_chart_remove_row, r + 1))
+                        Icon(imageVector = CompoundIcons.Delete(), contentDescription = stringResource(R.string.screen_notes_chart_remove_row))
                     }
                 }
             }
@@ -393,8 +414,8 @@ private fun DataGrid(state: ChartEditorState) {
                 onClick = {
                     scope.launch {
                         val text = clipboard.getClipEntry()?.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString()
-                        // Rows from a spreadsheet go in below the rows there are.
-                        if (!text.isNullOrBlank()) state.eventSink(ChartEditorEvent.Paste(row = state.grid.size, column = 0, text = text))
+                        // Rows from a spreadsheet replace the table.
+                        if (!text.isNullOrBlank()) state.eventSink(ChartEditorEvent.Paste(text))
                     }
                 },
             )
@@ -413,75 +434,113 @@ private fun GridCell(value: String, isHeader: Boolean, onValueChange: (String) -
     )
 }
 
-/** A sourced chart's pickers: the record type, a filter, the period, what goes along the bottom, what to count, and series by. */
+/**
+ * A sourced chart's pickers: the record type, filters (a field and a value; swipe one away), the period, how to group
+ * them, what to show, and one series per field. A value from the file that isn't one of the options stays on offer.
+ */
 @Composable
 private fun SourceForm(source: ChartSource, recordTypes: ImmutableList<RecordType>, onChange: (ChartSource) -> Unit) {
     if (recordTypes.isEmpty() && source.records.isBlank()) {
-        Text(stringResource(R.string.screen_notes_chart_no_records), color = ElementTheme.colors.textSecondary)
+        Text(stringResource(R.string.screen_notes_chart_records_none), color = ElementTheme.colors.textSecondary)
         return
     }
     val type = recordTypes.firstOrNull { it.type == source.records }
     val fields = type?.fields.orEmpty().toImmutableList()
-    val none = stringResource(R.string.screen_notes_chart_source_none)
+    val none = stringResource(R.string.screen_notes_chart_none)
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Picker(
-            label = stringResource(R.string.screen_notes_chart_source_records),
+            label = stringResource(R.string.screen_notes_chart_records),
             value = source.records,
-            options = (recordTypes.map { it.type } + source.records).filter { it.isNotBlank() }.distinct().map { it to it }.toImmutableList(),
+            options = withValue(recordTypes.map { it.type to it.type }, source.records),
             onSelect = { onChange(source.copy(records = it, where = emptyList(), group = "")) },
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            val (whereField, whereValue) = source.where.firstOrNull() ?: "".to("")
-            Box(modifier = Modifier.weight(1f)) {
-                Picker(
-                    label = stringResource(R.string.screen_notes_chart_source_where),
-                    value = whereField,
-                    options = (listOf("" to none) + fields.map { it to it }).toImmutableList(),
-                    onSelect = { field ->
-                        onChange(
-                        source.copy(where = if (field.isEmpty()) emptyList() else listOf(field to whereValue) + source.where.drop(1))
-                    )
+        Text(stringResource(R.string.screen_notes_chart_filter), style = ElementTheme.typography.fontBodySmMedium, color = ElementTheme.colors.textSecondary)
+        source.where.forEachIndexed { index, (field, value) ->
+            key(index, field) {
+                Filter(
+                    field = field,
+                    value = value,
+                    fields = withValue(fields.map { it to it }, field),
+                    onChange = { newField, newValue ->
+                        onChange(source.copy(where = source.where.toMutableList().also { it[index] = newField to newValue }))
                     },
-                )
-            }
-            if (whereField.isNotEmpty()) {
-                TextField(
-                    value = whereValue,
-                    onValueChange = { value -> onChange(source.copy(where = listOf(whereField to value) + source.where.drop(1))) },
-                    label = stringResource(R.string.screen_notes_chart_source_where_value),
-                    singleLine = true,
-                    modifier = Modifier.weight(1f),
+                    onRemove = { onChange(source.copy(where = source.where.filterIndexed { i, _ -> i != index })) },
                 )
             }
         }
+        OutlinedButton(
+            text = stringResource(R.string.screen_notes_chart_filter_add),
+            enabled = fields.isNotEmpty(),
+            onClick = { onChange(source.copy(where = source.where + (fields.first() to ""))) },
+        )
         Picker(
-            label = stringResource(R.string.screen_notes_chart_source_period),
+            label = stringResource(R.string.screen_notes_chart_period),
             value = source.period,
-            // A period the file has that isn't a preset ("2026-Q3", "from 2026-05-01") stays on offer.
-            options = periodOptions().let { presets ->
-                val isPreset = source.period.isBlank() || presets.any { (preset, _) -> preset == source.period }
-                if (isPreset) presets else presets + (source.period to source.period)
-            }.toImmutableList(),
+            options = withValue(periodOptions(), source.period),
             onSelect = { onChange(source.copy(period = it)) },
         )
         Picker(
-            label = stringResource(R.string.screen_notes_chart_source_x),
+            label = stringResource(R.string.screen_notes_chart_x),
             value = source.x,
-            options = (xOptions() + fields.map { it to it }).toImmutableList(),
+            options = withValue(stepOptions() + fields.map { it to it }, source.x),
             onSelect = { onChange(source.copy(x = it)) },
         )
         Picker(
-            label = stringResource(R.string.screen_notes_chart_source_y),
+            label = stringResource(R.string.screen_notes_chart_y),
             value = source.y,
-            options = yOptions(fields, type?.amountField).toImmutableList(),
+            options = withValue(yOptions(fields, type?.amountField), source.y),
             onSelect = { onChange(source.copy(y = it)) },
         )
         Picker(
-            label = stringResource(R.string.screen_notes_chart_source_group),
+            label = stringResource(R.string.screen_notes_chart_group),
             value = source.group,
-            options = (listOf("" to none) + fields.map { it to it }).toImmutableList(),
+            options = withValue(listOf("" to none) + fields.map { it to it }, source.group),
             onSelect = { onChange(source.copy(group = it)) },
         )
+    }
+}
+
+/** [options] (value to name) with [value] added when the file has one that isn't among them. */
+private fun withValue(options: List<Pair<String, String>>, value: String): ImmutableList<Pair<String, String>> =
+    (if (value.isBlank() || options.any { it.first == value }) options else options + (value to value)).toImmutableList()
+
+/** One filter: a field and the value it must have; swiped away to remove it. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun Filter(
+    field: String,
+    value: String,
+    fields: ImmutableList<Pair<String, String>>,
+    onChange: (String, String) -> Unit,
+    onRemove: () -> Unit,
+) {
+    val remove by rememberUpdatedState(onRemove)
+    val dismissState = rememberSwipeToDismissBoxState()
+    LaunchedEffect(dismissState.currentValue) {
+        if (dismissState.currentValue != SwipeToDismissBoxValue.Settled) remove()
+    }
+    SwipeToDismissBox(state = dismissState, backgroundContent = {}) {
+        Row(
+            modifier = Modifier.background(ElementTheme.colors.bgCanvasDefault),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(modifier = Modifier.weight(1f)) {
+                Picker(
+                    label = stringResource(R.string.screen_notes_chart_filter_field),
+                    value = field,
+                    options = fields,
+                    onSelect = { onChange(it, value) },
+                )
+            }
+            TextField(
+                value = value,
+                onValueChange = { onChange(field, it) },
+                label = stringResource(R.string.screen_notes_chart_filter_value),
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 }
 
@@ -528,22 +587,24 @@ private fun SwitchRow(text: String, checked: Boolean, onCheckedChange: (Boolean)
 
 @Composable
 private fun periodOptions(): List<Pair<String, String>> = listOf(
-    "last 7 days" to stringResource(R.string.screen_notes_chart_period_7_days),
-    "last 30 days" to stringResource(R.string.screen_notes_chart_period_30_days),
-    "last 6 months" to stringResource(R.string.screen_notes_chart_period_6_months),
-    "last 12 months" to stringResource(R.string.screen_notes_chart_period_12_months),
+    "last 7 days" to stringResource(R.string.screen_notes_chart_period_last_7_days),
+    "last 30 days" to stringResource(R.string.screen_notes_chart_period_last_30_days),
+    "last 3 months" to stringResource(R.string.screen_notes_chart_period_last_3_months),
+    "last 6 months" to stringResource(R.string.screen_notes_chart_period_last_6_months),
+    "last 12 months" to stringResource(R.string.screen_notes_chart_period_last_12_months),
+    "this week" to stringResource(R.string.screen_notes_chart_period_this_week),
     "this month" to stringResource(R.string.screen_notes_chart_period_this_month),
     "this quarter" to stringResource(R.string.screen_notes_chart_period_this_quarter),
     "this year" to stringResource(R.string.screen_notes_chart_period_this_year),
 )
 
 @Composable
-private fun xOptions(): List<Pair<String, String>> = listOf(
-    "day" to stringResource(R.string.screen_notes_chart_x_day),
-    "week" to stringResource(R.string.screen_notes_chart_x_week),
-    "month" to stringResource(R.string.screen_notes_chart_x_month),
-    "quarter" to stringResource(R.string.screen_notes_chart_x_quarter),
-    "year" to stringResource(R.string.screen_notes_chart_x_year),
+private fun stepOptions(): List<Pair<String, String>> = listOf(
+    "day" to stringResource(R.string.screen_notes_chart_step_day),
+    "week" to stringResource(R.string.screen_notes_chart_step_week),
+    "month" to stringResource(R.string.screen_notes_chart_step_month),
+    "quarter" to stringResource(R.string.screen_notes_chart_step_quarter),
+    "year" to stringResource(R.string.screen_notes_chart_step_year),
 )
 
 /** count, then sum/avg/min/max of each field, the record type's amount first. */
@@ -562,16 +623,23 @@ private fun yOptions(fields: ImmutableList<String>, amountField: String?): List<
 
 @Composable
 internal fun checkText(check: ChartCheck): String = when (check) {
-    ChartCheck.Title -> stringResource(R.string.screen_notes_chart_check_title)
-    ChartCheck.Columns -> stringResource(R.string.screen_notes_chart_check_columns)
-    ChartCheck.Names -> stringResource(R.string.screen_notes_chart_check_names)
-    is ChartCheck.NotANumber -> stringResource(R.string.screen_notes_chart_check_number, check.row, check.column, check.value)
-    ChartCheck.TooManySeries -> stringResource(R.string.screen_notes_chart_check_series)
-    ChartCheck.TooManyRows -> stringResource(R.string.screen_notes_chart_check_rows)
-    ChartCheck.OneSeries -> stringResource(R.string.screen_notes_chart_check_one_series)
-    ChartCheck.Negative -> stringResource(R.string.screen_notes_chart_check_negative)
-    ChartCheck.Source -> stringResource(R.string.screen_notes_chart_check_source)
-    ChartCheck.TooBig -> stringResource(R.string.screen_notes_chart_check_too_big)
+    ChartCheck.TooBig -> stringResource(R.string.screen_notes_chart_problem_too_big)
+    ChartCheck.Type -> stringResource(R.string.screen_notes_chart_problem_type)
+    ChartCheck.TitleTooLong -> stringResource(R.string.screen_notes_chart_problem_title_long)
+    ChartCheck.Title -> stringResource(R.string.screen_notes_chart_problem_title)
+    ChartCheck.Compare -> stringResource(R.string.screen_notes_chart_problem_compare)
+    is ChartCheck.Color -> stringResource(R.string.screen_notes_chart_problem_color, check.value)
+    ChartCheck.Source -> stringResource(R.string.screen_notes_chart_problem_source)
+    ChartCheck.Columns -> stringResource(R.string.screen_notes_chart_problem_columns)
+    ChartCheck.Names -> stringResource(R.string.screen_notes_chart_problem_names)
+    ChartCheck.NoRows -> stringResource(R.string.screen_notes_chart_problem_no_rows)
+    ChartCheck.TooManyRows -> stringResource(R.string.screen_notes_chart_problem_rows)
+    is ChartCheck.RowLength -> stringResource(R.string.screen_notes_chart_problem_row_length, check.row, check.values)
+    ChartCheck.TooManySeries -> stringResource(R.string.screen_notes_chart_problem_series)
+    is ChartCheck.UnknownSeries -> stringResource(R.string.screen_notes_chart_problem_unknown_series, check.name)
+    ChartCheck.OneSeries -> stringResource(R.string.screen_notes_chart_problem_one_series)
+    is ChartCheck.NotANumber -> stringResource(R.string.screen_notes_chart_problem_number, check.row, check.column, check.value)
+    ChartCheck.Negative -> stringResource(R.string.screen_notes_chart_problem_negative)
 }
 
 @Composable
@@ -598,6 +666,7 @@ private fun iconOf(type: ChartType) = when (type) {
 private const val PREVIEW_RATIO = 16f / 9f
 private const val FILE_MIN_LINES = 12
 private const val MAX_COLORS = 8
+private const val DIMMED = 0.4f
 private val CELL_WIDTH = 120.dp
 private val HEX = Regex("^#[0-9A-Fa-f]{6}$")
 

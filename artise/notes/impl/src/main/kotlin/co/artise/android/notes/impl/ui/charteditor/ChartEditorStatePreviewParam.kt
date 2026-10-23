@@ -61,6 +61,7 @@ internal fun aChartEditorState(
     serverMessage = serverMessage,
     preview = null,
     isPreviewing = false,
+    previewOffline = false,
     recordTypes = recordTypes,
     isSaving = false,
     isDone = false,

@@ -44,7 +44,7 @@ class NoteEditorNode(
         fun openChart(roomId: RoomId, path: String)
     }
 
-    private val callback = plugins.filterIsInstance<Callback>().firstOrNull()
+    private val callbacks = plugins.filterIsInstance<Callback>()
     private val presenter = presenterFactory.create(
         inputs.roomId,
         inputs.path,
@@ -53,7 +53,7 @@ class NoteEditorNode(
             override fun onDone() = navigateUp()
 
             override fun openChart(path: String) {
-                callback?.openChart(inputs.roomId, path)
+                callbacks.forEach { it.openChart(inputs.roomId, path) }
             }
         },
     )

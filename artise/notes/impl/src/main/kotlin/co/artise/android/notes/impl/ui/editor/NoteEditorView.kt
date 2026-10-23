@@ -115,16 +115,6 @@ fun NoteEditorView(
                 titleStr = state.title,
                 navigationIcon = { BackButton(onClick = { state.eventSink(NoteEditorEvent.Back) }) },
                 actions = {
-                    state.dashboard?.let { dashboard ->
-                        // A dashboard: its charts laid out, or its Markdown text.
-                        IconButton(onClick = { state.eventSink(NoteEditorEvent.ToggleDashboardLayout) }) {
-                            if (dashboard.showLayout) {
-                                Icon(imageVector = CompoundIcons.Document(), contentDescription = stringResource(R.string.a11y_notes_dashboard_text))
-                            } else {
-                                Icon(imageVector = CompoundIcons.Chart(), contentDescription = stringResource(R.string.a11y_notes_dashboard_layout))
-                            }
-                        }
-                    }
                     IconButton(onClick = { state.eventSink(NoteEditorEvent.OpenFind) }, enabled = !state.isLoading) {
                         Icon(imageVector = CompoundIcons.Search(), contentDescription = stringResource(R.string.a11y_notes_find))
                     }
@@ -158,6 +148,7 @@ fun NoteEditorView(
                 .imePadding()
                 .fillMaxSize()
         ) {
+            state.dashboard?.let { dashboard -> LayoutOrText(dashboard.showLayout) { state.eventSink(NoteEditorEvent.ShowDashboardLayout(it)) } }
             if (state.isResolvingConflict) {
                 Text(
                     text = stringResource(R.string.screen_notes_editor_combine_hint),

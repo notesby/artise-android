@@ -14,7 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import co.artise.android.notes.api.EditState
+import androidx.compose.runtime.snapshots.Snapshot
 import co.artise.android.notes.api.NotesException
 import co.artise.android.notes.api.NotesRepository
 import co.artise.android.notes.api.RecordType
@@ -76,10 +76,10 @@ class ChartEditorPresenter(
         var serverMessage by remember { mutableStateOf<String?>(null) }
         var preview by remember { mutableStateOf<ChartPreviewImage?>(null) }
         var isPreviewing by remember { mutableStateOf(false) }
+        var previewOffline by remember { mutableStateOf(false) }
         var recordTypes by remember { mutableStateOf<List<RecordType>>(emptyList()) }
         var isSaving by remember { mutableStateOf(false) }
         var isDone by remember { mutableStateOf(false) }
-        var isCreated by remember { mutableStateOf(newTitle == null) }
 
         fun show(read: ChartFile) {
             file = read
@@ -91,8 +91,8 @@ class ChartEditorPresenter(
             val text = if (newTitle != null) {
                 ChartFile.newText(
                     title = newTitle.trim(),
-                    labelColumn = stringProvider.getString(R.string.screen_notes_chart_label_column),
-                    valueColumn = stringProvider.getString(R.string.screen_notes_chart_value_column),
+                    labelColumn = stringProvider.getString(R.string.screen_notes_chart_column_labels),
+                    valueColumn = stringProvider.getString(R.string.screen_notes_chart_column_values),
                 )
             } else {
                 repository.file(roomId, path)?.content ?: run {
@@ -136,8 +136,12 @@ class ChartEditorPresenter(
                 onSuccess = { bytes ->
                     preview = ChartPreviewImage(bytes)
                     serverMessage = null
+                    previewOffline = false
                 },
-                onFailure = { error -> if (error is NotesException.BadChart) serverMessage = error.message },
+                onFailure = { error ->
+                    if (error is NotesException.BadChart) serverMessage = error.message
+                    previewOffline = error is NotesException.Network
+                },
             )
             isPreviewing = false
         }
@@ -146,7 +150,7 @@ class ChartEditorPresenter(
             grid = grid.map { it.toMutableList() }.toMutableList().also(change)
         }
 
-        fun handle(event: ChartEditorEvent) {
+        fun applyEvent(event: ChartEditorEvent) {
             when (event) {
                 is ChartEditorEvent.SetTitle -> form = form.copy(title = event.title)
                 is ChartEditorEvent.SetType -> form =
@@ -154,7 +158,7 @@ class ChartEditorPresenter(
                 is ChartEditorEvent.SetUnit -> form = form.copy(unit = event.unit)
                 is ChartEditorEvent.SetCaption -> form = form.copy(caption = event.caption)
                 is ChartEditorEvent.SetCompare -> form = form.copy(compare = if (event.compare) COMPARE_PREVIOUS else "")
-                is ChartEditorEvent.SetColor -> form = form.copy(colors = colorsWith(form.colors, event.index, event.color))
+                is ChartEditorEvent.SetColor -> form = form.copy(colors = colorsWith(form.colors, event.index, event.color, event.palette))
                 is ChartEditorEvent.UseSource -> form = form.copy(
                     usesSource = event.useSource,
                     source = if (event.useSource) form.source.withDefaults(recordTypes) else form.source,
@@ -183,20 +187,13 @@ class ChartEditorPresenter(
                     updateGrid { rows -> rows.forEach { if (event.column < it.size) it.removeAt(event.column) } }
                 }
                 is ChartEditorEvent.Paste -> {
-                    val pasted = ChartPaste.cells(event.text)
-                    if (pasted.isEmpty()) return
-                    val width = maxOf(form.data.columns.size, event.column + pasted.maxOf { it.size })
-                    var columns = form.data.columns
+                    // Rows from a spreadsheet replace the table; a first line with no numbers after its first cell names the columns.
+                    val pasted = ChartPaste.table(event.text) ?: return
+                    val width = maxOf(pasted.columns?.size ?: 0, pasted.rows.maxOfOrNull { it.size } ?: 0, 2)
+                    var columns = pasted.columns.orEmpty().take(width)
                     while (columns.size < width) columns = columns + newColumnName(columns)
-                    form = form.copy(data = form.data.copy(columns = columns))
-                    updateGrid { rows ->
-                        rows.forEach { row -> while (row.size < width) row += "0" }
-                        pasted.forEachIndexed { r, cells ->
-                            val at = event.row + r
-                            while (rows.size <= at) rows += MutableList(width) { if (it == 0) "" else "0" }
-                            cells.forEachIndexed { c, cell -> rows[at][event.column + c] = cell }
-                        }
-                    }
+                    form = form.copy(data = ChartData(columns, emptyList()), series = form.series.filter { it in columns })
+                    grid = pasted.rows.map { row -> List(width) { row.getOrNull(it).orEmpty() } }
                 }
                 is ChartEditorEvent.SetSource -> form = form.copy(source = event.source)
                 is ChartEditorEvent.ShowFile -> if (event.show) {
@@ -220,35 +217,32 @@ class ChartEditorPresenter(
                     }
                     isSaving = true
                     scope.launch {
-                        val written = if (isCreated) {
+                        // Saved on the phone and sent now, or when there's a connection. A chart the server still refuses
+                        // becomes a refused edit with its sentence, in the choices screen, like any other.
+                        val written = if (newTitle == null) {
                             repository.editNote(roomId, path, text)
                             Result.success(Unit)
                         } else {
                             repository.createNote(roomId, path, text)
                         }
-                        written.onFailure {
-                            serverMessage = it.message
-                            isSaving = false
-                            return@launch
-                        }
-                        isCreated = true
-                        // Sent now when there's a connection; offline it waits on the phone like any edit.
-                        repository.sync(roomId)
-                        val refused = repository.edits(roomId).firstOrNull { it.path == path && it.state == EditState.REJECTED }
-                        if (refused != null) {
-                            // The server's sentence, and the person's work still in the form to fix.
-                            repository.discardEdit(refused.id)
-                            isCreated = newTitle == null
-                            serverMessage = refused.error
-                        } else {
-                            savedText = text
-                            isDone = true
-                        }
+                        written.fold(
+                            onSuccess = {
+                                repository.syncInBackground(roomId)
+                                savedText = text
+                                isDone = true
+                            },
+                            onFailure = { serverMessage = it.message },
+                        )
                         isSaving = false
                     }
                 }
                 ChartEditorEvent.DismissServerMessage -> serverMessage = null
             }
+        }
+
+        // One event's changes (the form and the grid) land together.
+        fun handle(event: ChartEditorEvent) {
+            Snapshot.withMutableSnapshot { applyEvent(event) }
         }
 
         return ChartEditorState(
@@ -263,6 +257,7 @@ class ChartEditorPresenter(
             serverMessage = serverMessage,
             preview = preview,
             isPreviewing = isPreviewing,
+            previewOffline = previewOffline,
             recordTypes = recordTypes.toImmutableList(),
             isSaving = isSaving,
             isDone = isDone,
@@ -275,7 +270,7 @@ class ChartEditorPresenter(
 
     private fun newColumnName(columns: List<String>): String =
         generateSequence(columns.size) { it + 1 }
-            .map { stringProvider.getString(R.string.screen_notes_chart_series_column, it) }
+            .map { stringProvider.getString(R.string.screen_notes_chart_column_new, it) }
             .first { it !in columns }
 
     private fun ChartSource.withDefaults(types: List<RecordType>): ChartSource {
@@ -297,15 +292,15 @@ class ChartEditorPresenter(
         const val DEFAULT_Y = "count"
 
         /**
-         * Series [index]'s colour set to [color], or (`null`) left to the palette. The file's colours go to the series in
-         * order, so a list can't skip one: clearing a colour clears those after it, and a colour is only set next to the
-         * last one set ([index] at most the list's size).
+         * Series [index]'s colour set to [color]. The file's colours go to the series in order, so the ones before it that
+         * have none take the workspace's [palette] colours (else stay as Artise's). `null` ("Workspace colours") clears them all.
          */
-        fun colorsWith(colors: List<String>, index: Int, color: String?): List<String> = when {
-            color == null -> colors.take(index)
-            index < colors.size -> colors.toMutableList().also { it[index] = color }
-            index == colors.size -> colors + color
-            else -> colors
+        fun colorsWith(colors: List<String>, index: Int, color: String?, palette: List<String>): List<String> {
+            if (color == null) return emptyList()
+            val filled = colors.toMutableList()
+            while (filled.size < index) filled += palette.getOrNull(filled.size % palette.size.coerceAtLeast(1)) ?: return colors
+            if (index < filled.size) filled[index] = color else filled += color
+            return filled
         }
     }
 }

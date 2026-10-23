@@ -13,14 +13,17 @@ import co.artise.android.notes.api.LocalFile
 import co.artise.android.notes.api.NoteAttachment
 import co.artise.android.notes.api.NotesChart
 import co.artise.android.notes.api.NotesException
-import co.artise.android.notes.impl.share.ChatForLink
+import co.artise.android.notes.api.NotesPreview
 import co.artise.android.notes.impl.share.ChatMessenger
 import co.artise.android.notes.impl.share.DocumentShareEvent
 import co.artise.android.notes.impl.share.DocumentSharePresenter
+import co.artise.android.notes.impl.share.MatrixChatMessenger
+import co.artise.android.notes.impl.share.Mention
 import co.artise.android.notes.impl.share.ShareProblem
-import co.artise.android.notes.impl.ui.chart.ChartProblem
+import co.artise.android.notes.impl.share.withAssistant
 import co.artise.android.notes.impl.ui.chart.NotesChartEvent
 import co.artise.android.notes.impl.ui.chart.NotesChartPresenter
+import co.artise.android.notes.impl.ui.chart.localDay
 import co.artise.android.notes.impl.ui.dashboard.DashboardHtml
 import co.artise.android.notes.impl.ui.dashboard.DashboardProblem
 import co.artise.android.notes.impl.ui.dashboard.NotesDashboardPresenter
@@ -32,15 +35,16 @@ import io.element.android.tests.testutils.consumeItemsUntilPredicate
 import io.element.android.tests.testutils.test
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
+import java.nio.file.Files
 
-class FakeChatMessenger(var chat: ChatForLink = ChatForLink(canAsk = true, othersSee = false)) : ChatMessenger {
-    val sent = mutableListOf<Pair<RoomId, String>>()
+class FakeChatMessenger(var canAsk: Boolean = true) : ChatMessenger {
+    val sent = mutableListOf<Triple<RoomId, String, Mention?>>()
     var sendResult: Result<Unit> = Result.success(Unit)
 
-    override suspend fun chatForLink(roomId: RoomId): ChatForLink = chat
+    override suspend fun canAsk(roomId: RoomId): Boolean = canAsk
 
-    override suspend fun send(roomId: RoomId, text: String): Result<Unit> {
-        sent += roomId to text
+    override suspend fun send(roomId: RoomId, text: String, mention: Mention?): Result<Unit> {
+        sent += Triple(roomId, text, mention)
         return sendResult
     }
 }
@@ -63,39 +67,48 @@ class NotesChartsPresentersTest {
     private fun aDrawnFile(path: String, kind: String, readOnly: Boolean = false, title: String? = null) =
         LocalFile(path, "v1", 10, 1, isNote = true, content = "x", hasLocalEdits = false, serverKind = kind, title = title, isReadOnly = readOnly)
 
-    /** The chart screen asks the server for the chart (light here) and shows its title; the alt text adds the caption. */
+    /** The chart screen shows the server's 1024 px picture and asks for the chart's data; pull to refresh syncs first. */
     @Test
-    fun `chart screen loads the chart`() = runTest {
+    fun `chart screen loads the picture and the chart`() = runTest {
+        val picture = Files.createTempFile("chart", ".png").toFile()
         val repository = FakeNotesRepository(files = mutableMapOf(room to listOf(aDrawnFile("charts/ventas.chart", "chart"))))
         repository.chartResult = { Result.success(aChart()) }
+        repository.previewResult = { NotesPreview.Image(picture, 1024, 576) }
         NotesChartPresenter(room, "charts/ventas.chart", repository, shareFactory(repository)).test {
-            val state = consumeItemsUntilPredicate { it.chart != null }.last()
+            val state = consumeItemsUntilPredicate { it.chart != null && it.picture != null }.last()
             assertThat(state.title).isEqualTo("Ventas por mes")
             assertThat(state.altText).isEqualTo("Ventas por mes. Sin IVA")
             assertThat(state.canEdit).isTrue()
-            assertThat(state.problem).isNull()
+            assertThat(state.failed).isFalse()
+            assertThat(repository.previewRequests).containsExactly("charts/ventas.chart" to 1024)
             assertThat(repository.chartRequests).containsExactly("charts/ventas.chart" to false)
-            // Pull to refresh asks again: a chart that reads records changes
+            val syncsBefore = repository.syncCount
             state.eventSink(NotesChartEvent.Refresh)
             consumeItemsUntilPredicate { !it.isRefreshing && repository.chartRequests.size == 2 }
+            assertThat(repository.syncCount).isEqualTo(syncsBefore + 1)
+            assertThat(repository.previewRequests).hasSize(2)
             cancelAndIgnoreRemainingEvents()
         }
     }
 
-    /** A mistake in the file shows the server's sentence; anything else is "couldn't load the chart" with a retry. */
+    /** A chart that can't be loaded says "couldn't load the chart" under where its picture would be. */
     @Test
-    fun `chart problems say what went wrong`() = runTest {
+    fun `a chart that can't load says so`() = runTest {
         val repository = FakeNotesRepository()
         repository.chartResult = { Result.failure(NotesException.BadChart("row 2, Ventas: 'mucho' isn't a number")) }
         NotesChartPresenter(room, "charts/ventas.chart", repository, shareFactory(repository)).test {
-            val state = consumeItemsUntilPredicate { !it.isLoading }.last()
-            assertThat(state.problem).isEqualTo(ChartProblem.BadChart("row 2, Ventas: 'mucho' isn't a number"))
+            val state = consumeItemsUntilPredicate { it.failed }.last()
             assertThat(state.title).isEqualTo("ventas")
-            repository.chartResult = { Result.failure(NotesException.Network(java.io.IOException("offline"))) }
-            state.eventSink(NotesChartEvent.Refresh)
-            assertThat(consumeItemsUntilPredicate { it.problem == ChartProblem.LoadFailed }.last().chart).isNull()
+            assertThat(state.chart).isNull()
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `days show in the person's format`() {
+        assertThat(localDay("2026-10-22", java.util.Locale.forLanguageTag("es-MX"))).isEqualTo("22 de octubre de 2026")
+        assertThat(localDay("2026-10-22", java.util.Locale.US)).isEqualTo("October 22, 2026")
+        assertThat(localDay("ayer", java.util.Locale.US)).isEqualTo("ayer")
     }
 
     /** Opening the screen never makes an export (it's drawn on the server each time); tapping Share makes exactly one. */
@@ -104,7 +117,7 @@ class NotesChartsPresentersTest {
         val repository = FakeNotesRepository()
         repository.chartResult = { Result.success(aChart()) }
         NotesChartPresenter(room, "charts/ventas.chart", repository, shareFactory(repository)).test {
-            val state = consumeItemsUntilPredicate { it.chart != null && it.share.chat != null }.last()
+            val state = consumeItemsUntilPredicate { it.chart != null && it.share.canAskLink }.last()
             assertThat(repository.exportRequests).isEmpty()
             state.share.eventSink(DocumentShareEvent.Export(ExportFormat.PNG, state.title))
             val ready = consumeItemsUntilPredicate { it.share.ready != null }.last()
@@ -122,7 +135,7 @@ class NotesChartsPresentersTest {
         val repository = FakeNotesRepository()
         repository.exportResult = { _, _, _ -> Result.failure(NotesException.Server(503, "unavailable")) }
         DocumentSharePresenter(room, "Informe.md", repository, messenger).test {
-            val state = consumeItemsUntilPredicate { it.chat != null }.last()
+            val state = consumeItemsUntilPredicate { it.canAskLink }.last()
             state.eventSink(DocumentShareEvent.Export(ExportFormat.PDF, "Informe"))
             val failed = consumeItemsUntilPredicate { it.problem != null }.last()
             assertThat(failed.problem).isEqualTo(ShareProblem.EXPORT_FAILED)
@@ -133,18 +146,26 @@ class NotesChartsPresentersTest {
         }
     }
 
-    /** "Ask Ari for a link" posts the sentence (in the app's language, built by the view) in the document's chat. */
+    /** "Ask Ari for a link" posts the sentence (in the app's language, built by the view) in the document's chat, mentioning Ari. */
     @Test
     fun `asking Ari for a link posts in the document's chat`() = runTest {
-        messenger.chat = ChatForLink(canAsk = true, othersSee = true)
         DocumentSharePresenter(room, "charts/ventas.chart", FakeNotesRepository(), messenger).test {
-            val state = consumeItemsUntilPredicate { it.chat != null }.last()
-            assertThat(state.chat?.othersSee).isTrue()
-            state.eventSink(DocumentShareEvent.AskForLink("comparte «Ventas por mes» con un enlace"))
+            val state = consumeItemsUntilPredicate { it.canAskLink }.last()
+            val ari = Mention("@ari:artise.co", "Ari")
+            state.eventSink(DocumentShareEvent.AskForLink("Ari, comparte «Ventas por mes» con un enlace", ari))
             assertThat(consumeItemsUntilPredicate { it.linkAsked }.last().problem).isNull()
-            assertThat(messenger.sent).containsExactly(room to "comparte «Ventas por mes» con un enlace")
+            assertThat(messenger.sent).containsExactly(Triple(room, "Ari, comparte «Ventas por mes» con un enlace", ari))
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    /** Ari's name becomes a mention in the message's HTML; the rest is escaped; the assistant's own name replaces "Ari". */
+    @Test
+    fun `the link request mentions Ari`() {
+        assertThat(MatrixChatMessenger.mentionHtml("Ari, share “a<b” with a link", "Ari", "@ari:artise.co"))
+            .isEqualTo("<a href=\"https://matrix.to/#/@ari:artise.co\">Ari</a>, share “a&lt;b” with a link")
+        assertThat(withAssistant("Ari, share “Ari's plan” with a link", "Luna")).isEqualTo("Luna, share “Luna's plan” with a link")
+        assertThat(withAssistant("Pedir un enlace a Ari", "Luna")).isEqualTo("Pedir un enlace a Luna")
     }
 
     /** A dashboard loads its page; a business report (read-only) offers Share but not Edit. */
@@ -156,7 +177,7 @@ class NotesChartsPresentersTest {
         repository.dashboardResult = { Result.success("<html><head></head><body>Hola</body></html>") }
         NotesDashboardPresenter(room, "business/reports/2026-10.md", repository, shareFactory(repository)).test {
             val state = consumeItemsUntilPredicate { it.html != null && it.title == "Octubre 2026" }.last()
-            assertThat(state.canEdit).isFalse()
+            assertThat(state.isReadOnly).isTrue()
             assertThat(state.problem).isNull()
             assertThat(repository.exportRequests).isEmpty()
             cancelAndIgnoreRemainingEvents()
@@ -169,7 +190,7 @@ class NotesChartsPresentersTest {
         NotesDashboardPresenter(room, "Octubre.md", repository, shareFactory(repository)).test {
             val state = consumeItemsUntilPredicate { !it.isLoading && it.problem != null }.last()
             assertThat(state.problem).isEqualTo(DashboardProblem.NOT_A_DASHBOARD)
-            assertThat(state.canEdit).isTrue()
+            assertThat(state.isReadOnly).isFalse()
             cancelAndIgnoreRemainingEvents()
         }
     }

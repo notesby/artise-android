@@ -58,7 +58,7 @@ class DashboardEditorTest {
                 layout.charts
             ).containsExactly(ChartChoice("charts/cobros.chart", "Cobros"), ChartChoice("charts/ventas.chart", "Ventas por mes")).inOrder()
             // The text is one tap away, as in any note
-            state.eventSink(NoteEditorEvent.ToggleDashboardLayout)
+            state.eventSink(NoteEditorEvent.ShowDashboardLayout(false))
             assertThat(consumeItemsUntilPredicate { it.dashboard?.showLayout == false }.last().value.text).isEqualTo(dashboard)
             cancelAndIgnoreRemainingEvents()
         }
@@ -118,7 +118,7 @@ class DashboardEditorTest {
             state.eventSink(NoteEditorEvent.LoadChartPreview("charts/ventas.chart", dark = true))
             assertThat(consumeItemsUntilPredicate { it.dashboard?.previews?.isNotEmpty() == true }.last().dashboard?.previews?.get("charts/ventas.chart"))
                 .isEqualTo(NotesPreview.Image(picture, 512, 288))
-            assertThat(repository.previewRequests).containsExactly("charts/ventas.chart" to 512)
+            assertThat(repository.previewRequests).containsExactly("charts/ventas.chart" to 256)
             assertThat(repository.previewModes).containsExactly(true)
             state.eventSink(NoteEditorEvent.OpenChart("charts/ventas.chart"))
             assertThat(opened).containsExactly("charts/ventas.chart")
@@ -136,8 +136,8 @@ class DashboardEditorTest {
             state.eventSink(NotesFolderEvent.StartNewDashboard)
             consumeItemsUntilPredicate { it.newNote != null }.last().eventSink(NotesFolderEvent.CreateNote(" Octubre "))
             consumeItemsUntilPredicate { it.newNote == null }
-            assertThat(repository.createdNotes).containsExactly("dashboards/Octubre 2.md" to "---\ntype: dashboard\ntitle: Octubre\n---\n")
-            assertThat(opened).containsExactly("dashboards/Octubre 2.md")
+            assertThat(repository.createdNotes).containsExactly("dashboards/Octubre (2).md" to "---\ntype: dashboard\ntitle: Octubre\n---\n")
+            assertThat(opened).containsExactly("dashboards/Octubre (2).md")
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -159,7 +159,7 @@ class DashboardEditorTest {
             state.eventSink(NotesFolderEvent.StartNewChart)
             consumeItemsUntilPredicate { it.newNote != null }.last().eventSink(NotesFolderEvent.CreateNote("Ventas"))
             consumeItemsUntilPredicate { it.newNote == null }
-            assertThat(newCharts).containsExactly("charts/Ventas 2.chart" to "Ventas")
+            assertThat(newCharts).containsExactly("charts/Ventas (2).chart" to "Ventas")
             assertThat(repository.createdNotes).isEmpty()
             cancelAndIgnoreRemainingEvents()
         }

@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import co.artise.android.notes.api.NoteAttachment
 import co.artise.android.notes.impl.analytics.NotesScreen
 import co.artise.android.notes.impl.analytics.trackScreen
+import co.artise.android.notes.impl.share.DocumentSharePresenter
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.Node
 import com.bumble.appyx.core.plugin.Plugin
@@ -31,6 +32,7 @@ class NoteNode(
     @Assisted buildContext: BuildContext,
     @Assisted plugins: List<Plugin>,
     presenterFactory: NotePresenter.Factory,
+    sharePresenterFactory: DocumentSharePresenter.Factory,
     analyticsService: AnalyticsService,
 ) : Node(buildContext, plugins = plugins) {
     init {
@@ -72,11 +74,13 @@ class NoteNode(
         }
     }
     private val presenter = presenterFactory.create(inputs.roomId, inputs.path, navigator)
+    private val sharePresenter = sharePresenterFactory.create(inputs.roomId, inputs.path)
 
     @Composable
     override fun View(modifier: Modifier) {
         NoteView(
             state = presenter.present(),
+            share = sharePresenter.present(),
             onBackClick = ::navigateUp,
             onBacklinkClick = { callback.openNote(inputs.roomId, it) },
             onEditClick = { callback.openEditor(inputs.roomId, inputs.path) },

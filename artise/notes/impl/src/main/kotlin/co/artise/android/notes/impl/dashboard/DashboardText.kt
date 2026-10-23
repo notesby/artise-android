@@ -17,14 +17,21 @@ import kotlinx.collections.immutable.toImmutableList
 sealed interface DashboardBlock {
     val line: Int
 
+    /** The block's last line in the note: a block moves as these lines. */
+    val lastLine: Int
+
     /** Markdown between the charts, as written. */
-    data class Text(override val line: Int, val text: String) : DashboardBlock
+    data class Text(override val line: Int, val text: String) : DashboardBlock {
+        override val lastLine: Int get() = line + text.lines().size - 1
+    }
 
     /** A line that is only `![[<ref>]]`; [path] is the chart it means (a bare name is `charts/<name>`). */
-    data class Chart(override val line: Int, val ref: String, val path: String) : DashboardBlock
+    data class Chart(override val line: Int, val ref: String, val path: String) : DashboardBlock {
+        override val lastLine: Int get() = line
+    }
 
-    /** The charts between `::: columns` and `:::`, side by side on a wide screen. */
-    data class Columns(override val line: Int, val charts: ImmutableList<Chart>) : DashboardBlock
+    /** The charts between `::: columns` (on [line]) and `:::` (on [lastLine]), side by side on a wide screen. */
+    data class Columns(override val line: Int, val charts: ImmutableList<Chart>, override val lastLine: Int) : DashboardBlock
 }
 
 /** What's wrong in a dashboard, as the server tells Ari (`dashboards.py`); [line] from 0, `null` for the whole note. */
@@ -111,7 +118,7 @@ object DashboardText {
                     }
                 }
                 CLOSE.matches(line) && group != null -> {
-                    if (group.isNotEmpty()) out += DashboardBlock.Columns(groupLine, group.toImmutableList())
+                    if (group.isNotEmpty()) out += DashboardBlock.Columns(groupLine, group.toImmutableList(), index)
                     group = null
                 }
                 ref != null -> {
@@ -127,7 +134,7 @@ object DashboardText {
             if (para.isEmpty()) paraLine = index + 1
         }
         flush()
-        group?.takeIf { it.isNotEmpty() }?.let { out += DashboardBlock.Columns(groupLine, it.toImmutableList()) }
+        group?.takeIf { it.isNotEmpty() }?.let { out += DashboardBlock.Columns(groupLine, it.toImmutableList(), lines.lastIndex) }
         return out.toImmutableList()
     }
 
@@ -173,18 +180,29 @@ object DashboardText {
         return "$body$separator![[$path]]\n"
     }
 
-    /** Moves the chart on [line] one place up (`-1`) or down (`+1`) within its columns block; nothing outside it. */
-    fun moveInColumns(text: String, line: Int, delta: Int): String {
-        val blocks = blocks(text, emptyList())
-        val group = blocks.filterIsInstance<DashboardBlock.Columns>().firstOrNull { columns -> columns.charts.any { it.line == line } } ?: return text
-        val index = group.charts.indexOfFirst { it.line == line }
-        val other = group.charts.getOrNull(index + delta) ?: return text
+    /**
+     * Moves block [from] (its lines) to just before block [to]'s first line, or after the last block when [to] is the
+     * number of blocks. Nothing changes for a move onto itself.
+     */
+    fun moveBlock(text: String, from: Int, to: Int, existing: Collection<String> = emptyList()): String {
+        val blocks = blocks(text, existing)
+        val moving = blocks.getOrNull(from) ?: return text
+        if (to == from || to == from + 1 || to !in 0..blocks.size) return text
         val lines = text.lines().toMutableList()
-        val moved = lines[line]
-        lines[line] = lines[other.line]
-        lines[other.line] = moved
+        val taken = lines.subList(moving.line, moving.lastLine + 1).toList()
+        val target = if (to == blocks.size) blocks.last().lastLine + 1 else blocks[to].line
+        repeat(taken.size) { lines.removeAt(moving.line) }
+        val at = if (target > moving.line) target - taken.size else target
+        lines.addAll(at, taken)
         return lines.joinToString("\n")
     }
+
+    /** A text block's first lines as the layout shows them: without `#`, `>`, `-`, `*` and blank lines. */
+    fun firstLines(text: String, count: Int = 2): String = text.lineSequence()
+        .map { it.trim().trimStart('#', '>', '-', '*', ' ').trim() }
+        .filter { it.isNotEmpty() }
+        .take(count)
+        .joinToString("\n")
 
     /** The front matter's `theme`, as written: `theme: {accent: "#22408A", palette: [...], mode: auto}` or indented lines. */
     fun theme(text: String): DashboardTheme {

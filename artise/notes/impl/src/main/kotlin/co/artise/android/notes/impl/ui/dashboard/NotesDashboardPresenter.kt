@@ -41,7 +41,8 @@ class NotesDashboardPresenter(
     @Composable
     override fun present(): NotesDashboardState {
         var title by remember { mutableStateOf(path.substringAfterLast('/').removeSuffix(".md")) }
-        var canEdit by remember { mutableStateOf(false) }
+        var isReadOnly by remember { mutableStateOf(false) }
+        var isRefreshing by remember { mutableStateOf(false) }
         var html by remember { mutableStateOf<String?>(null) }
         var isLoading by remember { mutableStateOf(true) }
         var problem by remember { mutableStateOf<DashboardProblem?>(null) }
@@ -49,17 +50,17 @@ class NotesDashboardPresenter(
         val share = sharePresenter.present()
 
         LaunchedEffect(Unit) {
-            val file = repository.file(roomId, path)
-            file?.title?.takeIf { it.isNotBlank() }?.let { title = it }
-            canEdit = file?.isReadOnly != true
-        }
-        LaunchedEffect(Unit) {
-            // Edited (the editor's save, then the sync that sends it) or changed by someone else: drawn again.
+            // Back from the editor (its save, then the sync that sends it) or changed by someone else: drawn again.
             repository.changes(roomId).collect { attempts++ }
         }
         LaunchedEffect(attempts) {
             // Shown as it is while it's drawn again; the spinner only the first time.
             isLoading = html == null
+            // The page is drawn from the server's copy: an edit made here must reach it first.
+            if (attempts > 0) repository.sync(roomId)
+            val file = repository.file(roomId, path)
+            file?.title?.takeIf { it.isNotBlank() }?.let { title = it }
+            isReadOnly = file?.isReadOnly == true
             repository.dashboard(roomId, path).fold(
                 onSuccess = {
                     html = it
@@ -74,18 +75,23 @@ class NotesDashboardPresenter(
                 },
             )
             isLoading = false
+            isRefreshing = false
         }
 
         return NotesDashboardState(
             title = title,
             html = html,
             isLoading = isLoading,
+            isRefreshing = isRefreshing,
             problem = problem,
-            canEdit = canEdit,
+            isReadOnly = isReadOnly,
             share = share,
             eventSink = { event ->
                 when (event) {
-                    NotesDashboardEvent.Retry -> attempts++
+                    NotesDashboardEvent.Refresh -> {
+                        isRefreshing = true
+                        attempts++
+                    }
                 }
             },
         )

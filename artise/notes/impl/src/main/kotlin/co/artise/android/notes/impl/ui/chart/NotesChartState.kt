@@ -9,6 +9,7 @@ package co.artise.android.notes.impl.ui.chart
 
 import androidx.compose.runtime.Immutable
 import co.artise.android.notes.api.NotesChart
+import co.artise.android.notes.api.NotesPreview
 import co.artise.android.notes.impl.share.DocumentShareState
 
 /** A chart of the chat's notes as the server draws it now, with Edit and Share. */
@@ -16,10 +17,14 @@ import co.artise.android.notes.impl.share.DocumentShareState
 data class NotesChartState(
     /** The chart's title, or its file's name until it's loaded. */
     val title: String,
+    /** Its data, for the caption and "as of". */
     val chart: NotesChart?,
+    /** The server's picture at 1024 px for this screen's light or dark; [NotesPreview.None] when there's none. */
+    val picture: NotesPreview?,
     val isLoading: Boolean,
     val isRefreshing: Boolean,
-    val problem: ChartProblem?,
+    /** The chart couldn't be loaded now (offline, a mistake in the file, the server can't draw). */
+    val failed: Boolean,
     /** Not offered for a page Ari rewrites each period. */
     val canEdit: Boolean,
     val share: DocumentShareState,
@@ -29,16 +34,7 @@ data class NotesChartState(
     val altText: String get() = listOfNotNull(title, chart?.spec?.caption?.takeIf { it.isNotBlank() }).joinToString(". ")
 }
 
-@Immutable
-sealed interface ChartProblem {
-    /** Offline, or the server can't draw now. */
-    data object LoadFailed : ChartProblem
-
-    /** The file has a mistake: the server's sentence says what. */
-    data class BadChart(val message: String) : ChartProblem
-}
-
 sealed interface NotesChartEvent {
-    /** Pull to refresh, or try again: a chart that reads records changes while its file doesn't. */
+    /** Pull to refresh: a sync, then the chart and its picture again (a chart that reads records changes). */
     data object Refresh : NotesChartEvent
 }

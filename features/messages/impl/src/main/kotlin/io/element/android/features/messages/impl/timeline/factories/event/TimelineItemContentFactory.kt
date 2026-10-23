@@ -88,7 +88,7 @@ class TimelineItemContentFactory(
     private fun TimelineItemEventContent.withDocuments(eventTimelineItem: EventTimelineItem): TimelineItemEventContent {
         if (this is TimelineItemImageContent) {
             // Ari's picture of a chart it made: the chart's card, which opens the chart as it is now.
-            val card = chartCardOf(eventTimelineItem.timelineItemDebugInfoProvider().originalJson, filename) ?: return this
+            val card = chartCardOf(eventTimelineItem.timelineItemDebugInfoProvider().originalJson) ?: return this
             return copy(chartCard = card)
         }
         if (this !is TimelineItemTextContent && this !is TimelineItemNoticeContent) return this

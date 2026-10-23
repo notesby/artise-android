@@ -45,6 +45,9 @@ fun interface NotesFolderNavigator {
 
     /** A new chart named [title] at [path]: the chart editor, which writes it on the first Save. */
     fun openNewChart(path: String, title: String) {}
+
+    /** A dashboard just made at [path]: its screen, with the editor open over it. */
+    fun openNewDashboard(path: String) = openEditor(path)
 }
 
 /**
@@ -138,9 +141,11 @@ class NotesFolderPresenter(
                     is NotesFolderEvent.LoadPreview -> if (previewsRequested.add(event.path + "|" + event.dark)) {
                         scope.launch {
                             // A chart's kept picture at once, then asked again: it may read records that changed.
-                            val kept = repository.cachedPreview(roomId, event.path, PREVIEW_SIZE, event.dark)
+                            // A chart's or dashboard's picture is small in a list; a document's first page a bit bigger.
+                            val size = if (event.kind == null) PREVIEW_SIZE else DRAWN_PREVIEW_SIZE
+                            val kept = repository.cachedPreview(roomId, event.path, size, event.dark, event.kind)
                             if (kept != null) previews = (previews + (event.path to kept)).toImmutableMap()
-                            val preview = repository.preview(roomId, event.path, PREVIEW_SIZE, event.dark)
+                            val preview = repository.preview(roomId, event.path, size, event.dark, event.kind)
                             previews = (previews + (event.path to preview)).toImmutableMap()
                         }
                     }
@@ -317,7 +322,7 @@ class NotesFolderPresenter(
                                 .onSuccess {
                                     newNote = null
                                     repository.syncInBackground(roomId)
-                                    navigator.openEditor(path)
+                                    navigator.openNewDashboard(path)
                                 }
                                 .onFailure { newNote = NewNoteDialog(NoteNameProblem.EXISTS, NewFileKind.DASHBOARD) }
                         }
@@ -433,5 +438,6 @@ class NotesFolderPresenter(
     private companion object {
         /** Previews are shown at 56 dp: 256 px covers a 3x screen without wasting bandwidth. */
         const val PREVIEW_SIZE = 256
+        const val DRAWN_PREVIEW_SIZE = 128
     }
 }

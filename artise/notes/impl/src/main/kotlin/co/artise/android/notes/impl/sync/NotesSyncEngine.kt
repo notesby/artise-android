@@ -433,11 +433,11 @@ class NotesSyncEngine(
         }
     }
 
-    override suspend fun preview(roomId: RoomId, path: String, size: Int, dark: Boolean): NotesPreview {
+    override suspend fun preview(roomId: RoomId, path: String, size: Int, dark: Boolean, kind: NoteAttachment.Kind?): NotesPreview {
         val file = io { store.file(roomId, path) }
         val version = file?.version.orEmpty()
         // Charts and dashboards are drawn in light or dark, and from records that change while the file doesn't.
-        val drawn = isDrawn(path, file)
+        val drawn = isDrawn(path, file, kind)
         val cache = PreviewCache(previewFileFor(roomId, path, size, dark.takeIf { drawn }))
         val kept = io { cache.read() }
         // Same version of the file: the preview on the phone is current, whatever the connection. Not for a drawn one:
@@ -454,19 +454,22 @@ class NotesSyncEngine(
                         cache.write(PreviewCache.Entry(version, answer.etag, it))
                     }
                 }
-                is PreviewResponse.Text -> NotesPreview.Text(answer.text).also { cache.write(PreviewCache.Entry(version, answer.etag, it)) }
+                // A chart or dashboard is only ever a picture: anything else means there's none.
+                is PreviewResponse.Text -> (if (drawn) NotesPreview.None else NotesPreview.Text(answer.text)).also {
+                    cache.write(PreviewCache.Entry(version, answer.etag, it))
+                }
                 PreviewResponse.None -> NotesPreview.None.also { cache.write(PreviewCache.Entry(version, etag = null, it)) }
             }
         }
     }
 
-    override suspend fun cachedPreview(roomId: RoomId, path: String, size: Int, dark: Boolean): NotesPreview? = io {
-        val drawn = isDrawn(path, store.file(roomId, path))
+    override suspend fun cachedPreview(roomId: RoomId, path: String, size: Int, dark: Boolean, kind: NoteAttachment.Kind?): NotesPreview? = io {
+        val drawn = isDrawn(path, store.file(roomId, path), kind)
         PreviewCache(previewFileFor(roomId, path, size, dark.takeIf { drawn })).read()?.preview
     }
 
-    private fun isDrawn(path: String, file: LocalFile?): Boolean {
-        val kind = file?.kind ?: NoteAttachment.kindOf(path)
+    private fun isDrawn(path: String, file: LocalFile?, said: NoteAttachment.Kind?): Boolean {
+        val kind = said ?: file?.kind ?: NoteAttachment.kindOf(path)
         return kind == NoteAttachment.Kind.CHART || kind == NoteAttachment.Kind.DASHBOARD
     }
 
@@ -1021,13 +1024,13 @@ class NotesSyncEngine(
         }
 
         /**
-         * The export's file name: what the person sees (the chart's or note's [title]) with the format's extension; the
-         * server's name when there's no title. Never a folder or a hidden name.
+         * The export's file name: the server's (`Content-Disposition`), else the chart's or note's [title], with the format's
+         * extension. Never a folder or a hidden name.
          */
         fun exportFileName(title: String, format: ExportFormat, serverName: String?): String {
-            val fromTitle = withoutDots(title.replace(UNSAFE_NAME_CHARS, " ").replace(SPACES, " "))
-            val fromServer = withoutDots(serverName?.substringBeforeLast('.').orEmpty())
-            val base = fromTitle.ifEmpty { fromServer }.ifEmpty { "export" }.take(MAX_EXPORT_NAME)
+            fun clean(name: String) = withoutDots(name.replace(UNSAFE_NAME_CHARS, " ").replace(SPACES, " "))
+            val fromServer = clean(serverName?.substringBeforeLast('.').orEmpty())
+            val base = fromServer.ifEmpty { clean(title) }.ifEmpty { "export" }.take(MAX_EXPORT_NAME)
             return "$base.${format.value}"
         }
 

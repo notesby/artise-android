@@ -66,9 +66,10 @@ data class ChartForm(
 /**
  * A `.chart` file (YAML, see the Notes API's Charts) read into a [ChartForm] and written back from one.
  *
- * Writing keeps the file as the person or Ari left it wherever the form didn't change it: the keys' order, unknown keys,
- * comments and blank lines. Only a key whose value changed is written again (in plain, server-safe YAML), and a new key
- * goes after the key that comes before it in the documented order.
+ * Writing keeps the file as the person or Ari left it wherever the form didn't change it: the keys' order, comments and
+ * blank lines. Only a key whose value changed is written again (in plain, server-safe YAML); an emptied one goes, and a
+ * new one goes at the end, in the documented order. A file with a key the server doesn't know, or a shape the form
+ * can't show, isn't read: the editor offers its text only.
  */
 class ChartFile private constructor(
     private val blocks: List<Block>,
@@ -85,20 +86,18 @@ class ChartFile private constructor(
         for (block in blocks) {
             val key = block.key
             when {
-                key == null || key !in KNOWN_KEYS -> out += block
+                key == null -> out += block
                 key !in wanted -> Unit
                 // Unchanged: as it was, comments and all.
                 wanted[key] == before[key] -> out += block
                 else -> out += Block(key, leadingComments(block.text) + wanted.getValue(key))
             }
         }
+        // New keys go after the last key the file has, in the documented order (`make_chart`'s).
+        var at = out.indexOfLast { it.key != null } + 1
         for ((key, text) in wanted) {
             if (out.any { it.key == key }) continue
-            // After the key that comes before it in the documented order, else first.
-            val order = KNOWN_KEYS.indexOf(key)
-            val after = out.indexOfLast { it.key != null && it.key in KNOWN_KEYS && KNOWN_KEYS.indexOf(it.key) < order }
-            val at = if (after >= 0) after + 1 else out.indexOfFirst { it.key != null }.coerceAtLeast(0)
-            out.add(at, Block(key, text))
+            out.add(at++, Block(key, text))
         }
         return out.joinToString("") { it.text.ensureNewline() }.trimEnd('\n') + "\n"
     }
@@ -117,8 +116,38 @@ class ChartFile private constructor(
         fun read(text: String): Result<ChartFile> = runCatchingExceptions {
             val root = Load(LoadSettings.builder().setAllowDuplicateKeys(false).build()).loadFromString(text)
             val map = root as? Map<*, *> ?: if (root == null) emptyMap<Any, Any>() else error("not a mapping")
+            check(map.keys.all { it is String && it in KNOWN_KEYS }) { "a key the server doesn't know" }
+            check(hasFormShape(map)) { "a shape the form can't show" }
             ChartFile(splitBlocks(text), formOf(map))
         }
+
+        private val SCALAR_KEYS = listOf("title", "type", "unit", "caption", "compare")
+
+        /** Text and numbers where the form has fields, lists of them, and data and source as the form shows them. */
+        private fun hasFormShape(map: Map<*, *>): Boolean {
+            fun isScalar(value: Any?) = value == null || value is String || value is Number || value is Boolean
+            fun isScalarList(value: Any?) = value == null || value is List<*> && value.all(::isScalar)
+            if (SCALAR_KEYS.any { !isScalar(map[it]) }) return false
+            if (!isScalarList(map["series"]) || !isScalarList(map["colors"])) return false
+            val data = map["data"]
+            if (data != null) {
+                if (data !is Map<*, *> || data.keys.any { it != "columns" && it != "rows" }) return false
+                if (!isScalarList(data["columns"])) return false
+                val rows = data["rows"] ?: emptyList<Any>()
+                if (rows !is List<*> || rows.any { it !is List<*> || !it.all(::isScalar) }) return false
+            }
+            val source = map["source"]
+            if (source != null) {
+                if (source !is Map<*, *>) return false
+                if (source.keys.any { it !in SOURCE_KEYS }) return false
+                if (SOURCE_KEYS.filter { it != "where" }.any { !isScalar(source[it]) }) return false
+                val where = source["where"]
+                if (where != null && (where !is Map<*, *> || !where.values.all(::isScalar))) return false
+            }
+            return true
+        }
+
+        private val SOURCE_KEYS = setOf("records", "where", "period", "x", "y", "group")
 
         private fun formOf(map: Map<*, *>): ChartForm {
             val data = map["data"] as? Map<*, *>

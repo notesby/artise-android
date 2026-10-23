@@ -35,11 +35,14 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import co.artise.android.notes.api.ExportFormat
 import co.artise.android.notes.impl.R
 import co.artise.android.notes.impl.markdown.LocalNoteFind
 import co.artise.android.notes.impl.markdown.NoteFind
 import co.artise.android.notes.impl.markdown.NoteLink
 import co.artise.android.notes.impl.markdown.NoteMarkdownView
+import co.artise.android.notes.impl.share.DocumentShareState
+import co.artise.android.notes.impl.share.ShareAction
 import co.artise.android.notes.impl.ui.find.FindBar
 import co.artise.android.notes.impl.ui.folder.NotesFolderEntries
 import co.artise.android.notes.impl.ui.folder.nameProblemText
@@ -67,6 +70,7 @@ import io.element.android.libraries.designsystem.theme.components.Scaffold
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.ui.strings.CommonStrings
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 
 @Composable
@@ -77,6 +81,8 @@ fun NoteView(
     onEditClick: () -> Unit,
     onHistoryClick: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Share the note as a PDF, or ask Ari for a link; none in previews. */
+    share: DocumentShareState? = null,
 ) {
     val context = LocalContext.current
     state.openFile?.let { request ->
@@ -104,6 +110,9 @@ fun NoteView(
                         IconButton(onClick = { find = NoteFind() }) {
                             Icon(imageVector = CompoundIcons.Search(), contentDescription = stringResource(R.string.a11y_notes_find))
                         }
+                    }
+                    if (share != null) {
+                        ShareAction(state = share, formats = notePdf, title = state.title, pdfLabel = R.string.screen_notes_share_note_pdf)
                     }
                     NoteActions(state, onEditClick, onHistoryClick)
                 },
@@ -190,6 +199,8 @@ private fun NoteBody(state: NoteState, onBacklinkClick: (String) -> Unit, scroll
 }
 
 private const val FIND_SCROLL_MARGIN = 160f
+
+private val notePdf = persistentListOf(ExportFormat.PDF)
 
 @Composable
 private fun RowScope.NoteActions(state: NoteState, onEditClick: () -> Unit, onHistoryClick: () -> Unit) {
