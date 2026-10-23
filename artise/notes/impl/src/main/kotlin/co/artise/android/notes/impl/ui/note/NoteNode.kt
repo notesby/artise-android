@@ -9,6 +9,7 @@ package co.artise.android.notes.impl.ui.note
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import co.artise.android.notes.api.NoteAttachment
 import co.artise.android.notes.impl.analytics.NotesScreen
 import co.artise.android.notes.impl.analytics.trackScreen
 import com.bumble.appyx.core.modality.BuildContext
@@ -36,7 +37,8 @@ class NoteNode(
         trackScreen(analyticsService, NotesScreen.Note)
     }
 
-    data class Inputs(val roomId: RoomId, val path: String) : NodeInputs
+    /** [opensDrawn] `false`: shown as a note even if the phone thinks it's a dashboard (the server said it isn't). */
+    data class Inputs(val roomId: RoomId, val path: String, val opensDrawn: Boolean = true) : NodeInputs
 
     interface Callback : Plugin {
         fun openNote(roomId: RoomId, path: String)
@@ -47,6 +49,9 @@ class NoteNode(
 
         /** The note's versions, each readable. */
         fun openNoteHistory(roomId: RoomId, path: String)
+
+        /** Replace this note's screen with the server's drawing of it: it's a chart or a dashboard. */
+        fun showDrawn(roomId: RoomId, path: String, kind: NoteAttachment.Kind)
     }
 
     private val inputs: Inputs = inputs()
@@ -60,6 +65,10 @@ class NoteNode(
 
         override fun onDeleted() {
             navigateUp()
+        }
+
+        override fun onDrawn(kind: NoteAttachment.Kind) {
+            if (inputs.opensDrawn) callback.showDrawn(inputs.roomId, inputs.path, kind)
         }
     }
     private val presenter = presenterFactory.create(inputs.roomId, inputs.path, navigator)

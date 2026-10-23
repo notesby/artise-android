@@ -10,6 +10,7 @@ package co.artise.android.notes.impl
 import co.artise.android.notes.api.DocumentCard
 import co.artise.android.notes.api.DocumentCards
 import co.artise.android.notes.api.NoteAttachment
+import co.artise.android.notes.api.chartCardOf
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
@@ -23,7 +24,7 @@ class DocumentCardsTest {
             .trimIndent()
         val cards = DocumentCards.read(json)
         assertThat(cards).containsExactly(
-            DocumentCard("Contratos/Contrato Ana.md", "3f2a", "Contrato Ana", DocumentCard.Change.CREATED, isDraft = true),
+            DocumentCard("Contratos/Contrato Ana.md", "3f2a", "Contrato Ana", DocumentCard.Change.CREATED, isDraft = true, serverKind = "note"),
             DocumentCard("ventas.xlsx", null, "ventas.xlsx", DocumentCard.Change.CHANGED, isDraft = false),
         ).inOrder()
         assertThat(cards.map { it.kind }).containsExactly(NoteAttachment.Kind.NOTE, NoteAttachment.Kind.OFFICE).inOrder()
@@ -53,5 +54,32 @@ class DocumentCardsTest {
         assertThat(DocumentCards.read("""{"content":{"body":"hola"}}""")).isEmpty()
         assertThat(DocumentCards.read("co.artise.documents nope")).isEmpty()
         assertThat(DocumentCards.read(null)).isEmpty()
+    }
+
+    /** A dashboard is a `.md`: only the card's kind says so. Charts by their kind or their extension. */
+    @Test
+    fun `charts and dashboards take the card's kind`() {
+        val json = """{"content":{"co.artise.documents":[
+            {"path":"dashboards/Octubre.md","kind":"dashboard","title":"Octubre"},
+            {"path":"charts/ventas.chart","kind":"chart"},
+            {"path":"Notas/Plan.md","kind":"something-new"}]}}"""
+            .trimIndent()
+        assertThat(DocumentCards.read(json).map { it.kind })
+            .containsExactly(NoteAttachment.Kind.DASHBOARD, NoteAttachment.Kind.CHART, NoteAttachment.Kind.NOTE)
+            .inOrder()
+    }
+
+    /** Ari's picture of a chart (an `m.image` whose `co.artise.note` is a `.chart`) is that chart's card. */
+    @Test
+    fun `a chart's picture is its card`() {
+        val image = """{"content":{"msgtype":"m.image","body":"Ventas por mes.png","co.artise.note":"charts/ventas.chart"}}"""
+        val card = chartCardOf(image, "Ventas por mes.png")
+        assertThat(card?.path).isEqualTo("charts/ventas.chart")
+        assertThat(card?.title).isEqualTo("Ventas por mes")
+        assertThat(card?.kind).isEqualTo(NoteAttachment.Kind.CHART)
+        // Another picture from the notes, or an ordinary one: no card
+        assertThat(chartCardOf("""{"content":{"msgtype":"m.image","co.artise.note":"exports/ventas-2026-10-22.png"}}""", "x.png")).isNull()
+        assertThat(chartCardOf("""{"content":{"msgtype":"m.image","body":"foto.jpg"}}""", "foto.jpg")).isNull()
+        assertThat(chartCardOf(image, null)?.title).isEqualTo("ventas")
     }
 }

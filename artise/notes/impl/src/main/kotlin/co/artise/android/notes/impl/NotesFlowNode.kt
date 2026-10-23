@@ -13,11 +13,14 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import co.artise.android.notes.api.NoteAttachment
 import co.artise.android.notes.api.NotesEntryPoint
 import co.artise.android.notes.api.NotesRepository
 import co.artise.android.notes.impl.sync.NotesLiveUpdates
+import co.artise.android.notes.impl.ui.chart.NotesChartNode
 import co.artise.android.notes.impl.ui.chats.NotesChatsNode
 import co.artise.android.notes.impl.ui.choices.NotesChoicesNode
+import co.artise.android.notes.impl.ui.dashboard.NotesDashboardNode
 import co.artise.android.notes.impl.ui.document.NotesDocumentNode
 import co.artise.android.notes.impl.ui.editor.NoteEditorNode
 import co.artise.android.notes.impl.ui.folder.NotesFolderNode
@@ -70,8 +73,9 @@ class NotesFlowNode(
         @Parcelize
         data class Folder(val roomId: RoomId, val folder: String) : NavTarget
 
+        /** [opensDrawn] `false`: as a note, even when the phone's copy says it's a dashboard. */
         @Parcelize
-        data class Note(val roomId: RoomId, val path: String) : NavTarget
+        data class Note(val roomId: RoomId, val path: String, val opensDrawn: Boolean = true) : NavTarget
 
         @Parcelize
         data class Search(val roomId: RoomId) : NavTarget
@@ -93,6 +97,14 @@ class NotesFlowNode(
         /** A PDF or photo of the notes, in the app's own viewer. */
         @Parcelize
         data class Document(val roomId: RoomId, val path: String) : NavTarget
+
+        /** A chart as the server draws it. */
+        @Parcelize
+        data class Chart(val roomId: RoomId, val path: String) : NavTarget
+
+        /** A dashboard's page (or a business's report page) as the server draws it. */
+        @Parcelize
+        data class Dashboard(val roomId: RoomId, val path: String) : NavTarget
 
         /** Every change to a chat's notes: who it was for and how it was made. */
         @Parcelize
@@ -128,7 +140,9 @@ class NotesFlowNode(
         NotesGraphNode.Callback,
         NotesMediaNode.Callback,
         NotesChangesNode.Callback,
-        NoteHistoryNode.Callback {
+        NoteHistoryNode.Callback,
+        NotesChartNode.Callback,
+        NotesDashboardNode.Callback {
         override fun openChat(roomId: RoomId) = backstack.push(NavTarget.Folder(roomId, folder = ""))
 
         override fun openFolder(roomId: RoomId, folder: String) = backstack.push(NavTarget.Folder(roomId, folder))
@@ -147,6 +161,17 @@ class NotesFlowNode(
 
         override fun openDocument(roomId: RoomId, path: String) = backstack.push(NavTarget.Document(roomId, path))
 
+        override fun openChart(roomId: RoomId, path: String) = backstack.push(NavTarget.Chart(roomId, path))
+
+        override fun openDashboard(roomId: RoomId, path: String) = backstack.push(NavTarget.Dashboard(roomId, path))
+
+        override fun editChart(roomId: RoomId, path: String) = openEditor(roomId, path)
+
+        override fun showDrawn(roomId: RoomId, path: String, kind: NoteAttachment.Kind) =
+            backstack.replace(NotesEntry.targetFor(roomId, path, kind))
+
+        override fun showAsNote(roomId: RoomId, path: String) = backstack.replace(NavTarget.Note(roomId, path, opensDrawn = false))
+
         override fun openHistory(roomId: RoomId) = backstack.push(NavTarget.Changes(roomId))
 
         override fun openNoteHistory(roomId: RoomId, path: String) = backstack.push(NavTarget.NoteHistory(roomId, path))
@@ -162,7 +187,7 @@ class NotesFlowNode(
     override fun resolve(navTarget: NavTarget, buildContext: BuildContext): Node = when (navTarget) {
         NavTarget.Chats -> createNode<NotesChatsNode>(buildContext, listOf(navigation))
         is NavTarget.Folder -> createNode<NotesFolderNode>(buildContext, listOf(NotesFolderNode.Inputs(navTarget.roomId, navTarget.folder), navigation))
-        is NavTarget.Note -> createNode<NoteNode>(buildContext, listOf(NoteNode.Inputs(navTarget.roomId, navTarget.path), navigation))
+        is NavTarget.Note -> createNode<NoteNode>(buildContext, listOf(NoteNode.Inputs(navTarget.roomId, navTarget.path, navTarget.opensDrawn), navigation))
         is NavTarget.Search -> createNode<NotesSearchNode>(buildContext, listOf(NotesSearchNode.Inputs(navTarget.roomId), navigation))
         is NavTarget.Editor -> createNode<NoteEditorNode>(
             buildContext,
@@ -172,6 +197,11 @@ class NotesFlowNode(
         is NavTarget.Map -> createNode<NotesGraphNode>(buildContext, listOf(NotesGraphNode.Inputs(navTarget.roomId), navigation))
         is NavTarget.Media -> createNode<NotesMediaNode>(buildContext, listOf(NotesMediaNode.Inputs(navTarget.roomId), navigation))
         is NavTarget.Document -> createNode<NotesDocumentNode>(buildContext, listOf(NotesDocumentNode.Inputs(navTarget.roomId, navTarget.path)))
+        is NavTarget.Chart -> createNode<NotesChartNode>(buildContext, listOf(NotesChartNode.Inputs(navTarget.roomId, navTarget.path), navigation))
+        is NavTarget.Dashboard -> createNode<NotesDashboardNode>(
+            buildContext,
+            listOf(NotesDashboardNode.Inputs(navTarget.roomId, navTarget.path), navigation),
+        )
         is NavTarget.Changes -> createNode<NotesChangesNode>(buildContext, listOf(NotesChangesNode.Inputs(navTarget.roomId), navigation))
         is NavTarget.NoteHistory -> createNode<NoteHistoryNode>(buildContext, listOf(NoteHistoryNode.Inputs(navTarget.roomId, navTarget.path), navigation))
         is NavTarget.NoteVersion -> createNode<NoteVersionNode>(
@@ -191,7 +221,7 @@ class NotesFlowNode(
     private companion object {
         fun initialTarget(plugins: List<Plugin>): NavTarget {
             val params = plugins.filterIsInstance<NotesEntryPoint.Params>().firstOrNull()
-            return NotesEntry.initialTarget(params?.roomId, params?.openPath)
+            return NotesEntry.initialTarget(params?.roomId, params?.openPath, params?.openKind)
         }
     }
 }

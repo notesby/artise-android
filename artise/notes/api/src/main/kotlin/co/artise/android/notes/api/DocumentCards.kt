@@ -28,8 +28,10 @@ data class DocumentCard(
     val title: String,
     val change: Change?,
     val isDraft: Boolean,
+    /** The `kind` the server sent; a dashboard can't be told from its path. */
+    val serverKind: String? = null,
 ) {
-    val kind: NoteAttachment.Kind get() = NoteAttachment.kindOf(path)
+    val kind: NoteAttachment.Kind get() = NoteAttachment.kindOf(path, serverKind)
 
     enum class Change {
         CREATED,
@@ -75,10 +77,22 @@ object DocumentCards {
                 else -> null
             },
             isDraft = (item["draft"] as? JsonPrimitive)?.booleanOrNull == true,
+            serverKind = item.string("kind"),
         )
     }
 
     private fun JsonObject.string(key: String): String? = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
+}
+
+/**
+ * Ari posts each new chart's picture as an `m.image` whose `co.artise.note` is the `.chart` file: that message shows
+ * as the chart's card. `null` for any other message.
+ */
+fun chartCardOf(eventJson: String?, fileName: String?): DocumentCard? {
+    val path = NoteAttachment.read(eventJson)?.trim('/') ?: return null
+    if (NoteAttachment.kindOf(path) != NoteAttachment.Kind.CHART) return null
+    val title = fileName?.substringBeforeLast('.')?.trim()?.takeIf { it.isNotEmpty() } ?: path.substringAfterLast('/').substringBeforeLast('.')
+    return DocumentCard(path = path, version = null, title = title, change = null, isDraft = false, serverKind = "chart")
 }
 
 /** Draws a [DocumentCard]: the document's preview, its name, and whether it's new, changed or a draft. */

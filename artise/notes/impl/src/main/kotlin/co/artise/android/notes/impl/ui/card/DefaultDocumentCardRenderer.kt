@@ -69,10 +69,19 @@ class DefaultDocumentCardRenderer(
 ) : DocumentCardRenderer {
     @Composable
     override fun Render(roomId: RoomId, card: DocumentCard, onClick: () -> Unit, modifier: Modifier) {
-        val preview by produceState<NotesPreview?>(initialValue = null, roomId, card.path, card.version) {
-            value = repository.preview(roomId, card.path, PREVIEW_SIZE)
+        val dark = !ElementTheme.isLightTheme
+        // A chart or dashboard changes while its version doesn't (it may read records): the kept picture at once, then
+        // asked again (a 304 when it's the same). Its card's version is no key for it.
+        val isDrawn = card.kind.isDrawn
+        val preview by produceState<NotesPreview?>(initialValue = null, roomId, card.path, card.version.takeUnless { isDrawn }, dark) {
+            if (isDrawn) repository.cachedPreview(roomId, card.path, PREVIEW_SIZE, dark)?.let { value = it }
+            value = repository.preview(roomId, card.path, PREVIEW_SIZE, dark)
         }
-        DocumentCardView(card = card, preview = preview, onClick = onClick, modifier = modifier)
+        // A chart's picture message only knows the picture's name: the chart's own title once the phone has it.
+        val title by produceState(card.title, roomId, card.path) {
+            if (card.kind == NoteAttachment.Kind.CHART) repository.file(roomId, card.path)?.title?.takeIf { it.isNotBlank() }?.let { value = it }
+        }
+        DocumentCardView(card = card.copy(title = title), preview = preview, onClick = onClick, modifier = modifier)
     }
 }
 
@@ -125,7 +134,8 @@ private fun CardPreview(card: DocumentCard, preview: NotesPreview?) {
         is NotesPreview.Image -> AsyncImage(
             model = photoRequest(preview.file.path),
             contentDescription = null,
-            contentScale = ContentScale.Crop,
+            // A chart whole (its axis is at the bottom); a page from its top.
+            contentScale = if (card.kind == NoteAttachment.Kind.CHART) ContentScale.Fit else ContentScale.Crop,
             alignment = Alignment.TopCenter,
             modifier = Modifier.fillMaxSize(),
         )
@@ -191,11 +201,16 @@ private fun statusText(card: DocumentCard): String? = when (card.change) {
     null -> null
 }
 
+/** Charts and dashboards: drawn by the server for a light or dark screen, and changing with the records they read. */
+internal val NoteAttachment.Kind.isDrawn: Boolean get() = this == NoteAttachment.Kind.CHART || this == NoteAttachment.Kind.DASHBOARD
+
 @Composable
-private fun iconOf(kind: NoteAttachment.Kind): ImageVector = when (kind) {
+internal fun iconOf(kind: NoteAttachment.Kind): ImageVector = when (kind) {
     NoteAttachment.Kind.NOTE -> CompoundIcons.Document()
     NoteAttachment.Kind.IMAGE -> CompoundIcons.Image()
     NoteAttachment.Kind.TABLE -> CompoundIcons.Grid()
+    NoteAttachment.Kind.CHART -> CompoundIcons.Chart()
+    NoteAttachment.Kind.DASHBOARD -> CompoundIcons.Extensions()
     NoteAttachment.Kind.PDF,
     NoteAttachment.Kind.OFFICE,
     NoteAttachment.Kind.OTHER -> CompoundIcons.Attachment()
@@ -215,6 +230,11 @@ internal fun DocumentCardViewPreview() = ElementPreview {
         DocumentCardView(
             card = DocumentCard("gastos.csv", null, "gastos.csv", DocumentCard.Change.CHANGED, isDraft = false),
             preview = NotesPreview.Text("fecha,concepto,monto\n2026-10-01,Renta,8500\n2026-10-02,Luz,640"),
+            onClick = {},
+        )
+        DocumentCardView(
+            card = DocumentCard("charts/ventas.chart", null, "Ventas por mes", DocumentCard.Change.CREATED, isDraft = false, serverKind = "chart"),
+            preview = null,
             onClick = {},
         )
         DocumentCardView(

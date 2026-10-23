@@ -9,6 +9,7 @@ package co.artise.android.notes.impl.remote
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
 // Wire shapes of the Notes API v1, named as in docs/notes-api.md.
 
@@ -28,6 +29,9 @@ internal data class FileDto(
     val size: Long,
     val modified: Long,
     val note: Boolean,
+    val kind: String? = null,
+    val title: String? = null,
+    val readonly: Boolean = false,
 )
 
 @Serializable
@@ -173,3 +177,26 @@ internal data class TextDto(val path: String, val version: String = "", val page
 
 @Serializable
 internal data class TextPageDto(val n: Int, val text: String = "")
+
+@Serializable
+internal data class ChartDto(
+    val path: String,
+    val version: String = "",
+    val spec: ChartSpecDto,
+    @SerialName("as_of") val asOf: String? = null,
+    val svg: String,
+)
+
+/** Rows come as JSON values (numbers, text, null): each is kept as its text. */
+@Serializable
+internal data class ChartSpecDto(
+    val title: String = "",
+    val type: String = "",
+    val columns: List<String> = emptyList(),
+    val rows: List<List<JsonElement>> = emptyList(),
+    val series: List<String> = emptyList(),
+    val unit: String? = null,
+    val caption: String? = null,
+    val colors: List<String> = emptyList(),
+    val compare: String? = null,
+)

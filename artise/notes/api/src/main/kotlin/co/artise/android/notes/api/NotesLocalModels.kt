@@ -19,7 +19,15 @@ data class LocalFile(
     val content: String?,
     /** An edit to this file is waiting to be sent or for the person to choose. */
     val hasLocalEdits: Boolean,
-)
+    /** What the server says the file is; `null` before the server said (an older server, a note made offline). */
+    val serverKind: String? = null,
+    /** The title the server read from the file, when it has one. */
+    val title: String? = null,
+    /** A page Ari rewrites each period (a business report): offer Share, never Edit. */
+    val isReadOnly: Boolean = false,
+) {
+    val kind: NoteAttachment.Kind get() = NoteAttachment.kindOf(path, serverKind)
+}
 
 enum class EditKind {
     SAVE,

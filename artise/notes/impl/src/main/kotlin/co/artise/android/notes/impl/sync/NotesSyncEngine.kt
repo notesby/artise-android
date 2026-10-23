@@ -10,17 +10,21 @@ package co.artise.android.notes.impl.sync
 import co.artise.android.notes.api.DeletedFolder
 import co.artise.android.notes.api.EditKind
 import co.artise.android.notes.api.EditState
+import co.artise.android.notes.api.ExportFormat
 import co.artise.android.notes.api.LocalFile
 import co.artise.android.notes.api.MediaFile
 import co.artise.android.notes.api.MediaInUseException
 import co.artise.android.notes.api.MovedFolder
 import co.artise.android.notes.api.MovedNote
 import co.artise.android.notes.api.Note
+import co.artise.android.notes.api.NoteAttachment
 import co.artise.android.notes.api.NoteLinks
 import co.artise.android.notes.api.NoteVersion
 import co.artise.android.notes.api.NotesChangesPage
+import co.artise.android.notes.api.NotesChart
 import co.artise.android.notes.api.NotesChat
 import co.artise.android.notes.api.NotesException
+import co.artise.android.notes.api.NotesExport
 import co.artise.android.notes.api.NotesFile
 import co.artise.android.notes.api.NotesGraph
 import co.artise.android.notes.api.NotesPage
@@ -198,7 +202,7 @@ class NotesSyncEngine(
             if (store.file(roomId, path) != null) {
                 Result.failure(NotesException.Exists("A note named $path is already here", null))
             } else {
-                store.putFile(roomId, NotesFile(path, "", content.byteSize(), clock.nowSeconds(), isNote = true), content)
+                store.putFile(roomId, NotesFile(path, "", content.byteSize(), clock.nowSeconds(), isNote = true, kind = localKindOf(path, content)), content)
                 store.addEdit(roomId, EditKind.SAVE, path, content, baseVersion = null, now = clock.epochMillis())
                 Result.success(Unit)
             }
@@ -428,13 +432,18 @@ class NotesSyncEngine(
         }
     }
 
-    override suspend fun preview(roomId: RoomId, path: String, size: Int): NotesPreview {
-        val version = io { store.file(roomId, path) }?.version.orEmpty()
-        val cache = PreviewCache(previewFileFor(roomId, path, size))
+    override suspend fun preview(roomId: RoomId, path: String, size: Int, dark: Boolean): NotesPreview {
+        val file = io { store.file(roomId, path) }
+        val version = file?.version.orEmpty()
+        // Charts and dashboards are drawn in light or dark, and from records that change while the file doesn't.
+        val drawn = isDrawn(path, file)
+        val cache = PreviewCache(previewFileFor(roomId, path, size, dark.takeIf { drawn }))
         val kept = io { cache.read() }
-        // Same version of the file: the preview on the phone is current, whatever the connection.
-        if (kept != null && version.isNotEmpty() && kept.version == version) return kept.preview
-        val answer = api.preview(roomId, path, size, etag = kept?.etag).getOrElse { return kept?.preview ?: NotesPreview.None }
+        // Same version of the file: the preview on the phone is current, whatever the connection. Not for a drawn one:
+        // its ETag (the picture's hash) decides, so an unchanged picture is a 304.
+        val current = kept?.takeIf { version.isNotEmpty() && it.version == version }
+        if (current != null && !drawn) return current.preview
+        val answer = api.preview(roomId, path, size, etag = kept?.etag, dark = dark.takeIf { drawn }).getOrElse { return kept?.preview ?: NotesPreview.None }
         return io {
             when (answer) {
                 is PreviewResponse.NotModified -> kept?.also { cache.write(it.copy(version = version)) }?.preview ?: NotesPreview.None
@@ -449,6 +458,34 @@ class NotesSyncEngine(
             }
         }
     }
+
+    override suspend fun cachedPreview(roomId: RoomId, path: String, size: Int, dark: Boolean): NotesPreview? = io {
+        val drawn = isDrawn(path, store.file(roomId, path))
+        PreviewCache(previewFileFor(roomId, path, size, dark.takeIf { drawn })).read()?.preview
+    }
+
+    private fun isDrawn(path: String, file: LocalFile?): Boolean {
+        val kind = file?.kind ?: NoteAttachment.kindOf(path)
+        return kind == NoteAttachment.Kind.CHART || kind == NoteAttachment.Kind.DASHBOARD
+    }
+
+    override suspend fun chart(roomId: RoomId, path: String, dark: Boolean): Result<NotesChart> = api.chart(roomId, path, dark)
+
+    override suspend fun dashboard(roomId: RoomId, path: String): Result<String> = api.dashboard(roomId, path)
+
+    override suspend fun export(roomId: RoomId, path: String, format: ExportFormat, name: String): Result<NotesExport> =
+        api.export(roomId, path, format).map { answer ->
+            io {
+                // One folder of exports, emptied each time: they're made for the share sheet and never kept.
+                val folder = File(attachmentsDir.parentFile ?: attachmentsDir, EXPORTS_FOLDER)
+                folder.deleteRecursively()
+                folder.mkdirs()
+                val fileName = exportFileName(name, format, answer.fileName)
+                val file = File(folder, fileName)
+                file.writeBytes(answer.bytes)
+                NotesExport(file, fileName, format.mimeType)
+            }
+        }
 
     override suspend fun documentText(roomId: RoomId, path: String): Result<NotesText> {
         val version = io { store.file(roomId, path) }?.version.orEmpty()
@@ -497,9 +534,17 @@ class NotesSyncEngine(
     @Serializable
     private data class CachedText(val path: String, val version: String, val pages: List<Pair<Int, String>>)
 
-    /** One preview per file and size, in a subfolder of the attachments so [trimCache] never counts them as attachments. */
-    private fun previewFileFor(roomId: RoomId, path: String, size: Int): File {
-        val key = sha256("${roomId.value}/$path").take(24) + "-$size"
+    /**
+     * One preview per file and size (and light or dark, for what the server draws in either), in a subfolder of the
+     * attachments so [trimCache] never counts them as attachments.
+     */
+    private fun previewFileFor(roomId: RoomId, path: String, size: Int, dark: Boolean? = null): File {
+        val mode = when (dark) {
+            null -> ""
+            true -> "-dark"
+            false -> "-light"
+        }
+        val key = sha256("${roomId.value}/$path").take(24) + "-$size$mode"
         return File(File(attachmentsDir, PREVIEWS_FOLDER), key).also { it.parentFile?.mkdirs() }
     }
 
@@ -885,6 +930,11 @@ class NotesSyncEngine(
         var removed = 0
         val foldersChanged = io {
             store.transaction {
+                // Unchanged files the server now describes differently (or for the first time): a note became a dashboard.
+                for (file in remote.values) {
+                    val mine = local[file.path] ?: continue
+                    if (mine.version == file.version && mine.describedDifferentlyFrom(file)) store.setMeta(roomId, file)
+                }
                 for (mine in local.values) {
                     if (mine.path !in remote && !mine.hasLocalEdits && mine.version.isNotEmpty()) {
                         store.deleteFile(roomId, mine.path)
@@ -902,6 +952,8 @@ class NotesSyncEngine(
         if (foldersChanged) notifyChanged(roomId)
         return Result.success(PullResult(updated, removed))
     }
+
+    private fun LocalFile.describedDifferentlyFrom(file: NotesFile) = serverKind != file.kind || title != file.title || isReadOnly != file.isReadOnly
 
     /** A file changed on the server, or a note whose text we don't have yet. Files with local edits are never overwritten. */
     private fun needsDownload(file: NotesFile, mine: LocalFile?): Boolean = when {
@@ -938,6 +990,9 @@ class NotesSyncEngine(
         const val ATTACHMENTS_CACHE_FOLDER = "notes_attachments"
 
         const val PREVIEWS_FOLDER = "previews"
+
+        /** Next to every workspace's folder, not inside one: the share sheet's files, replaced by the next export. */
+        const val EXPORTS_FOLDER = "exports"
         const val TEXTS_FOLDER = "texts"
 
         /** Room on the phone for downloaded photos and files, for all workspaces together; files waiting to upload aren't counted or removed. */
@@ -957,6 +1012,44 @@ class NotesSyncEngine(
             return generateSequence(1) { it + 1 }
                 .map { n -> "$ATTACHMENTS_FOLDER/" + (if (n == 1) base else "$base ($n)") + extension }
                 .first { it.lowercase() !in taken }
+        }
+
+        /**
+         * The export's file name: what the person sees (the chart's or note's [title]) with the format's extension; the
+         * server's name when there's no title. Never a folder or a hidden name.
+         */
+        fun exportFileName(title: String, format: ExportFormat, serverName: String?): String {
+            val fromTitle = withoutDots(title.replace(UNSAFE_NAME_CHARS, " ").replace(SPACES, " "))
+            val fromServer = withoutDots(serverName?.substringBeforeLast('.').orEmpty())
+            val base = fromTitle.ifEmpty { fromServer }.ifEmpty { "export" }.take(MAX_EXPORT_NAME)
+            return "$base.${format.value}"
+        }
+
+        private fun withoutDots(name: String) = name.trimStart { it == '.' || it == ' ' }.trim()
+
+        private val UNSAFE_NAME_CHARS = Regex("""[\\/:*?"<>|\p{Cntrl}]""")
+        private val SPACES = Regex("""\s+""")
+
+        private const val MAX_EXPORT_NAME = 80
+
+        /** What a note made on this phone is, until the server says: a `.chart`, or a `.md` whose front matter says dashboard. */
+        fun localKindOf(path: String, content: String): String? = when {
+            NoteAttachment.kindOf(path) == NoteAttachment.Kind.CHART -> "chart"
+            path.endsWith(".md", ignoreCase = true) && frontMatterType(content) in DASHBOARD_TYPES -> "dashboard"
+            else -> null
+        }
+
+        private val DASHBOARD_TYPES = setOf("dashboard", "report")
+
+        /** The `type:` in the front matter (between the first two `---` lines), or `null`. */
+        private fun frontMatterType(content: String): String? {
+            val lines = content.lineSequence().iterator()
+            if (!lines.hasNext() || lines.next().trimEnd() != "---") return null
+            for (line in lines) {
+                if (line.trimEnd() == "---") return null
+                if (line.startsWith("type:")) return line.substringAfter(':').trim().trim('"', '\'').lowercase()
+            }
+            return null
         }
 
         private fun sha256(value: String): String =

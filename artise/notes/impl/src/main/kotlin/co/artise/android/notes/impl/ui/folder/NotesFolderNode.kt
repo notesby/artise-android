@@ -51,6 +51,12 @@ class NotesFolderNode(
         /** A PDF or photo, in the app's own viewer. */
         fun openDocument(roomId: RoomId, path: String)
 
+        /** A chart as the server draws it. */
+        fun openChart(roomId: RoomId, path: String)
+
+        /** A dashboard's page as the server draws it. */
+        fun openDashboard(roomId: RoomId, path: String)
+
         /** The chat's change history. */
         fun openHistory(roomId: RoomId)
     }
@@ -71,6 +77,8 @@ class NotesFolderNode(
             onMapClick = { callback.openMap(inputs.roomId) },
             onMediaClick = { callback.openMedia(inputs.roomId) },
             onDocumentClick = { callback.openDocument(inputs.roomId, it) },
+            onChartClick = { callback.openChart(inputs.roomId, it) },
+            onDashboardClick = { callback.openDashboard(inputs.roomId, it) },
             onHistoryClick = { callback.openHistory(inputs.roomId) },
             modifier = modifier,
         )

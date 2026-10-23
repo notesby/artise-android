@@ -211,7 +211,7 @@ class MessagesFlowNode(
 
         /** Artise: a file of this chat's notes that Ari posted, opened from the notes rather than the attachment. */
         @Parcelize
-        data class NotesFile(val path: String) : NavTarget
+        data class NotesFile(val path: String, val kind: String? = null) : NavTarget
 
         @Parcelize
         data object KnockRequestsList : NavTarget
@@ -368,8 +368,8 @@ class MessagesFlowNode(
                         backstack.push(NavTarget.Notes)
                     }
 
-                    override fun navigateToNotesFile(path: String) {
-                        backstack.push(NavTarget.NotesFile(path))
+                    override fun navigateToNotesFile(path: String, kind: String?) {
+                        backstack.push(NavTarget.NotesFile(path, kind))
                     }
 
                     override fun navigateToKnockRequestsList() {
@@ -545,7 +545,8 @@ class MessagesFlowNode(
                         backstack.pop()
                     }
                 }
-                notesEntryPoint.createNode(this, buildContext, NotesEntryPoint.Params(room.roomId, openPath = navTarget.path), callback)
+                val params = NotesEntryPoint.Params(room.roomId, openPath = navTarget.path, openKind = navTarget.kind)
+                notesEntryPoint.createNode(this, buildContext, params, callback)
             }
             NavTarget.PinnedMessagesList -> {
                 val callback = object : PinnedMessagesListNode.Callback {

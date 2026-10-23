@@ -8,6 +8,7 @@
 package co.artise.android.notes.impl.ui
 
 import co.artise.android.notes.api.DeletedFolder
+import co.artise.android.notes.api.ExportFormat
 import co.artise.android.notes.api.LocalFile
 import co.artise.android.notes.api.MediaFile
 import co.artise.android.notes.api.MovedFolder
@@ -16,8 +17,10 @@ import co.artise.android.notes.api.Note
 import co.artise.android.notes.api.NoteLinks
 import co.artise.android.notes.api.NoteVersion
 import co.artise.android.notes.api.NotesChangesPage
+import co.artise.android.notes.api.NotesChart
 import co.artise.android.notes.api.NotesChat
 import co.artise.android.notes.api.NotesException
+import co.artise.android.notes.api.NotesExport
 import co.artise.android.notes.api.NotesGraph
 import co.artise.android.notes.api.NotesPage
 import co.artise.android.notes.api.NotesPreview
@@ -184,9 +187,42 @@ class FakeNotesRepository(
     val previewRequests = mutableListOf<Pair<String, Int>>()
     var previewResult: (String) -> NotesPreview = { NotesPreview.None }
 
-    override suspend fun preview(roomId: RoomId, path: String, size: Int): NotesPreview {
+    val previewModes = mutableListOf<Boolean>()
+
+    override suspend fun preview(roomId: RoomId, path: String, size: Int, dark: Boolean): NotesPreview {
         previewRequests += path to size
+        previewModes += dark
         return previewResult(path)
+    }
+
+    var cachedPreviewResult: (String) -> NotesPreview? = { null }
+
+    override suspend fun cachedPreview(roomId: RoomId, path: String, size: Int, dark: Boolean): NotesPreview? = cachedPreviewResult(path)
+
+    val chartRequests = mutableListOf<Pair<String, Boolean>>()
+    var chartResult: (String) -> Result<NotesChart> = { Result.failure(NotesException.Server(415, "no_chart")) }
+
+    override suspend fun chart(roomId: RoomId, path: String, dark: Boolean): Result<NotesChart> {
+        chartRequests += path to dark
+        return chartResult(path)
+    }
+
+    val dashboardRequests = mutableListOf<String>()
+    var dashboardResult: (String) -> Result<String> = { Result.failure(NotesException.Server(415, "no_dashboard")) }
+
+    override suspend fun dashboard(roomId: RoomId, path: String): Result<String> {
+        dashboardRequests += path
+        return dashboardResult(path)
+    }
+
+    val exportRequests = mutableListOf<Triple<String, ExportFormat, String>>()
+    var exportResult: (String, ExportFormat, String) -> Result<NotesExport> = { _, format, name ->
+        Result.success(NotesExport(File("/tmp/$name.${format.value}"), "$name.${format.value}", format.mimeType))
+    }
+
+    override suspend fun export(roomId: RoomId, path: String, format: ExportFormat, name: String): Result<NotesExport> {
+        exportRequests += Triple(path, format, name)
+        return exportResult(path, format, name)
     }
 
     override suspend fun deleteMedia(roomId: RoomId, path: String, removeFromNotes: Boolean): Result<Unit> =

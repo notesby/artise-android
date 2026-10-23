@@ -48,6 +48,8 @@ fun aNotesDocumentState(
     title = title,
     kind = kind,
     file = file,
+    pdfFile = null,
+    tableText = null,
     isLoading = isLoading,
     problem = problem,
     openFile = null,

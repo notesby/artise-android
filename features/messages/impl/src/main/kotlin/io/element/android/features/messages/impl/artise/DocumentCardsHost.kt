@@ -27,7 +27,8 @@ import kotlinx.collections.immutable.ImmutableList
 data class DocumentCardsHost(
     val roomId: RoomId,
     val renderer: DocumentCardRenderer,
-    val onOpen: (path: String) -> Unit,
+    /** Opens the card's document; its kind (from the server) tells a dashboard from a note. */
+    val onOpen: (card: DocumentCard) -> Unit,
 )
 
 /**
@@ -46,7 +47,7 @@ internal fun DocumentCardsView(documents: ImmutableList<DocumentCard>, modifier:
             host.renderer.Render(
                 roomId = host.roomId,
                 card = card,
-                onClick = { host.onOpen(card.path) },
+                onClick = { host.onOpen(card) },
                 modifier = Modifier
                     .padding(top = 2.dp)
                     .widthIn(max = 320.dp)

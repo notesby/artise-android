@@ -86,7 +86,22 @@ class NotesLocalStore(private val database: NotesDatabase) {
         queries.selectFile(roomId.value, path).executeAsOneOrNull()?.toLocalFile(hasEdits(roomId, path))
 
     fun putFile(roomId: RoomId, file: NotesFile, content: String?) =
-        queries.upsertFile(roomId.value, file.path, file.version, file.size, file.modified, if (file.isNote) 1 else 0, content)
+        queries.upsertFile(
+            roomId.value,
+            file.path,
+            file.version,
+            file.size,
+            file.modified,
+            if (file.isNote) 1 else 0,
+            content,
+            file.kind,
+            file.title,
+            if (file.isReadOnly) 1 else 0,
+        )
+
+    /** What the server says an unchanged file is: its kind, title and whether it's read-only. */
+    fun setMeta(roomId: RoomId, file: NotesFile) =
+        queries.updateFileMeta(file.kind, file.title, if (file.isReadOnly) 1 else 0, roomId.value, file.path)
 
     fun setContent(roomId: RoomId, path: String, content: String, modified: Long) =
         queries.updateFileContent(content, content.toByteArray().size.toLong(), modified, roomId.value, path)
@@ -186,6 +201,9 @@ private fun NotesFileEntity.toLocalFile(hasLocalEdits: Boolean) = LocalFile(
     isNote = is_note != 0L,
     content = content,
     hasLocalEdits = hasLocalEdits,
+    serverKind = kind,
+    title = title,
+    isReadOnly = readonly != 0L,
 )
 
 private fun NotesEditEntity.toPendingEdit() = PendingEdit(

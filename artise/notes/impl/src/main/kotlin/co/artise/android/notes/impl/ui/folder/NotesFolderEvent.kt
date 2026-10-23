@@ -27,8 +27,8 @@ sealed interface NotesFolderEvent {
     /** Open a photo or file in another app. */
     data class OpenFile(val entry: NotesFolderEntry) : NotesFolderEvent
 
-    /** A photo or document's row is on screen: fetch what it looks like. */
-    data class LoadPreview(val path: String) : NotesFolderEvent
+    /** A photo or document's row is on screen: fetch what it looks like ([dark]: a chart or dashboard drawn for a dark screen). */
+    data class LoadPreview(val path: String, val dark: Boolean = false) : NotesFolderEvent
 
     data class FileOpenHandled(val opened: Boolean) : NotesFolderEvent
 

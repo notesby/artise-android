@@ -8,6 +8,7 @@
 package co.artise.android.notes.impl.remote
 
 import co.artise.android.notes.api.ChangeAuthor
+import co.artise.android.notes.api.ExportFormat
 import co.artise.android.notes.api.FileChange
 import co.artise.android.notes.api.NotesException
 import co.artise.android.notes.api.NotesPage
@@ -403,5 +404,119 @@ class NotesApiClientTest {
         assertThat(noText.status).isEqualTo(415)
         server.enqueue(key, error(404, "not_found"))
         assertThat(client.text(room, "big.pdf").exceptionOrNull()).isInstanceOf(NotesException.NotFound::class.java)
+    }
+
+    /** A chart and a dashboard are drawn for the screen's light or dark: `mode` is sent with their previews. */
+    @Test
+    fun `chart previews are asked for light or dark`() = runTest {
+        val client = client()
+        server.enqueue("GET /chats/$A_ROOM_ENCODED/preview?path=charts%2Fventas.chart&size=256&mode=dark", png(byteArrayOf(9), etag = "\"c1\""))
+        val dark = client.preview(room, "charts/ventas.chart", 256, dark = true).getOrThrow() as PreviewResponse.Image
+        assertThat(dark.etag).isEqualTo("\"c1\"")
+        server.enqueue("GET /chats/$A_ROOM_ENCODED/preview?path=charts%2Fventas.chart&size=256&mode=light", MockResponse().setResponseCode(304))
+        assertThat(client.preview(room, "charts/ventas.chart", 256, etag = "\"c0\"", dark = false).getOrThrow()).isEqualTo(PreviewResponse.NotModified)
+        assertThat(server.requests.last().getHeader("If-None-Match")).isEqualTo("\"c0\"")
+    }
+
+    /** `GET chart` gives the spec (numbers kept as text) and the SVG for the asked mode. */
+    @Test
+    fun `chart reads the spec and the drawing`() = runTest {
+        server.enqueue(
+            "GET /chats/$A_ROOM_ENCODED/chart?path=charts%2Fventas.chart&mode=dark",
+            json(
+                body = """
+                    {"path": "charts/ventas.chart", "version": "v3",
+                     "spec": {"title": "Ventas por mes", "type": "bar", "columns": ["Mes", "Ventas"],
+                              "rows": [["2026-05", 12000], ["2026-06", 15400.5], ["2026-07", null]],
+                              "series": ["Ventas"], "unit": "MXN", "caption": "Sin IVA", "colors": ["#22408A"], "compare": null},
+                     "as_of": "2026-10-22", "svg": "<svg/>"}
+                """.trimIndent(),
+            ),
+        )
+        val chart = client().chart(room, "charts/ventas.chart", dark = true).getOrThrow()
+        assertThat(chart.spec.title).isEqualTo("Ventas por mes")
+        assertThat(chart.spec.rows).containsExactly(listOf("2026-05", "12000"), listOf("2026-06", "15400.5"), listOf("2026-07", "")).inOrder()
+        assertThat(chart.spec.unit).isEqualTo("MXN")
+        assertThat(chart.spec.compare).isEmpty()
+        assertThat(chart.asOf).isEqualTo("2026-10-22")
+        assertThat(chart.svg).isEqualTo("<svg/>")
+        assertThat(server.requests.single().getHeader("Authorization")).isEqualTo("Bearer token-1")
+    }
+
+    /** 415 (not a chart), 422 (a mistake, with the server's sentence), 503 (can't draw now) and 404 stay apart. */
+    @Test
+    fun `chart failures keep their meaning`() = runTest {
+        val key = "GET /chats/$A_ROOM_ENCODED/chart?path=c.chart&mode=light"
+        val client = client()
+        server.enqueue(key, error(415, "no_chart"))
+        assertThat((client.chart(room, "c.chart", dark = false).exceptionOrNull() as NotesException.Server).status).isEqualTo(415)
+        server.enqueue(key, error(422, "bad_chart"))
+        val bad = client.chart(room, "c.chart", dark = false).exceptionOrNull() as NotesException.BadChart
+        assertThat(bad.message).isEqualTo("Human text for bad_chart")
+        server.enqueue(key, error(503, "unavailable"))
+        assertThat((client.chart(room, "c.chart", dark = false).exceptionOrNull() as NotesException.Server).status).isEqualTo(503)
+        server.enqueue(key, error(404, "not_found"))
+        assertThat(client.chart(room, "c.chart", dark = false).exceptionOrNull()).isInstanceOf(NotesException.NotFound::class.java)
+    }
+
+    /** The dashboard's page comes as HTML, signed in like everything else (never a bare URL in a web view). */
+    @Test
+    fun `dashboard reads the page`() = runTest {
+        val key = "GET /chats/$A_ROOM_ENCODED/dashboard?path=dashboards%2FOctubre.md"
+        val client = client()
+        server.enqueue(key, MockResponse().setResponseCode(200).setHeader("Content-Type", "text/html; charset=utf-8").setBody("<html><body>Hola</body></html>"))
+        assertThat(client.dashboard(room, "dashboards/Octubre.md").getOrThrow()).isEqualTo("<html><body>Hola</body></html>")
+        assertThat(server.requests.single().getHeader("Authorization")).isEqualTo("Bearer token-1")
+        server.enqueue(key, error(415, "no_dashboard"))
+        assertThat((client.dashboard(room, "dashboards/Octubre.md").exceptionOrNull() as NotesException.Server).status).isEqualTo(415)
+    }
+
+    /** An export is asked with its format and comes back with the name the server gave it. */
+    @Test
+    fun `export asks for the format and reads the file name`() = runTest {
+        val client = client()
+        server.enqueue(
+            "GET /chats/$A_ROOM_ENCODED/export?path=charts%2Fventas.chart&format=png",
+            MockResponse().setResponseCode(200).setHeader("Content-Type", "image/png")
+                .setHeader("Content-Disposition", "attachment; filename=\"ventas.png\"; filename*=UTF-8''Ventas%20por%20mes.png")
+                .setBody(Buffer().write(byteArrayOf(1, 2))),
+        )
+        val png = client.export(room, "charts/ventas.chart", ExportFormat.PNG).getOrThrow()
+        assertThat(png.bytes).isEqualTo(byteArrayOf(1, 2))
+        assertThat(png.fileName).isEqualTo("Ventas por mes.png")
+        server.enqueue("GET /chats/$A_ROOM_ENCODED/export?path=charts%2Fventas.chart&format=pdf", error(415, "no_export"))
+        assertThat((client.export(room, "charts/ventas.chart", ExportFormat.PDF).exceptionOrNull() as NotesException.Server).status).isEqualTo(415)
+    }
+
+    @Test
+    fun `file names are read from content disposition without folders`() {
+        assertThat(fileNameOf("attachment; filename=\"Octubre.pdf\"")).isEqualTo("Octubre.pdf")
+        assertThat(fileNameOf("attachment; filename*=UTF-8''Gr%C3%A1fica%20%2B%20m%C3%A1s.png")).isEqualTo("Gráfica + más.png")
+        assertThat(fileNameOf("attachment; filename=\"../../etc/passwd\"")).isEqualTo("passwd")
+        assertThat(fileNameOf("attachment")).isNull()
+        assertThat(fileNameOf(null)).isNull()
+    }
+
+    /** The tree says what each file is, so lists don't open every note to know. */
+    @Test
+    fun `tree reads each file's kind and title`() = runTest {
+        server.enqueue(
+            "GET /chats/$A_ROOM_ENCODED/tree",
+            json(
+                body = """
+                    {"tree": "t1", "files": [
+                      {"path": "charts/ventas.chart", "version": "a", "size": 214, "modified": 1, "note": true, "kind": "chart", "title": "Ventas por mes"},
+                      {"path": "business/reports/2026-10.md", "version": "b", "size": 900, "modified": 1, "note": true, "kind": "dashboard", "readonly": true},
+                      {"path": "Mole.md", "version": "c", "size": 9, "modified": 1, "note": true}
+                    ]}
+                """.trimIndent(),
+            ),
+        )
+        val tree = (client().tree(room, etag = null).getOrThrow() as TreeResponse.Changed).tree
+        assertThat(tree.files.map { Triple(it.kind, it.title, it.isReadOnly) }).containsExactly(
+            Triple("chart", "Ventas por mes", false),
+            Triple("dashboard", null, true),
+            Triple(null, null, false),
+        ).inOrder()
     }
 }
