@@ -19,6 +19,8 @@ data class WorkspaceConfig(
     val logoUrl: String? = null,
     /** `0xFFRRGGBB`; only set when the server sent a valid `#RRGGBB`. */
     val accentColor: Long? = null,
+    /** The charts' colours an admin set (`colors.palette`), at most 8, as `0xFFRRGGBB`; empty: the accent and Artise's. */
+    val chartPalette: List<Long> = emptyList(),
     val assistantName: String? = null,
     /** Welcome text by language code (en, es, pt). */
     val welcome: Map<String, String> = emptyMap(),

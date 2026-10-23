@@ -32,6 +32,7 @@ import co.artise.android.notes.api.NotesText
 import co.artise.android.notes.api.NotesTextPage
 import co.artise.android.notes.api.NotesTree
 import co.artise.android.notes.api.OutgoingLink
+import co.artise.android.notes.api.RecordType
 import co.artise.android.notes.api.SavedNote
 import co.artise.android.notes.api.ServerCopy
 import co.artise.android.notes.impl.auth.NotesTokenSource
@@ -347,6 +348,22 @@ class NotesApiClient(
                 svg = dto.svg,
             )
         }
+    }
+
+    /** The record types the chat keeps, for a sourced chart's pickers. */
+    suspend fun records(roomId: RoomId): Result<List<RecordType>> = call(get(url(roomId, "records"))) { body ->
+        json.decodeFromString<RecordsDto>(body).types.map { RecordType(it.type, it.fields, it.dateField, it.amountField) }
+    }
+
+    /** An unsaved chart drawn as a PNG; nothing is written. `422 bad_chart` ([NotesException.BadChart]) says what's wrong. */
+    suspend fun chartPreview(roomId: RoomId, content: String, size: Int, dark: Boolean): Result<ByteArray> {
+        val url = url(roomId, "chart").newBuilder()
+            .addPathSegment("preview")
+            .addQueryParameter("size", size.toString())
+            .addQueryParameter("mode", modeOf(dark))
+            .build()
+        val body = json.encodeToString(ChartPreviewDto(content)).toRequestBody(jsonMediaType)
+        return send(request(url).post(body).build()) { it.body.bytes() }
     }
 
     /** A dashboard's page as HTML; `415 no_dashboard` for a note that isn't one. */

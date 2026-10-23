@@ -14,6 +14,7 @@ import co.artise.android.notes.api.NotesException
 import co.artise.android.notes.api.NotesPage
 import co.artise.android.notes.api.NotesText
 import co.artise.android.notes.api.NotesTextPage
+import co.artise.android.notes.api.RecordType
 import co.artise.android.notes.api.ServerCopy
 import co.artise.android.notes.impl.A_ROOM
 import co.artise.android.notes.impl.A_ROOM_ENCODED
@@ -518,5 +519,38 @@ class NotesApiClientTest {
             Triple("dashboard", null, true),
             Triple(null, null, false),
         ).inOrder()
+    }
+
+    /** The record types a sourced chart may read, with their fields. */
+    @Test
+    fun `records lists the chat's record types`() = runTest {
+        server.enqueue(
+            "GET /chats/$A_ROOM_ENCODED/records",
+            json(
+                body = """
+                    {"types": [{"type": "payment", "fields": ["id", "date", "amount", "method"], "date_field": "date", "amount_field": "amount"},
+                               {"type": "job"}]}
+                """.trimIndent(),
+            ),
+        )
+        val types = client().records(room).getOrThrow()
+        assertThat(types).containsExactly(
+            RecordType("payment", listOf("id", "date", "amount", "method"), "date", "amount"),
+            RecordType("job", emptyList(), null, null),
+        ).inOrder()
+    }
+
+    /** An unsaved chart is posted as its text with the size and mode; a mistake comes back as the server's sentence. */
+    @Test
+    fun `an unsaved chart is drawn from its text`() = runTest {
+        val key = "POST /chats/$A_ROOM_ENCODED/chart/preview?size=512&mode=dark"
+        val client = client()
+        server.enqueue(key, MockResponse().setResponseCode(200).setHeader("Content-Type", "image/png").setBody(Buffer().write(byteArrayOf(4, 2))))
+        assertThat(client.chartPreview(room, "title: Ventas\n", 512, dark = true).getOrThrow()).isEqualTo(byteArrayOf(4, 2))
+        val request = server.requests.single()
+        assertThat(Json.parseToJsonElement(request.body.readUtf8()).jsonObject["content"].toString()).isEqualTo("\"title: Ventas\\n\"")
+        assertThat(request.getHeader("Authorization")).isEqualTo("Bearer token-1")
+        server.enqueue(key, error(422, "bad_chart"))
+        assertThat(client.chartPreview(room, "x", 512, dark = true).exceptionOrNull()).isInstanceOf(NotesException.BadChart::class.java)
     }
 }

@@ -200,3 +200,17 @@ internal data class ChartSpecDto(
     val colors: List<String> = emptyList(),
     val compare: String? = null,
 )
+
+@Serializable
+internal data class RecordsDto(val types: List<RecordTypeDto> = emptyList())
+
+@Serializable
+internal data class RecordTypeDto(
+    val type: String,
+    val fields: List<String> = emptyList(),
+    @SerialName("date_field") val dateField: String? = null,
+    @SerialName("amount_field") val amountField: String? = null,
+)
+
+@Serializable
+internal data class ChartPreviewDto(val content: String)

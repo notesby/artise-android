@@ -223,6 +223,16 @@ data class ChartSpec(
     val compare: String,
 )
 
+/** A kind of record the chat keeps (`GET records`): what a sourced chart may read, and the fields it may name. */
+data class RecordType(
+    val type: String,
+    val fields: List<String>,
+    /** The field that dates a record, if any: what `x: month` and periods go by. */
+    val dateField: String?,
+    /** The field holding its amount, if any: the likely `sum(...)`. */
+    val amountField: String?,
+)
+
 /** A file the server made to share (a chart's PNG, a PDF), on the phone, under [name]. */
 data class NotesExport(val file: File, val name: String, val mimeType: String)
 

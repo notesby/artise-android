@@ -28,6 +28,7 @@ object WorkspaceFileParser {
 
     private val HEX_COLOR = Regex("^#[0-9A-Fa-f]{6}$")
     private const val OPAQUE = 0xFF000000L
+    private const val MAX_PALETTE = 8
 
     /** The section in [wellKnown] (the whole file), or null when it has none or isn't JSON. */
     fun parse(wellKnown: String): WorkspaceConfig? {
@@ -39,6 +40,10 @@ object WorkspaceFileParser {
         name = section.string("name"),
         logoUrl = section.string("logo")?.takeIf { it.startsWith("https://") },
         accentColor = (section["colors"] as? JsonObject)?.string("accent")?.let(::parseColor),
+        chartPalette = ((section["colors"] as? JsonObject)?.get("palette") as? JsonArray)
+            ?.mapNotNull { it.stringOrNull()?.let(::parseColor) }
+            ?.take(MAX_PALETTE)
+            .orEmpty(),
         assistantName = section.string("assistant_name"),
         welcome = (section["welcome"] as? JsonObject)
             ?.mapNotNull { (language, text) -> text.stringOrNull()?.let { language to it } }

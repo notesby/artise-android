@@ -18,6 +18,7 @@ import co.artise.android.notes.api.NotesEntryPoint
 import co.artise.android.notes.api.NotesRepository
 import co.artise.android.notes.impl.sync.NotesLiveUpdates
 import co.artise.android.notes.impl.ui.chart.NotesChartNode
+import co.artise.android.notes.impl.ui.charteditor.ChartEditorNode
 import co.artise.android.notes.impl.ui.chats.NotesChatsNode
 import co.artise.android.notes.impl.ui.choices.NotesChoicesNode
 import co.artise.android.notes.impl.ui.dashboard.NotesDashboardNode
@@ -37,6 +38,7 @@ import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.Node
 import com.bumble.appyx.core.plugin.Plugin
 import com.bumble.appyx.navmodel.backstack.BackStack
+import com.bumble.appyx.navmodel.backstack.operation.pop
 import com.bumble.appyx.navmodel.backstack.operation.push
 import com.bumble.appyx.navmodel.backstack.operation.replace
 import dev.zacsweers.metro.Assisted
@@ -102,6 +104,10 @@ class NotesFlowNode(
         @Parcelize
         data class Chart(val roomId: RoomId, val path: String) : NavTarget
 
+        /** The chart editor; [newTitle] set: a new chart, written at [path] on the first Save. */
+        @Parcelize
+        data class ChartEditor(val roomId: RoomId, val path: String, val newTitle: String?) : NavTarget
+
         /** A dashboard's page (or a business's report page) as the server draws it. */
         @Parcelize
         data class Dashboard(val roomId: RoomId, val path: String) : NavTarget
@@ -142,7 +148,8 @@ class NotesFlowNode(
         NotesChangesNode.Callback,
         NoteHistoryNode.Callback,
         NotesChartNode.Callback,
-        NotesDashboardNode.Callback {
+        NotesDashboardNode.Callback,
+        ChartEditorNode.Callback {
         override fun openChat(roomId: RoomId) = backstack.push(NavTarget.Folder(roomId, folder = ""))
 
         override fun openFolder(roomId: RoomId, folder: String) = backstack.push(NavTarget.Folder(roomId, folder))
@@ -165,7 +172,13 @@ class NotesFlowNode(
 
         override fun openDashboard(roomId: RoomId, path: String) = backstack.push(NavTarget.Dashboard(roomId, path))
 
-        override fun editChart(roomId: RoomId, path: String) = openEditor(roomId, path)
+        override fun editChart(roomId: RoomId, path: String) = backstack.push(NavTarget.ChartEditor(roomId, path, newTitle = null))
+
+        override fun newChart(roomId: RoomId, path: String, title: String) = backstack.push(NavTarget.ChartEditor(roomId, path, title))
+
+        override fun onChartSaved(roomId: RoomId, path: String, isNew: Boolean) {
+            if (isNew) backstack.replace(NavTarget.Chart(roomId, path)) else backstack.pop()
+        }
 
         override fun showDrawn(roomId: RoomId, path: String, kind: NoteAttachment.Kind) =
             backstack.replace(NotesEntry.targetFor(roomId, path, kind))
@@ -198,6 +211,10 @@ class NotesFlowNode(
         is NavTarget.Media -> createNode<NotesMediaNode>(buildContext, listOf(NotesMediaNode.Inputs(navTarget.roomId), navigation))
         is NavTarget.Document -> createNode<NotesDocumentNode>(buildContext, listOf(NotesDocumentNode.Inputs(navTarget.roomId, navTarget.path)))
         is NavTarget.Chart -> createNode<NotesChartNode>(buildContext, listOf(NotesChartNode.Inputs(navTarget.roomId, navTarget.path), navigation))
+        is NavTarget.ChartEditor -> createNode<ChartEditorNode>(
+            buildContext,
+            listOf(ChartEditorNode.Inputs(navTarget.roomId, navTarget.path, navTarget.newTitle), navigation),
+        )
         is NavTarget.Dashboard -> createNode<NotesDashboardNode>(
             buildContext,
             listOf(NotesDashboardNode.Inputs(navTarget.roomId, navTarget.path), navigation),

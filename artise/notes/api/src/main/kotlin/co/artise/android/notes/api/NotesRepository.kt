@@ -110,6 +110,15 @@ interface NotesRepository {
      */
     suspend fun chart(roomId: RoomId, path: String, dark: Boolean): Result<NotesChart>
 
+    /** The record types this chat keeps, with their fields, for a chart that reads them. Online only. */
+    suspend fun recordTypes(roomId: RoomId): Result<List<RecordType>>
+
+    /**
+     * An unsaved chart ([content]: the file's text) drawn by the server as a PNG, at most [size] px (up to 512), for a
+     * [dark] or light screen; nothing is written. Fails with [NotesException.BadChart] saying what's wrong.
+     */
+    suspend fun chartPreview(roomId: RoomId, content: String, size: Int, dark: Boolean): Result<ByteArray>
+
     /** A dashboard's whole page as HTML, for a web view (no scripts). Fails with [NotesException.Server] 415 for a note that isn't one. */
     suspend fun dashboard(roomId: RoomId, path: String): Result<String>
 

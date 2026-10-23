@@ -41,6 +41,9 @@ import kotlinx.coroutines.launch
 fun interface NotesFolderNavigator {
     /** A note was just created: open it to write. */
     fun openEditor(path: String)
+
+    /** A new chart named [title] at [path]: the chart editor, which writes it on the first Save. */
+    fun openNewChart(path: String, title: String) {}
 }
 
 /**
@@ -147,6 +150,10 @@ class NotesFolderPresenter(
                     NotesFolderEvent.StartNewNote -> {
                         showNewMenu = false
                         newNote = NewNoteDialog(problem = null)
+                    }
+                    NotesFolderEvent.StartNewChart -> {
+                        showNewMenu = false
+                        newNote = NewNoteDialog(problem = null, kind = NewFileKind.CHART)
                     }
                     NotesFolderEvent.CancelNewNote -> newNote = null
                     is NotesFolderEvent.ShowActions -> actionsFor = event.entry
@@ -283,7 +290,19 @@ class NotesFolderPresenter(
                             onFailure = { dialog = FolderDialog.Problem(it.toFileProblem()) },
                         )
                     }
-                    is NotesFolderEvent.CreateNote -> scope.launch {
+                    is NotesFolderEvent.CreateNote -> if (newNote?.kind == NewFileKind.CHART) {
+                        scope.launch {
+                            val paths = repository.files(roomId).map { it.path }
+                            val path = NoteNames.freeChartPath(event.name, paths)
+                            if (path == null) {
+                                newNote = NewNoteDialog(NoteNameProblem.INVALID, NewFileKind.CHART)
+                            } else {
+                                newNote = null
+                                navigator.openNewChart(path, event.name.trim())
+                            }
+                        }
+                    } else {
+                        scope.launch {
                         val problem = NoteNames.problemWith(folder, event.name, repository.files(roomId).map { it.path })
                         if (problem != null) {
                             newNote = NewNoteDialog(problem)
@@ -298,6 +317,7 @@ class NotesFolderPresenter(
                                 navigator.openEditor(path)
                             }
                             .onFailure { newNote = NewNoteDialog(problem = NoteNameProblem.EXISTS) }
+                        }
                     }
                 }
             },

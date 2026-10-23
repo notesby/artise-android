@@ -34,6 +34,7 @@ import co.artise.android.notes.api.NotesSearchResult
 import co.artise.android.notes.api.NotesText
 import co.artise.android.notes.api.NotesTextPage
 import co.artise.android.notes.api.PendingEdit
+import co.artise.android.notes.api.RecordType
 import co.artise.android.notes.api.SyncReport
 import co.artise.android.notes.api.UploadStatus
 import co.artise.android.notes.impl.analytics.NotesAction
@@ -472,6 +473,11 @@ class NotesSyncEngine(
     override suspend fun chart(roomId: RoomId, path: String, dark: Boolean): Result<NotesChart> = api.chart(roomId, path, dark)
 
     override suspend fun dashboard(roomId: RoomId, path: String): Result<String> = api.dashboard(roomId, path)
+
+    override suspend fun recordTypes(roomId: RoomId): Result<List<RecordType>> = api.records(roomId)
+
+    override suspend fun chartPreview(roomId: RoomId, content: String, size: Int, dark: Boolean): Result<ByteArray> =
+        api.chartPreview(roomId, content, size, dark)
 
     override suspend fun export(roomId: RoomId, path: String, format: ExportFormat, name: String): Result<NotesExport> =
         api.export(roomId, path, format).map { answer ->
