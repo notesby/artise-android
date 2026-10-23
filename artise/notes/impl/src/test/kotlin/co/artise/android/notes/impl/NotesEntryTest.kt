@@ -37,4 +37,14 @@ class NotesEntryTest {
         assertThat(NotesEntry.initialTarget(room, "audio/nota.m4a")).isEqualTo(NotesFlowNode.NavTarget.Folder(room, "audio"))
         assertThat(NotesEntry.initialTarget(room, "nota.m4a")).isEqualTo(NotesFlowNode.NavTarget.Folder(room, ""))
     }
+
+    /** A chart opens drawn; a dashboard (a `.md`) only when the card's kind says so, else as a note. */
+    @Test
+    fun `charts and dashboards open drawn`() {
+        assertThat(NotesEntry.initialTarget(room, "charts/ventas.chart")).isEqualTo(NotesFlowNode.NavTarget.Chart(room, "charts/ventas.chart"))
+        assertThat(NotesEntry.initialTarget(room, "dashboards/Octubre.md", "dashboard"))
+            .isEqualTo(NotesFlowNode.NavTarget.Dashboard(room, "dashboards/Octubre.md"))
+        assertThat(NotesEntry.initialTarget(room, "dashboards/Octubre.md")).isEqualTo(NotesFlowNode.NavTarget.Note(room, "dashboards/Octubre.md"))
+        assertThat(NotesEntry.initialTarget(room, "gastos.tsv")).isEqualTo(NotesFlowNode.NavTarget.Document(room, "gastos.tsv"))
+    }
 }

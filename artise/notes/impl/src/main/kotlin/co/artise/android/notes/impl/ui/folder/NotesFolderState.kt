@@ -8,6 +8,7 @@
 package co.artise.android.notes.impl.ui.folder
 
 import androidx.compose.runtime.Immutable
+import co.artise.android.notes.api.NoteAttachment
 import co.artise.android.notes.api.NotesPreview
 import co.artise.android.notes.impl.ui.chats.NotesSyncStatus
 import co.artise.android.notes.impl.ui.common.NoteNameProblem
@@ -95,8 +96,17 @@ sealed interface NotesFolderEntry {
     /** A subfolder, with how many notes and other files it holds at any depth. */
     data class Folder(override val name: String, override val path: String, val noteCount: Int, val fileCount: Int) : NotesFolderEntry
 
-    /** A note; [hasLocalEdits] marks edits not sent yet; [firstLines] is how it starts, for the row. */
-    data class Note(override val name: String, override val path: String, val hasLocalEdits: Boolean, val firstLines: String = "") : NotesFolderEntry
+    /**
+     * A note; [hasLocalEdits] marks edits not sent yet; [firstLines] is how it starts, for the row. A chart or dashboard
+     * ([kind]) is a text file too: it opens drawn, with its picture in the row.
+     */
+    data class Note(
+        override val name: String,
+        override val path: String,
+        val hasLocalEdits: Boolean,
+        val firstLines: String = "",
+        val kind: NoteAttachment.Kind = NoteAttachment.Kind.NOTE,
+    ) : NotesFolderEntry
 
     /** A photo or other file; [size] in bytes. */
     data class File(override val name: String, override val path: String, val isImage: Boolean, val size: Long) : NotesFolderEntry

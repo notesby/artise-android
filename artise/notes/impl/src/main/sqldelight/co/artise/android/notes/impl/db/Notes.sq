@@ -12,6 +12,7 @@ CREATE TABLE NotesChatEntity (
 
 -- One file as last seen on the server, or as edited locally when an edit is queued.
 -- content is only kept for notes (is_note = 1); raw files are fetched on demand.
+-- kind, title and readonly are what GET tree says the file is (a dashboard is a .md: only the server can tell).
 CREATE TABLE NotesFileEntity (
     room_id TEXT NOT NULL,
     path TEXT NOT NULL,
@@ -20,6 +21,9 @@ CREATE TABLE NotesFileEntity (
     modified INTEGER NOT NULL,
     is_note INTEGER NOT NULL,
     content TEXT,
+    kind TEXT,
+    title TEXT,
+    readonly INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (room_id, path)
 );
 
@@ -107,8 +111,11 @@ selectFile:
 SELECT * FROM NotesFileEntity WHERE room_id = ? AND path = ?;
 
 upsertFile:
-INSERT OR REPLACE INTO NotesFileEntity(room_id, path, version, size, modified, is_note, content)
-VALUES (?, ?, ?, ?, ?, ?, ?);
+INSERT OR REPLACE INTO NotesFileEntity(room_id, path, version, size, modified, is_note, content, kind, title, readonly)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateFileMeta:
+UPDATE NotesFileEntity SET kind = ?, title = ?, readonly = ? WHERE room_id = ? AND path = ?;
 
 updateFileContent:
 UPDATE NotesFileEntity SET content = ?, size = ?, modified = ? WHERE room_id = ? AND path = ?;

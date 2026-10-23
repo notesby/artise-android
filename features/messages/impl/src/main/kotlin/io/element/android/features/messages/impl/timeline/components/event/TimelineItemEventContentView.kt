@@ -72,6 +72,7 @@ import io.element.android.libraries.ui.common.layout.ContentAvoidingLayoutData
 import io.element.android.libraries.voiceplayer.api.VoiceMessageState
 import io.element.android.wysiwyg.compose.EditorStyledText
 import io.element.android.wysiwyg.link.Link
+import kotlinx.collections.immutable.persistentListOf
 
 @Composable
 fun TimelineItemEventContentView(
@@ -201,7 +202,11 @@ fun TimelineItemEventContentView(
                         onStopLiveLocationClick = { eventSink(TimelineEvent.StopLiveLocationShare) },
                     )
                 }
-                is TimelineItemImageContent -> {
+                is TimelineItemImageContent -> if (content.chartCard != null && LocalDocumentCards.current != null) {
+                    // Artise: Ari's picture of a chart shows as the chart's card (drawn now, in this theme); the time goes below.
+                    SideEffect { calculatedOnContentLayoutChange(ContentAvoidingLayoutData.NotOverlapping) }
+                    DocumentCardsView(persistentListOf(content.chartCard))
+                } else {
                     TimelineItemImageView(
                         content = content,
                         hideMediaContent = hideMediaContent,

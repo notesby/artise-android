@@ -138,55 +138,55 @@ fun NoteView(
 @Composable
 private fun NoteBody(state: NoteState, onBacklinkClick: (String) -> Unit, scrollState: ScrollState, onViewportTop: (Float) -> Unit) {
     val uriHandler = LocalUriHandler.current
-        Column(
-            Modifier
-                .fillMaxSize()
-                .onGloballyPositioned { onViewportTop(it.boundsInRoot().top) }
-                .verticalScroll(scrollState)
-        ) {
-            if (state.hasLocalEdits) {
-                Text(
-                    text = stringResource(R.string.screen_notes_unsent),
-                    style = ElementTheme.typography.fontBodySmRegular,
-                    color = ElementTheme.colors.textSecondary,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-            }
-            state.page?.let { PageFields(it) }
-            when {
-                state.content != null -> NoteMarkdownView(
-                    markdown = state.content,
-                    onLinkClick = { link ->
-                        when (link) {
-                            is NoteLink.Note -> state.eventSink(NoteEvent.OpenNoteLink(link.target))
-                            is NoteLink.Web -> uriHandler.openUri(link.url)
-                        }
-                    },
-                    modifier = Modifier.padding(16.dp),
-                    onTaskToggle = { line -> state.eventSink(NoteEvent.ToggleTask(line)) },
-                    embed = { target ->
-                        NoteEmbedView(
-                            target = target,
-                            embed = state.embeds[target],
-                            onOpen = { path -> state.eventSink(NoteEvent.OpenAttachment(path)) },
-                            onRetryUpload = { path -> state.eventSink(NoteEvent.RetryUpload(path)) },
-                            onCancelUpload = { path -> state.eventSink(NoteEvent.CancelUpload(path)) },
-                        )
-                    },
-                )
-                state.isLoading -> Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-                else -> Text(
-                    text = stringResource(R.string.screen_notes_not_downloaded),
-                    style = ElementTheme.typography.fontBodyLgRegular,
-                    color = ElementTheme.colors.textSecondary,
-                    modifier = Modifier.padding(24.dp),
-                )
-            }
-            HorizontalDivider(Modifier.padding(top = 8.dp))
-            Backlinks(state.backlinks, onBacklinkClick)
+    Column(
+        Modifier
+            .fillMaxSize()
+            .onGloballyPositioned { onViewportTop(it.boundsInRoot().top) }
+            .verticalScroll(scrollState)
+    ) {
+        if (state.hasLocalEdits) {
+            Text(
+                text = stringResource(R.string.screen_notes_unsent),
+                style = ElementTheme.typography.fontBodySmRegular,
+                color = ElementTheme.colors.textSecondary,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
         }
+        state.page?.let { PageFields(it) }
+        when {
+            state.content != null -> NoteMarkdownView(
+                markdown = state.content,
+                onLinkClick = { link ->
+                    when (link) {
+                        is NoteLink.Note -> state.eventSink(NoteEvent.OpenNoteLink(link.target))
+                        is NoteLink.Web -> uriHandler.openUri(link.url)
+                    }
+                },
+                modifier = Modifier.padding(16.dp),
+                onTaskToggle = { line -> state.eventSink(NoteEvent.ToggleTask(line)) },
+                embed = { target ->
+                    NoteEmbedView(
+                        target = target,
+                        embed = state.embeds[target],
+                        onOpen = { path -> state.eventSink(NoteEvent.OpenAttachment(path)) },
+                        onRetryUpload = { path -> state.eventSink(NoteEvent.RetryUpload(path)) },
+                        onCancelUpload = { path -> state.eventSink(NoteEvent.CancelUpload(path)) },
+                    )
+                },
+            )
+            state.isLoading -> Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+            else -> Text(
+                text = stringResource(R.string.screen_notes_not_downloaded),
+                style = ElementTheme.typography.fontBodyLgRegular,
+                color = ElementTheme.colors.textSecondary,
+                modifier = Modifier.padding(24.dp),
+            )
+        }
+        HorizontalDivider(Modifier.padding(top = 8.dp))
+        Backlinks(state.backlinks, onBacklinkClick)
+    }
 }
 
 private const val FIND_SCROLL_MARGIN = 160f

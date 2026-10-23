@@ -165,8 +165,8 @@ class MessagesNode(
         /** Artise: this chat's notes. */
         fun navigateToNotes()
 
-        /** Artise: one file of this chat's notes, opened in the notes (a document card was tapped). */
-        fun navigateToNotesFile(path: String)
+        /** Artise: one file of this chat's notes, opened in the notes (a document card was tapped); [kind] as the server said it, if it did. */
+        fun navigateToNotesFile(path: String, kind: String? = null)
         fun navigateToPinnedMessagesList()
         fun navigateToKnockRequestsList()
         fun navigateToDeveloperSettings()
@@ -297,7 +297,9 @@ class MessagesNode(
         var showStickerPicker by remember { mutableStateOf(false) }
         val stickerButtonLabel = stringResource(StickersR.string.screen_stickers_open)
         val stickerButton = remember(stickerButtonLabel) { StickerButton(stickerButtonLabel) { showStickerPicker = true } }
-        val documentCards = remember { DocumentCardsHost(room.roomId, documentCardRenderer, callback::navigateToNotesFile) }
+        val documentCards = remember {
+            DocumentCardsHost(room.roomId, documentCardRenderer) { card -> callback.navigateToNotesFile(card.path, card.serverKind) }
+        }
         CompositionLocalProvider(
             LocalTimelineItemPresenterFactories provides timelineItemPresenterFactories,
             LocalEventContentValidationState provides eventContentValidationCache,

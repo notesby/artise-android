@@ -15,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import co.artise.android.notes.api.LocalFile
+import co.artise.android.notes.api.NoteAttachment
 import co.artise.android.notes.api.NotesException
 import co.artise.android.notes.api.NotesPage
 import co.artise.android.notes.api.NotesRepository
@@ -51,6 +52,9 @@ interface NoteNavigator {
 
     /** The note was deleted: leave its screen. */
     fun onDeleted()
+
+    /** The file is a chart or a dashboard ([kind]): the server's drawing of it instead of its text. */
+    fun onDrawn(kind: NoteAttachment.Kind) {}
 }
 
 /**
@@ -97,6 +101,11 @@ class NotePresenter(
                 file = repository.file(roomId, path)
             }
             isLoading = false
+        }
+        val kind = file?.kind
+        LaunchedEffect(kind) {
+            // Reached by a link or search: a chart or dashboard opens drawn, as from the notes list.
+            if (kind == NoteAttachment.Kind.CHART || kind == NoteAttachment.Kind.DASHBOARD) navigator.onDrawn(kind)
         }
         LaunchedEffect(Unit) {
             // An edit saved in the editor, a choice made, or someone else's change pulled by a sync.

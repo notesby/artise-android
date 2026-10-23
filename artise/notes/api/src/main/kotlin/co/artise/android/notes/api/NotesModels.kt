@@ -27,6 +27,12 @@ data class NotesFile(
     val modified: Long,
     /** Text opened with the note endpoints; anything else is a raw file (photo, PDF...). */
     val isNote: Boolean,
+    /** What the server says the file is (`note`, `chart`, `dashboard`...); `null` from older servers. */
+    val kind: String? = null,
+    /** A note's or dashboard's front matter `title`, a chart's `title`; `null` when there's none. */
+    val title: String? = null,
+    /** A page Ari rewrites each period (a business report): offer Share, never Edit. */
+    val isReadOnly: Boolean = false,
 )
 
 /** A chat's whole file list, identified by its [tree] hash. */
@@ -192,6 +198,37 @@ sealed interface NotesPreview {
 
     /** No preview for this kind of file (Office files, audio...), or none could be made. */
     data object None : NotesPreview
+}
+
+/** A chart as the server reads it ([spec]) and draws it ([svg], for the asked light or dark). */
+data class NotesChart(
+    val path: String,
+    val version: String,
+    val spec: ChartSpec,
+    /** The day a chart that reads records was drawn for ("2026-10-22"); empty for a chart with its own numbers. */
+    val asOf: String,
+    val svg: String,
+)
+
+/** What `GET chart` says a chart is: its title and type, and the rows it shows now. */
+data class ChartSpec(
+    val title: String,
+    val type: String,
+    val columns: List<String>,
+    val rows: List<List<String>>,
+    val series: List<String>,
+    val unit: String,
+    val caption: String,
+    val colors: List<String>,
+    val compare: String,
+)
+
+/** A file the server made to share (a chart's PNG, a PDF), on the phone, under [name]. */
+data class NotesExport(val file: File, val name: String, val mimeType: String)
+
+enum class ExportFormat(val value: String, val mimeType: String) {
+    PNG("png", "image/png"),
+    PDF("pdf", "application/pdf"),
 }
 
 /** A document's text for searching, page by page; [version] changes when the file does. */

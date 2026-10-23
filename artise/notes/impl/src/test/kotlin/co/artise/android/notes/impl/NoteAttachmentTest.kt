@@ -45,7 +45,18 @@ class NoteAttachmentTest {
         assertThat(NoteAttachment.kindOf("ventas.XLSX")).isEqualTo(NoteAttachment.Kind.OFFICE)
         assertThat(NoteAttachment.kindOf("junta.pptx")).isEqualTo(NoteAttachment.Kind.OFFICE)
         assertThat(NoteAttachment.kindOf("gastos.csv")).isEqualTo(NoteAttachment.Kind.TABLE)
+        assertThat(NoteAttachment.kindOf("gastos.TSV")).isEqualTo(NoteAttachment.Kind.TABLE)
+        assertThat(NoteAttachment.kindOf("charts/ventas.chart")).isEqualTo(NoteAttachment.Kind.CHART)
         assertThat(NoteAttachment.kindOf("cancion.mp3")).isEqualTo(NoteAttachment.Kind.OTHER)
         assertThat(NoteAttachment.kindOf("sinextension")).isEqualTo(NoteAttachment.Kind.OTHER)
+    }
+
+    /** The server's kind wins over the name: that's the only way to know a dashboard; unknown kinds fall back to the name. */
+    @Test
+    fun `the server's kind wins over the extension`() {
+        assertThat(NoteAttachment.kindOf("Octubre.md", "dashboard")).isEqualTo(NoteAttachment.Kind.DASHBOARD)
+        assertThat(NoteAttachment.kindOf("Octubre.md", null)).isEqualTo(NoteAttachment.Kind.NOTE)
+        assertThat(NoteAttachment.kindOf("Octubre.md", "hologram")).isEqualTo(NoteAttachment.Kind.NOTE)
+        assertThat(NoteAttachment.fromServer("table")).isEqualTo(NoteAttachment.Kind.TABLE)
     }
 }

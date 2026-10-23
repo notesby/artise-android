@@ -131,9 +131,12 @@ class NotesFolderPresenter(
             eventSink = { event ->
                 when (event) {
                     NotesFolderEvent.Refresh -> refreshRequests++
-                    is NotesFolderEvent.LoadPreview -> if (previewsRequested.add(event.path)) {
+                    is NotesFolderEvent.LoadPreview -> if (previewsRequested.add(event.path + "|" + event.dark)) {
                         scope.launch {
-                            val preview = repository.preview(roomId, event.path, PREVIEW_SIZE)
+                            // A chart's kept picture at once, then asked again: it may read records that changed.
+                            val kept = repository.cachedPreview(roomId, event.path, PREVIEW_SIZE, event.dark)
+                            if (kept != null) previews = (previews + (event.path to kept)).toImmutableMap()
+                            val preview = repository.preview(roomId, event.path, PREVIEW_SIZE, event.dark)
                             previews = (previews + (event.path to preview)).toImmutableMap()
                         }
                     }

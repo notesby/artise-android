@@ -30,8 +30,14 @@ object NoteAttachment {
         PDF,
         IMAGE,
 
-        /** A CSV file: read in the app as text. */
+        /** A CSV or TSV file: read in the app as text. */
         TABLE,
+
+        /** A `.chart` file (YAML) the server draws: the chart screen. */
+        CHART,
+
+        /** A note whose front matter says `type: dashboard` (or `type: report`): the server draws the page. Only the server, a card or the tree can say so. */
+        DASHBOARD,
 
         /** Word, Excel or PowerPoint: read in the app as the server's PDF conversion. */
         OFFICE,
@@ -53,12 +59,33 @@ object NoteAttachment {
         return value.takeIf { it.isString }?.content?.trim()?.takeIf { it.isNotEmpty() }
     }
 
+    /**
+     * What the file is by its name alone. A dashboard is a `.md` and reads as [Kind.NOTE] here: where the server said the
+     * kind (a card, the tree), use [kindOf] with it.
+     */
     fun kindOf(path: String): Kind = when (path.substringAfterLast('.', "").lowercase()) {
         in noteExtensions -> Kind.NOTE
         "pdf" -> Kind.PDF
         in imageExtensions -> Kind.IMAGE
-        "csv" -> Kind.TABLE
+        "csv", "tsv" -> Kind.TABLE
+        "chart" -> Kind.CHART
         in officeExtensions -> Kind.OFFICE
         else -> Kind.OTHER
+    }
+
+    /** The kind the server said (`chart`, `dashboard`...), else what the name says. */
+    fun kindOf(path: String, serverKind: String?): Kind = fromServer(serverKind) ?: kindOf(path)
+
+    /** The server's name for a kind, as in `co.artise.documents` and `GET tree`; `null` when missing or unknown. */
+    fun fromServer(kind: String?): Kind? = when (kind) {
+        "note" -> Kind.NOTE
+        "table" -> Kind.TABLE
+        "chart" -> Kind.CHART
+        "dashboard" -> Kind.DASHBOARD
+        "pdf" -> Kind.PDF
+        "image" -> Kind.IMAGE
+        "office" -> Kind.OFFICE
+        "other" -> Kind.OTHER
+        else -> null
     }
 }

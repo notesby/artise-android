@@ -1,0 +1,6 @@
+-- Version 4 → 5: what GET tree says each file is (kind, title, readonly), for charts and dashboards.
+ALTER TABLE NotesFileEntity ADD COLUMN kind TEXT;
+ALTER TABLE NotesFileEntity ADD COLUMN title TEXT;
+ALTER TABLE NotesFileEntity ADD COLUMN readonly INTEGER NOT NULL DEFAULT 0;
+-- The next sync pulls the whole tree again (not a 304), so files already on the phone get their kind too.
+UPDATE NotesChatEntity SET etag = NULL;

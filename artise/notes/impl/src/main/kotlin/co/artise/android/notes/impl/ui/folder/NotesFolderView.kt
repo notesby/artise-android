@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.dp
 import co.artise.android.notes.api.NoteAttachment
 import co.artise.android.notes.api.NotesPreview
 import co.artise.android.notes.impl.R
+import co.artise.android.notes.impl.ui.card.iconOf
+import co.artise.android.notes.impl.ui.card.isDrawn
 import co.artise.android.notes.impl.ui.common.NoteNameProblem
 import co.artise.android.notes.impl.ui.common.NotesScaffold
 import co.artise.android.notes.impl.ui.note.photoRequest
@@ -67,6 +69,8 @@ fun NotesFolderView(
     onMapClick: () -> Unit,
     onMediaClick: () -> Unit,
     onDocumentClick: (String) -> Unit,
+    onChartClick: (String) -> Unit,
+    onDashboardClick: (String) -> Unit,
     onHistoryClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -171,7 +175,18 @@ fun NotesFolderView(
                     ) {
                         Text(entry.name)
                     }
-                    is NotesFolderEntry.Note -> ListItem(
+                    is NotesFolderEntry.Note -> if (entry.kind.isDrawn) {
+                        DrawnRow(
+                            entry = entry,
+                            preview = state.previews[entry.path],
+                            isBusy = isBusy,
+                            onLoadPreview = { dark -> state.eventSink(NotesFolderEvent.LoadPreview(entry.path, dark)) },
+                            modifier = Modifier.clicks {
+                                if (entry.kind == NoteAttachment.Kind.CHART) onChartClick(entry.path) else onDashboardClick(entry.path)
+                            },
+                        )
+                    } else {
+                        ListItem(
                         modifier = Modifier.clicks { onNoteClick(entry.path) },
                         leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Document())),
                         trailingContent = if (isBusy) ListItemContent.Custom { CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) } else null,
@@ -186,6 +201,7 @@ fun NotesFolderView(
                         },
                     ) {
                         Text(entry.name)
+                    }
                     }
                     is NotesFolderEntry.File -> {
                         val preview = state.previews[entry.path]
@@ -273,17 +289,54 @@ internal fun NotesFolderViewPreview(@PreviewParameter(NotesFolderStatePreviewPar
         onMapClick = {},
         onMediaClick = {},
         onDocumentClick = {},
+        onChartClick = {},
+        onDashboardClick = {},
         onHistoryClick = {},
     )
 }
 
+/** A chart or dashboard: its picture (drawn for this screen's light or dark), its title, and its kind. */
+@Composable
+private fun DrawnRow(
+    entry: NotesFolderEntry.Note,
+    preview: NotesPreview?,
+    isBusy: Boolean,
+    onLoadPreview: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val dark = !ElementTheme.isLightTheme
+    val loadPreview by rememberUpdatedState(onLoadPreview)
+    LaunchedEffect(entry, dark) { loadPreview(dark) }
+    ListItem(
+        modifier = modifier,
+        leadingContent = if (preview is NotesPreview.Image) {
+            ListItemContent.Custom { FilePreviewThumbnail(preview, entry.name, isChart = entry.kind == NoteAttachment.Kind.CHART) }
+        } else {
+            ListItemContent.Icon(IconSource.Vector(iconOf(entry.kind)))
+        },
+        trailingContent = if (isBusy) ListItemContent.Custom { CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) } else null,
+        supportingContent = {
+            Text(
+                if (entry.hasLocalEdits) {
+                    stringResource(R.string.screen_notes_unsent)
+                } else {
+                    stringResource(if (entry.kind == NoteAttachment.Kind.CHART) R.string.screen_notes_kind_chart else R.string.screen_notes_kind_dashboard)
+                },
+            )
+        },
+    ) {
+        Text(entry.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
 /** A document's first page or a photo, small, where the row's icon would be. */
 @Composable
-private fun FilePreviewThumbnail(preview: NotesPreview.Image, name: String) {
+private fun FilePreviewThumbnail(preview: NotesPreview.Image, name: String, isChart: Boolean = false) {
     val shape = RoundedCornerShape(6.dp)
     Box(
         modifier = Modifier
-            .size(width = 44.dp, height = 56.dp)
+            // A chart is wider than tall: shown whole.
+            .size(width = if (isChart) 72.dp else 44.dp, height = if (isChart) 44.dp else 56.dp)
             .clip(shape)
             .background(ElementTheme.colors.bgSubtleSecondary, shape),
         contentAlignment = Alignment.Center,
@@ -291,7 +344,7 @@ private fun FilePreviewThumbnail(preview: NotesPreview.Image, name: String) {
         AsyncImage(
             model = photoRequest(preview.file.path),
             contentDescription = name,
-            contentScale = ContentScale.Crop,
+            contentScale = if (isChart) ContentScale.Fit else ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
         )
     }

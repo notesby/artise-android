@@ -10,10 +10,12 @@ package io.element.android.features.messages.impl.timeline.factories.event
 
 import co.artise.android.linkpreview.api.LinkPreviewReader
 import co.artise.android.notes.api.DocumentCards
+import co.artise.android.notes.api.chartCardOf
 import dev.zacsweers.metro.Inject
 import io.element.android.features.location.api.Location
 import io.element.android.features.messages.impl.timeline.model.event.RtcNotificationState
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemEventContent
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemImageContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemLegacyCallInviteContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemLocationContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemNoticeContent
@@ -84,6 +86,11 @@ class TimelineItemContentFactory(
      * the (decrypted) event's JSON: the latest edit first, as Ari edits its progress message into the reply.
      */
     private fun TimelineItemEventContent.withDocuments(eventTimelineItem: EventTimelineItem): TimelineItemEventContent {
+        if (this is TimelineItemImageContent) {
+            // Ari's picture of a chart it made: the chart's card, which opens the chart as it is now.
+            val card = chartCardOf(eventTimelineItem.timelineItemDebugInfoProvider().originalJson, filename) ?: return this
+            return copy(chartCard = card)
+        }
         if (this !is TimelineItemTextContent && this !is TimelineItemNoticeContent) return this
         val debugInfo = eventTimelineItem.timelineItemDebugInfoProvider()
         val cards = DocumentCards.read(debugInfo.latestEditedJson, debugInfo.originalJson)

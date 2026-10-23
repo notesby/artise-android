@@ -13,7 +13,9 @@ import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import app.cash.turbine.test
 import co.artise.android.notes.api.EditKind
 import co.artise.android.notes.api.EditState
+import co.artise.android.notes.api.ExportFormat
 import co.artise.android.notes.api.MediaInUseException
+import co.artise.android.notes.api.NoteAttachment
 import co.artise.android.notes.api.NotesException
 import co.artise.android.notes.api.NotesPreview
 import co.artise.android.notes.api.UploadStatus
@@ -936,5 +938,103 @@ class NotesSyncEngineTest {
         server.enqueue(key, error(413, "too_big"))
         engine.documentText(room, "big.pdf")
         assertThat(server.requestsTo(key)).hasSize(2)
+    }
+
+    private fun chartTree(hash: String, extra: String = ""): MockResponse = json(
+        body = """{"tree": "$hash", "files": [
+            {"path": "charts/ventas.chart", "version": "c1", "size": 90, "modified": 1, "note": true, "kind": "chart", "title": "Ventas por mes"},
+            {"path": "Informe.md", "version": "i1", "size": 40, "modified": 1, "note": true$extra}]}""".trimIndent(),
+        headers = mapOf("ETag" to "\"$hash\""),
+    )
+
+    private suspend fun NotesSyncEngine.syncCharts(hash: String = "t1", extra: String = "") {
+        server.enqueue(tree, chartTree(hash, extra))
+        server.always(noteKey("charts%2Fventas.chart"), note("charts/ventas.chart", "c1", "title: Ventas por mes"))
+        server.always(noteKey("Informe.md"), note("Informe.md", "i1", "---"))
+        server.enqueue(pagesKey, json(body = """{"pages": []}"""))
+        sync(room).getOrThrow()
+    }
+
+    /**
+     * A chart that reads records changes while its file doesn't: the kept picture is never trusted by version alone.
+     * It's asked again with its ETag each time (a 304 keeps it), and light and dark are kept apart.
+     */
+    @Test
+    fun `chart previews are asked again each time and kept apart by mode`() = runTest {
+        val engine = engine()
+        engine.syncCharts()
+        val light = "GET /chats/$A_ROOM_ENCODED/preview?path=charts%2Fventas.chart&size=256&mode=light"
+        val dark = "GET /chats/$A_ROOM_ENCODED/preview?path=charts%2Fventas.chart&size=256&mode=dark"
+        assertThat(engine.cachedPreview(room, "charts/ventas.chart", 256, dark = false)).isNull()
+        server.enqueue(light, previewPng(byteArrayOf(1), "\"l1\""))
+        engine.preview(room, "charts/ventas.chart", 256, dark = false)
+        // Same file version, asked again: a 304 keeps the picture
+        server.enqueue(light, MockResponse().setResponseCode(304))
+        val kept = engine.preview(room, "charts/ventas.chart", 256, dark = false) as NotesPreview.Image
+        assertThat(kept.file.readBytes()).isEqualTo(byteArrayOf(1))
+        assertThat(server.requestsTo(light).last().getHeader("If-None-Match")).isEqualTo("\"l1\"")
+        // The records changed: a new picture for the same version replaces it
+        server.enqueue(light, previewPng(byteArrayOf(2), "\"l2\""))
+        val changed = engine.preview(room, "charts/ventas.chart", 256, dark = false) as NotesPreview.Image
+        assertThat(changed.file.readBytes()).isEqualTo(byteArrayOf(2))
+        assertThat(server.requestsTo(light)).hasSize(3)
+        // Dark is its own picture, asked without the light one's ETag
+        server.enqueue(dark, previewPng(byteArrayOf(3), "\"d1\""))
+        val darkPicture = engine.preview(room, "charts/ventas.chart", 256, dark = true) as NotesPreview.Image
+        assertThat(darkPicture.file.readBytes()).isEqualTo(byteArrayOf(3))
+        assertThat(server.requestsTo(dark).single().getHeader("If-None-Match")).isNull()
+        assertThat((engine.cachedPreview(room, "charts/ventas.chart", 256, dark = false) as NotesPreview.Image).file.readBytes()).isEqualTo(byteArrayOf(2))
+        // Offline: the kept picture
+        assertThat((engine.preview(room, "charts/ventas.chart", 256, dark = true) as NotesPreview.Image).file.readBytes()).isEqualTo(byteArrayOf(3))
+    }
+
+    /** What the tree says a file is is kept, and updated when only that changed (a note became a dashboard). */
+    @Test
+    fun `tree kinds and titles are kept and updated for unchanged files`() = runTest {
+        val engine = engine()
+        engine.syncCharts()
+        assertThat(engine.file(room, "charts/ventas.chart")?.kind).isEqualTo(NoteAttachment.Kind.CHART)
+        assertThat(engine.file(room, "charts/ventas.chart")?.title).isEqualTo("Ventas por mes")
+        assertThat(engine.file(room, "Informe.md")?.kind).isEqualTo(NoteAttachment.Kind.NOTE)
+        engine.syncCharts(hash = "t2", extra = ", \"kind\": \"dashboard\", \"readonly\": true, \"title\": \"Octubre\"")
+        val informe = engine.file(room, "Informe.md")
+        assertThat(informe?.kind).isEqualTo(NoteAttachment.Kind.DASHBOARD)
+        assertThat(informe?.isReadOnly).isTrue()
+        assertThat(informe?.title).isEqualTo("Octubre")
+        // Not downloaded again: only its description changed
+        assertThat(server.requestsTo(noteKey("Informe.md"))).hasSize(1)
+    }
+
+    /** The export goes to the share sheet under the chart's title; the previous one is gone. */
+    @Test
+    fun `an export is saved under the document's title`() = runTest {
+        val engine = engine()
+        val key = "GET /chats/$A_ROOM_ENCODED/export?path=charts%2Fventas.chart&format=pdf"
+        server.enqueue(key, MockResponse().setResponseCode(200).setHeader("Content-Type", "application/pdf").setBody(Buffer().write(byteArrayOf(5))))
+        val first = engine.export(room, "charts/ventas.chart", ExportFormat.PDF, "Ventas: mayo/junio").getOrThrow()
+        assertThat(first.name).isEqualTo("Ventas mayo junio.pdf")
+        assertThat(first.mimeType).isEqualTo("application/pdf")
+        assertThat(first.file.readBytes()).isEqualTo(byteArrayOf(5))
+        server.enqueue(key, MockResponse().setResponseCode(200).setHeader("Content-Type", "application/pdf").setBody(Buffer().write(byteArrayOf(6))))
+        val second = engine.export(room, "charts/ventas.chart", ExportFormat.PDF, "Otra").getOrThrow()
+        assertThat(first.file.exists()).isFalse()
+        assertThat(second.file.readBytes()).isEqualTo(byteArrayOf(6))
+    }
+
+    @Test
+    fun `export names never hold folders or hidden names`() {
+        assertThat(NotesSyncEngine.exportFileName("Ventas por mes", ExportFormat.PNG, null)).isEqualTo("Ventas por mes.png")
+        assertThat(NotesSyncEngine.exportFileName("../.secreto", ExportFormat.PDF, null)).isEqualTo("secreto.pdf")
+        assertThat(NotesSyncEngine.exportFileName("  ", ExportFormat.PDF, "Octubre.pdf")).isEqualTo("Octubre.pdf")
+        assertThat(NotesSyncEngine.exportFileName("", ExportFormat.PDF, null)).isEqualTo("export.pdf")
+    }
+
+    /** A note made on this phone is a chart or a dashboard before the server says so. */
+    @Test
+    fun `new charts and dashboards know their kind before a sync`() {
+        assertThat(NotesSyncEngine.localKindOf("charts/a.chart", "title: A")).isEqualTo("chart")
+        assertThat(NotesSyncEngine.localKindOf("dashboards/Oct.md", "---\ntype: dashboard\ntitle: Oct\n---\n")).isEqualTo("dashboard")
+        assertThat(NotesSyncEngine.localKindOf("Oct.md", "---\ntitle: Oct\n---\ntype: dashboard\n")).isNull()
+        assertThat(NotesSyncEngine.localKindOf("Oct.md", "# Oct")).isNull()
     }
 }

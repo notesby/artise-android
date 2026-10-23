@@ -22,9 +22,9 @@ data class NotesDocumentState(
     /** The copy on the phone, once downloaded. */
     val file: String?,
     /** What the PDF viewer shows: the file itself for a PDF, the server's conversion for an Office file, once there. */
-    val pdfFile: String? = null,
+    val pdfFile: String?,
     /** A CSV's text, once read. */
-    val tableText: String? = null,
+    val tableText: String?,
     val isLoading: Boolean,
     val problem: DocumentProblem?,
     /** The file to hand to another app, once. */

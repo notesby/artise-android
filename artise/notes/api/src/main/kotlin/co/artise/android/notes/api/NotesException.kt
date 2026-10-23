@@ -47,6 +47,9 @@ sealed class NotesException(message: String, cause: Throwable? = null) : Excepti
     /** No connection, or the request didn't complete. Safe to retry later. */
     class Network(cause: Throwable) : NotesException(cause.message ?: "Network error", cause)
 
+    /** `422 bad_chart`: a chart file that can't be drawn; [message] is the server's sentence saying what's wrong. Nothing was written. */
+    class BadChart(message: String) : NotesException(message)
+
     /** Anything the contract doesn't name, such as a 500. */
     class Server(val status: Int, message: String) : NotesException(message)
 }

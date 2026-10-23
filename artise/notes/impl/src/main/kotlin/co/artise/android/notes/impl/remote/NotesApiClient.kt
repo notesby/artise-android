@@ -10,7 +10,9 @@ package co.artise.android.notes.impl.remote
 import co.artise.android.notes.api.Backlink
 import co.artise.android.notes.api.ChangeAuthor
 import co.artise.android.notes.api.ChangedFile
+import co.artise.android.notes.api.ChartSpec
 import co.artise.android.notes.api.DeletedFolder
+import co.artise.android.notes.api.ExportFormat
 import co.artise.android.notes.api.FileChange
 import co.artise.android.notes.api.MovedFolder
 import co.artise.android.notes.api.MovedNote
@@ -19,6 +21,7 @@ import co.artise.android.notes.api.NoteLinks
 import co.artise.android.notes.api.NoteVersion
 import co.artise.android.notes.api.NotesChange
 import co.artise.android.notes.api.NotesChangesPage
+import co.artise.android.notes.api.NotesChart
 import co.artise.android.notes.api.NotesChat
 import co.artise.android.notes.api.NotesException
 import co.artise.android.notes.api.NotesFile
@@ -38,6 +41,9 @@ import io.element.android.libraries.matrix.api.core.RoomId
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -47,6 +53,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.io.IOException
+import java.net.URLDecoder
 import java.net.URLEncoder
 
 /** The answer to a conditional tree request. */
@@ -88,7 +95,11 @@ class NotesApiClient(
             } else {
                 val dto = json.decodeFromString<TreeDto>(response.bodyString())
                 TreeResponse.Changed(
-                    tree = NotesTree(dto.tree, dto.files.map { NotesFile(it.path, it.version, it.size, it.modified, it.note) }, dto.folders),
+                    tree = NotesTree(
+                        dto.tree,
+                        dto.files.map { NotesFile(it.path, it.version, it.size, it.modified, it.note, it.kind, it.title, it.readonly) },
+                        dto.folders
+                    ),
                     etag = response.header("ETag"),
                 )
             }
@@ -258,11 +269,13 @@ class NotesApiClient(
      * The file's preview: a PNG for a PDF (its first page) or a photo, the first lines for a text file, at most [size] px
      * on the longer edge. With [etag] set, [PreviewResponse.NotModified] when the preview hasn't changed.
      * [PreviewResponse.None] for files the server makes no preview of (`415`), can't read (`422`) or doesn't have (`404`).
+     * [dark] is sent as `mode` for the kinds the server draws in light or dark (charts and dashboards), else `null`.
      */
-    suspend fun preview(roomId: RoomId, path: String, size: Int, etag: String? = null): Result<PreviewResponse> {
+    suspend fun preview(roomId: RoomId, path: String, size: Int, etag: String? = null, dark: Boolean? = null): Result<PreviewResponse> {
         val url = url(roomId, "preview").newBuilder()
             .addQueryParameter("path", path)
             .addQueryParameter("size", size.toString())
+            .apply { if (dark != null) addQueryParameter("mode", modeOf(dark)) }
             .build()
         val request = get(url).newBuilder()
             .apply { if (etag != null) header("If-None-Match", etag) }
@@ -282,7 +295,7 @@ class NotesApiClient(
             }
         }.recoverCatching { error ->
             when {
-                error is NotesException.NotFound -> PreviewResponse.None
+                error is NotesException.NotFound || error is NotesException.BadChart -> PreviewResponse.None
                 error is NotesException.Server && error.status in NO_PREVIEW_STATUSES -> PreviewResponse.None
                 else -> throw error
             }
@@ -302,6 +315,63 @@ class NotesApiClient(
     suspend fun pdf(roomId: RoomId, path: String): Result<ByteArray> {
         val url = url(roomId, "pdf").newBuilder().addQueryParameter("path", path).build()
         return send(get(url)) { it.body.bytes() }
+    }
+
+    /**
+     * A chart as data and as an SVG drawn for a [dark] or light screen; `415 no_chart`, `422 bad_chart`
+     * ([NotesException.BadChart]), `503` and `404` as failures.
+     */
+    suspend fun chart(roomId: RoomId, path: String, dark: Boolean): Result<NotesChart> {
+        val url = url(roomId, "chart").newBuilder()
+            .addQueryParameter("path", path)
+            .addQueryParameter("mode", modeOf(dark))
+            .build()
+        return call(get(url)) { body ->
+            val dto = json.decodeFromString<ChartDto>(body)
+            val spec = dto.spec
+            NotesChart(
+                path = dto.path,
+                version = dto.version,
+                spec = ChartSpec(
+                    title = spec.title,
+                    type = spec.type,
+                    columns = spec.columns,
+                    rows = spec.rows.map { row -> row.map(::cellText) },
+                    series = spec.series,
+                    unit = spec.unit.orEmpty(),
+                    caption = spec.caption.orEmpty(),
+                    colors = spec.colors,
+                    compare = spec.compare.orEmpty(),
+                ),
+                asOf = dto.asOf.orEmpty(),
+                svg = dto.svg,
+            )
+        }
+    }
+
+    /** A dashboard's page as HTML; `415 no_dashboard` for a note that isn't one. */
+    suspend fun dashboard(roomId: RoomId, path: String): Result<String> {
+        val url = url(roomId, "dashboard").newBuilder().addQueryParameter("path", path).build()
+        return call(get(url)) { it }
+    }
+
+    /** The file made now to share, with the name the server gives it (`Content-Disposition`) when it gives one. */
+    suspend fun export(roomId: RoomId, path: String, format: ExportFormat): Result<ExportResponse> {
+        val url = url(roomId, "export").newBuilder()
+            .addQueryParameter("path", path)
+            .addQueryParameter("format", format.value)
+            .build()
+        return send(get(url)) { response ->
+            ExportResponse(response.body.bytes(), fileNameOf(response.header("Content-Disposition")))
+        }
+    }
+
+    private fun modeOf(dark: Boolean) = if (dark) "dark" else "light"
+
+    // A number stays as JSON wrote it ("12000", "15.5"), text as it is, null as empty.
+    private fun cellText(cell: JsonElement): String = when (cell) {
+        is JsonPrimitive -> if (cell is JsonNull) "" else cell.content
+        else -> cell.toString()
     }
 
     private fun request(url: HttpUrl) = Request.Builder().url(url)
@@ -365,6 +435,7 @@ class NotesApiClient(
             "not_a_note" -> NotesException.NotANote(message)
             "in_use" -> NotesException.InUse(message, dto.usedBy)
             "not_empty" -> NotesException.NotEmpty(message, dto.files, dto.folders)
+            "bad_chart" -> NotesException.BadChart(message)
             else -> if (response.code == HTTP_UNAUTHORIZED) NotesException.Unauthorized(message) else NotesException.Server(response.code, message)
         }
     }
@@ -380,6 +451,22 @@ class NotesApiClient(
         const val HTTP_UNAUTHORIZED = 401
         const val HTTP_NOT_MODIFIED = 304
     }
+}
+
+/** An export's bytes and the file name the server gave it, if any. */
+@Suppress("ArrayInDataClass")
+data class ExportResponse(val bytes: ByteArray, val fileName: String?)
+
+/** `attachment; filename="Ventas.pdf"` or `filename*=UTF-8''Ventas%20por%20mes.pdf` → the name, without folders. */
+internal fun fileNameOf(contentDisposition: String?): String? {
+    if (contentDisposition.isNullOrBlank()) return null
+    val parts = contentDisposition.split(';').map { it.trim() }
+    val encoded = parts.firstOrNull { it.startsWith("filename*=", ignoreCase = true) }?.substringAfter('=')?.let { value ->
+        val raw = value.substringAfter("''", value).trim('"')
+        tryOrNull { URLDecoder.decode(raw.replace("+", "%2B"), Charsets.UTF_8.name()) }
+    }
+    val plain = parts.firstOrNull { it.startsWith("filename=", ignoreCase = true) }?.substringAfter('=')?.trim()?.trim('"')
+    return (encoded ?: plain)?.substringAfterLast('/')?.substringAfterLast('\\')?.trim()?.takeIf { it.isNotEmpty() && it != "." && it != ".." }
 }
 
 /** The server's answer to `/preview`. */

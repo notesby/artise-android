@@ -8,6 +8,7 @@
 
 package io.element.android.features.messages.impl.timeline.model.event
 
+import co.artise.android.notes.api.DocumentCard
 import io.element.android.libraries.core.mimetype.MimeTypes.isMimeTypeAnimatedImage
 import io.element.android.libraries.matrix.api.media.MediaSource
 import io.element.android.libraries.matrix.ui.media.MAX_THUMBNAIL_HEIGHT
@@ -31,7 +32,9 @@ data class TimelineItemImageContent(
     val height: Int?,
     val thumbnailWidth: Int?,
     val thumbnailHeight: Int?,
-    val aspectRatio: Float?
+    val aspectRatio: Float?,
+    /** Artise: Ari's picture of a chart in the notes (`co.artise.note` = a `.chart`), shown as the chart's card. */
+    val chartCard: DocumentCard? = null,
 ) : TimelineItemEventContentWithAttachment {
     override val type: String = "TimelineItemImageContent"
 

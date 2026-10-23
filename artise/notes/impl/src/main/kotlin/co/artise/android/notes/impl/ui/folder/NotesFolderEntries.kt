@@ -8,6 +8,7 @@
 package co.artise.android.notes.impl.ui.folder
 
 import co.artise.android.notes.api.LocalFile
+import co.artise.android.notes.api.NoteAttachment
 import co.artise.android.notes.impl.ui.note.NoteEmbeds
 
 /**
@@ -33,7 +34,15 @@ internal object NotesFolderEntries {
         val here = inFolder.filter { !it.path.removePrefix(prefix).contains('/') }
         val notes = here
             .filter { it.isNote }
-            .map { NotesFolderEntry.Note(noteName(it.path), it.path, it.hasLocalEdits, firstLines(it.content)) }
+            .map { file ->
+                val kind = file.kind
+                if (kind == NoteAttachment.Kind.CHART || kind == NoteAttachment.Kind.DASHBOARD) {
+                    // Listed by the title the server read (its picture shows in the row), not by its YAML or front matter.
+                    NotesFolderEntry.Note(file.title?.takeIf { it.isNotBlank() } ?: noteName(file.path), file.path, file.hasLocalEdits, kind = kind)
+                } else {
+                    NotesFolderEntry.Note(noteName(file.path), file.path, file.hasLocalEdits, firstLines(file.content))
+                }
+            }
             .sortedBy { it.name.lowercase() }
         val others = here
             .filterNot { it.isNote }
@@ -73,6 +82,6 @@ internal object NotesFolderEntries {
         .distinct()
         .sortedBy { it.lowercase() }
 
-    /** "Recetas/Mole.md" → "Mole"; other text files keep their extension so "lista.csv" stays recognisable. */
-    fun noteName(path: String): String = path.substringAfterLast('/').removeSuffix(".md")
+    /** "Recetas/Mole.md" → "Mole", "charts/ventas.chart" → "ventas"; other text files keep their extension so "lista.csv" stays recognisable. */
+    fun noteName(path: String): String = path.substringAfterLast('/').removeSuffix(".md").removeSuffix(".chart")
 }
