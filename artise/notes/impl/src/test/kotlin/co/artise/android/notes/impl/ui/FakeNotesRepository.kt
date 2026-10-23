@@ -14,6 +14,7 @@ import co.artise.android.notes.api.MediaFile
 import co.artise.android.notes.api.MovedFolder
 import co.artise.android.notes.api.MovedNote
 import co.artise.android.notes.api.Note
+import co.artise.android.notes.api.NoteAttachment
 import co.artise.android.notes.api.NoteLinks
 import co.artise.android.notes.api.NoteVersion
 import co.artise.android.notes.api.NotesChangesPage
@@ -190,7 +191,7 @@ class FakeNotesRepository(
 
     val previewModes = mutableListOf<Boolean>()
 
-    override suspend fun preview(roomId: RoomId, path: String, size: Int, dark: Boolean): NotesPreview {
+    override suspend fun preview(roomId: RoomId, path: String, size: Int, dark: Boolean, kind: NoteAttachment.Kind?): NotesPreview {
         previewRequests += path to size
         previewModes += dark
         return previewResult(path)
@@ -198,7 +199,8 @@ class FakeNotesRepository(
 
     var cachedPreviewResult: (String) -> NotesPreview? = { null }
 
-    override suspend fun cachedPreview(roomId: RoomId, path: String, size: Int, dark: Boolean): NotesPreview? = cachedPreviewResult(path)
+    override suspend fun cachedPreview(roomId: RoomId, path: String, size: Int, dark: Boolean, kind: NoteAttachment.Kind?): NotesPreview? =
+        cachedPreviewResult(path)
 
     val chartRequests = mutableListOf<Pair<String, Boolean>>()
     var chartResult: (String) -> Result<NotesChart> = { Result.failure(NotesException.Server(415, "no_chart")) }

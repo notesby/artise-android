@@ -75,8 +75,8 @@ sealed interface NoteEditorEvent {
 
     data object DismissSaveChangesDialog : NoteEditorEvent
 
-    /** A dashboard: between the layout (charts drawn) and the Markdown text. */
-    data object ToggleDashboardLayout : NoteEditorEvent
+    /** A dashboard: the layout (charts drawn), or the Markdown text. */
+    data class ShowDashboardLayout(val show: Boolean) : NoteEditorEvent
 
     /** The text block starting at [line] was tapped in the layout: the text, with the cursor there. */
     data class EditDashboardText(val line: Int) : NoteEditorEvent
@@ -87,8 +87,8 @@ sealed interface NoteEditorEvent {
     /** + Chart: `![[path]]` on a line of its own at the end. */
     data class InsertChart(val path: String) : NoteEditorEvent
 
-    /** Moves the chart on [line] one place within its columns block: [delta] -1 or +1. */
-    data class MoveDashboardChart(val line: Int, val delta: Int) : NoteEditorEvent
+    /** Drags block [from] to just before block [to] (or after the last, when [to] is the number of blocks). */
+    data class MoveDashboardBlock(val from: Int, val to: Int) : NoteEditorEvent
 
     /** Writes [theme] into the front matter (or takes it out when it's empty). */
     data class SetDashboardTheme(val theme: DashboardTheme) : NoteEditorEvent

@@ -7,14 +7,13 @@
 
 package co.artise.android.notes.impl.ui.dashboard
 
-import android.content.ActivityNotFoundException
-import android.content.Intent
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
@@ -29,6 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import co.artise.android.notes.api.ExportFormat
 import co.artise.android.notes.impl.R
 import co.artise.android.notes.impl.share.ShareAction
@@ -46,7 +46,6 @@ import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.ui.strings.CommonStrings
 import kotlinx.collections.immutable.persistentListOf
-import timber.log.Timber
 
 private val dashboardFormats = persistentListOf(ExportFormat.PDF)
 
@@ -70,9 +69,9 @@ fun NotesDashboardView(
                 title = { Text(state.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = { BackButton(onClick = onBackClick) },
                 actions = {
-                    if (state.canEdit) {
+                    if (!state.isReadOnly) {
                         IconButton(onClick = onEditClick) {
-                            Icon(imageVector = CompoundIcons.Edit(), contentDescription = stringResource(R.string.screen_notes_chart_edit))
+                            Icon(imageVector = CompoundIcons.Edit(), contentDescription = stringResource(R.string.screen_notes_edit))
                         }
                     }
                     ShareAction(state = state.share, formats = dashboardFormats, title = state.title)
@@ -80,26 +79,41 @@ fun NotesDashboardView(
             )
         },
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-            val html = state.html
-            when {
-                html != null -> DashboardWebView(html, modifier = Modifier.fillMaxSize())
-                state.isLoading -> CircularProgressIndicator()
-                state.problem == DashboardProblem.LOAD_FAILED -> Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(
-                        text = stringResource(R.string.screen_notes_dashboard_load_failed),
-                        style = ElementTheme.typography.fontBodyMdRegular,
-                        color = ElementTheme.colors.textSecondary,
-                        textAlign = TextAlign.Center,
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            if (state.isReadOnly) {
+                Text(
+                    text = stringResource(R.string.screen_notes_readonly),
+                    style = ElementTheme.typography.fontBodySmRegular,
+                    color = ElementTheme.colors.textSecondary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
+            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                val html = state.html
+                when {
+                    html != null -> DashboardWebView(
+                        html = html,
+                        isRefreshing = state.isRefreshing,
+                        onRefresh = { state.eventSink(NotesDashboardEvent.Refresh) },
+                        modifier = Modifier.fillMaxSize(),
                     )
-                    OutlinedButton(
-                        text = stringResource(CommonStrings.action_retry),
-                        onClick = { state.eventSink(NotesDashboardEvent.Retry) },
-                        modifier = Modifier.padding(top = 16.dp),
-                    )
+                    state.isLoading -> CircularProgressIndicator()
+                    state.problem == DashboardProblem.LOAD_FAILED -> Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.screen_notes_dashboard_failed),
+                            style = ElementTheme.typography.fontBodyMdRegular,
+                            color = ElementTheme.colors.textSecondary,
+                            textAlign = TextAlign.Center,
+                        )
+                        OutlinedButton(
+                            text = stringResource(CommonStrings.action_retry),
+                            onClick = { state.eventSink(NotesDashboardEvent.Refresh) },
+                            modifier = Modifier.padding(top = 16.dp),
+                        )
+                    }
                 }
             }
         }
@@ -107,16 +121,17 @@ fun NotesDashboardView(
 }
 
 /**
- * The server's page in a web view that runs no scripts and opens nothing inside the app: links (rare: wiki links are
- * plain text there) go to the browser. The page's own content policy is put back in, since a page loaded from text
- * loses the server's header: nothing but its inline styles and pictures loads.
+ * The server's page in a web view that runs no scripts and goes nowhere: every navigation but the first load is
+ * cancelled (wiki links are plain text there). The page's own content policy is put back in, since a page loaded from
+ * text loses the server's header: nothing but its inline styles and pictures loads. Pulling down refreshes it.
  */
 @Composable
-private fun DashboardWebView(html: String, modifier: Modifier = Modifier) {
+private fun DashboardWebView(html: String, isRefreshing: Boolean, onRefresh: () -> Unit, modifier: Modifier = Modifier) {
+    val refresh by rememberUpdatedState(onRefresh)
     AndroidView(
         modifier = modifier,
         factory = { context ->
-            WebView(context).apply {
+            val webView = WebView(context).apply {
                 settings.javaScriptEnabled = false
                 settings.allowFileAccess = false
                 settings.allowContentAccess = false
@@ -124,21 +139,17 @@ private fun DashboardWebView(html: String, modifier: Modifier = Modifier) {
                 settings.setGeolocationEnabled(false)
                 setBackgroundColor(android.graphics.Color.TRANSPARENT)
                 webViewClient = object : WebViewClient() {
-                    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
-                        val url = request.url
-                        if (url.scheme == "https" || url.scheme == "http") {
-                            try {
-                                view.context.startActivity(Intent(Intent.ACTION_VIEW, url).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                            } catch (e: ActivityNotFoundException) {
-                                Timber.w(e, "No browser for a dashboard link")
-                            }
-                        }
-                        return true
-                    }
+                    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = true
                 }
             }
+            SwipeRefreshLayout(context).apply {
+                addView(webView)
+                setOnRefreshListener { refresh() }
+            }
         },
-        update = { view ->
+        update = { layout ->
+            layout.isRefreshing = isRefreshing
+            val view = layout.getChildAt(0) as WebView
             if (view.tag != html) {
                 view.tag = html
                 view.loadDataWithBaseURL(null, DashboardHtml.withPolicy(html), "text/html", "utf-8", null)

@@ -411,7 +411,7 @@ class NoteEditorPresenter(
                         navigator.onDone()
                     }
                     NoteEditorEvent.DismissSaveChangesDialog -> showSaveChangesDialog = false
-                    NoteEditorEvent.ToggleDashboardLayout -> showDashboardLayout = !showDashboardLayout
+                    is NoteEditorEvent.ShowDashboardLayout -> showDashboardLayout = event.show
                     is NoteEditorEvent.EditDashboardText -> {
                         val lines = value.text.lines()
                         val offset = lines.take(event.line.coerceIn(0, lines.size)).sumOf { it.length + 1 }.coerceAtMost(value.text.length)
@@ -420,15 +420,15 @@ class NoteEditorPresenter(
                     }
                     is NoteEditorEvent.RemoveDashboardLine -> changeText(DashboardText.removeLine(value.text, event.line))
                     is NoteEditorEvent.InsertChart -> changeText(DashboardText.insertChart(value.text, event.path))
-                    is NoteEditorEvent.MoveDashboardChart -> changeText(DashboardText.moveInColumns(value.text, event.line, event.delta))
+                    is NoteEditorEvent.MoveDashboardBlock -> changeText(DashboardText.moveBlock(value.text, event.from, event.to, allPaths))
                     is NoteEditorEvent.SetDashboardTheme -> changeText(DashboardText.withTheme(value.text, event.theme))
                     is NoteEditorEvent.OpenChart -> navigator.openChart(event.path)
                     is NoteEditorEvent.LoadChartPreview -> if (previewsAsked.add(event.path + "|" + event.dark)) {
                         scope.launch {
-                            repository.cachedPreview(roomId, event.path, CHART_PREVIEW_SIZE, event.dark)?.let {
+                            repository.cachedPreview(roomId, event.path, CHART_PREVIEW_SIZE, event.dark, NoteAttachment.Kind.CHART)?.let {
                                 chartPreviews = (chartPreviews + (event.path to it)).toImmutableMap()
                             }
-                            val fresh = repository.preview(roomId, event.path, CHART_PREVIEW_SIZE, event.dark)
+                            val fresh = repository.preview(roomId, event.path, CHART_PREVIEW_SIZE, event.dark, NoteAttachment.Kind.CHART)
                             chartPreviews = (chartPreviews + (event.path to fresh)).toImmutableMap()
                         }
                     }
@@ -466,8 +466,8 @@ class NoteEditorPresenter(
     }
 
     companion object {
-        /** A dashboard's chart pictures, as wide as the screen. */
-        const val CHART_PREVIEW_SIZE = 512
+        /** A dashboard's chart pictures in its layout. */
+        const val CHART_PREVIEW_SIZE = 256
 
         /** A pause in typing this long starts a new undo step. */
         const val TYPING_PAUSE_MILLIS = 1_000L

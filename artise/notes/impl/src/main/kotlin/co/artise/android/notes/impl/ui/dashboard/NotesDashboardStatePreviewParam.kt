@@ -15,20 +15,21 @@ open class NotesDashboardStatePreviewParam : PreviewParameterProvider<NotesDashb
         get() = sequenceOf(
             aNotesDashboardState(),
             aNotesDashboardState(isLoading = false, problem = DashboardProblem.LOAD_FAILED),
-            aNotesDashboardState(isLoading = false, canEdit = false),
+            aNotesDashboardState(isLoading = false, isReadOnly = true),
         )
 }
 
 internal fun aNotesDashboardState(
     isLoading: Boolean = true,
     problem: DashboardProblem? = null,
-    canEdit: Boolean = true,
+    isReadOnly: Boolean = false,
 ) = NotesDashboardState(
     title = "Octubre 2026",
     html = null,
     isLoading = isLoading,
+    isRefreshing = false,
     problem = problem,
-    canEdit = canEdit,
+    isReadOnly = isReadOnly,
     share = aDocumentShareState(),
     eventSink = {},
 )

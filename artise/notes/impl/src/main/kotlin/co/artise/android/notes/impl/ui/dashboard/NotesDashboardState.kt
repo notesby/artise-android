@@ -17,9 +17,11 @@ data class NotesDashboardState(
     /** The page, once loaded. */
     val html: String?,
     val isLoading: Boolean,
+    /** Pull to refresh: a sync, then the page again. */
+    val isRefreshing: Boolean,
     val problem: DashboardProblem?,
-    /** Not for a report page Ari rewrites each period: only Share. */
-    val canEdit: Boolean,
+    /** A report page Ari rewrites each period: only Share, and a line that says so. */
+    val isReadOnly: Boolean,
     val share: DocumentShareState,
     val eventSink: (NotesDashboardEvent) -> Unit,
 )
@@ -32,5 +34,6 @@ enum class DashboardProblem {
 }
 
 sealed interface NotesDashboardEvent {
-    data object Retry : NotesDashboardEvent
+    /** Pull to refresh, or try again: a sync first, so an edit made on this phone is in the page. */
+    data object Refresh : NotesDashboardEvent
 }

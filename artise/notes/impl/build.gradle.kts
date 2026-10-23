@@ -62,6 +62,8 @@ dependencies {
     implementation("org.commonmark:commonmark-ext-autolink:0.30.0")
     // Reading chart files (YAML 1.2, keeps the keys' order; Apache-2.0). Writing is the app's own, for the server's YAML 1.1.
     implementation("org.snakeyaml:snakeyaml-engine:2.7")
+    // Pull to refresh around the dashboard's web view, which doesn't hand its scrolling to Compose.
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.0.0")
     implementation(libs.androidx.compose.material.icons)
     implementation(libs.coil.compose)
     implementation(libs.telephoto.zoomableimage)

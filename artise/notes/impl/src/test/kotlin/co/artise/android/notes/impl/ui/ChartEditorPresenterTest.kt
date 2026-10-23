@@ -7,11 +7,7 @@
 
 package co.artise.android.notes.impl.ui
 
-import co.artise.android.notes.api.EditKind
-import co.artise.android.notes.api.EditState
 import co.artise.android.notes.api.NotesException
-import co.artise.android.notes.api.PendingEdit
-import co.artise.android.notes.api.SyncReport
 import co.artise.android.notes.impl.chart.ChartCheck
 import co.artise.android.notes.impl.ui.charteditor.ChartEditorEvent
 import co.artise.android.notes.impl.ui.charteditor.ChartEditorPresenter
@@ -30,7 +26,7 @@ class ChartEditorPresenterTest {
     private val room = RoomId("!abc:artise.co")
     private val path = "charts/ventas.chart"
     private val mx = Locale.forLanguageTag("es-MX")
-    private val ventas = "title: Ventas\ntype: bar\n# Ari's note\ndata:\n  columns: [Mes, Ventas]\n  rows:\n    - [2026-05, 12000]\nlegacy: kept\n"
+    private val ventas = "title: Ventas\ntype: bar\n# Ari's note\ndata:\n  columns: [Mes, Ventas]\n  rows:\n    - [\"2026-05\", 12000]\n"
 
     private fun repository(content: String? = ventas) =
         FakeNotesRepository(files = mutableMapOf(room to listOfNotNull(content?.let { aNote(path, it) })))
@@ -40,7 +36,7 @@ class ChartEditorPresenterTest {
 
     private fun ChartEditorState.loaded() = !isLoading
 
-    /** The form round-trips the file: an edit changes only its own line; comments and unknown keys stay. */
+    /** The form round-trips the file: an edit changes only its own line; comments stay. */
     @Test
     fun `saving an edit keeps everything else in the file`() = runTest {
         val repository = repository()
@@ -52,7 +48,7 @@ class ChartEditorPresenterTest {
             consumeItemsUntilPredicate { it.form.title == "Ventas de mayo" }.last().eventSink(ChartEditorEvent.Save)
             consumeItemsUntilPredicate { it.isDone }
             assertThat(repository.savedEdits).containsExactly(path to ventas.replace("title: Ventas\n", "title: Ventas de mayo\n"))
-            assertThat(repository.syncCount).isAtLeast(1)
+            assertThat(repository.backgroundSyncs).containsExactly(room)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -86,7 +82,7 @@ class ChartEditorPresenterTest {
                 consumeItemsUntilPredicate { it.loaded() }.last().eventSink(ChartEditorEvent.SetCell(0, 1, typed))
                 consumeItemsUntilPredicate { it.grid[0][1] == typed }.last().eventSink(ChartEditorEvent.Save)
                 consumeItemsUntilPredicate { it.isDone }
-                assertThat(repository.savedEdits.single().second).contains("- [2026-05, 1234.5]")
+                assertThat(repository.savedEdits.single().second).contains("- [\"2026-05\", 1234.5]")
                 cancelAndIgnoreRemainingEvents()
             }
         }
@@ -134,23 +130,41 @@ class ChartEditorPresenterTest {
         }
     }
 
-    /** The server still refuses the save: its sentence shows, the refused edit is dropped, and the work stays in the form. */
+    /** Saving queues the edit and sends it; the editor closes (a refusal comes back as a refused edit in the choices). */
     @Test
-    fun `a refused save shows the server's sentence and stays open`() = runTest {
+    fun `a save is queued, sent and closes the editor`() = runTest {
         val repository = repository()
-        repository.syncResult = { roomId ->
-            repository.edits[roomId] = listOf(PendingEdit(7, path, EditKind.SAVE, EditState.REJECTED, "x", null, "the chart needs a title"))
-            Result.success(SyncReport(0, 0, 0, 0))
-        }
         presenter(repository).test {
             val state = consumeItemsUntilPredicate { it.loaded() }.last()
             state.eventSink(ChartEditorEvent.SetCaption("Sin IVA"))
             consumeItemsUntilPredicate { it.form.caption == "Sin IVA" }.last().eventSink(ChartEditorEvent.Save)
-            val refused = consumeItemsUntilPredicate { it.serverMessage != null && !it.isSaving }.last()
-            assertThat(refused.serverMessage).isEqualTo("the chart needs a title")
-            assertThat(refused.isDone).isFalse()
-            assertThat(refused.form.caption).isEqualTo("Sin IVA")
-            assertThat(repository.resolved).containsExactly(7L to null)
+            consumeItemsUntilPredicate { it.isDone }
+            assertThat(repository.savedEdits.single().second).endsWith("caption: Sin IVA\n")
+            assertThat(repository.backgroundSyncs).containsExactly(room)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    /** Rows pasted from a spreadsheet replace the table; its first line names the columns. */
+    @Test
+    fun `pasting replaces the table`() = runTest {
+        presenter(repository()).test {
+            consumeItemsUntilPredicate { it.loaded() }.last().eventSink(ChartEditorEvent.Paste("Mes\tCobros\tGastos\nJulio\t10\t4\nAgosto\t12\t5"))
+            val pasted = consumeItemsUntilPredicate { it.form.data.columns.size == 3 }.last()
+            assertThat(pasted.form.data.columns).containsExactly("Mes", "Cobros", "Gastos").inOrder()
+            assertThat(pasted.grid).containsExactly(listOf("Julio", "10", "4"), listOf("Agosto", "12", "5")).inOrder()
+            assertThat(pasted.check).isNull()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    /** No connection: the preview says it needs one. */
+    @Test
+    fun `the preview says when it needs a connection`() = runTest {
+        val repository = repository()
+        repository.chartPreviewResult = { Result.failure(NotesException.Network(java.io.IOException("offline"))) }
+        presenter(repository).test {
+            assertThat(consumeItemsUntilPredicate { it.previewOffline }.last().preview).isNull()
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -180,17 +194,19 @@ class ChartEditorPresenterTest {
     @Test
     fun `new charts get a free name`() {
         assertThat(NoteNames.freeChartPath("Ventas", listOf("Mole.md"))).isEqualTo("charts/Ventas.chart")
-        assertThat(NoteNames.freeChartPath("Ventas", listOf("charts/ventas.chart", "charts/Ventas 2.chart"))).isEqualTo("charts/Ventas 3.chart")
+        assertThat(NoteNames.freeChartPath("Ventas", listOf("charts/ventas.chart", "charts/Ventas (2).chart"))).isEqualTo("charts/Ventas (3).chart")
         assertThat(NoteNames.freeChartPath(" ", emptyList())).isNull()
         assertThat(NoteNames.freeChartPath("a/b", emptyList())).isNull()
         assertThat(NoteNames.freeChartPath(".oculta", emptyList())).isNull()
     }
 
+    /** Colours go in order: picking one for a later series fills those before it from the palette; "Workspace colours" clears all. */
     @Test
     fun `colours are set in order`() {
-        assertThat(ChartEditorPresenter.colorsWith(emptyList(), 0, "#22408A")).containsExactly("#22408A")
-        assertThat(ChartEditorPresenter.colorsWith(listOf("#22408A"), 2, "#EB6834")).containsExactly("#22408A")
-        assertThat(ChartEditorPresenter.colorsWith(listOf("#22408A", "#EB6834"), 0, null)).isEmpty()
-        assertThat(ChartEditorPresenter.colorsWith(listOf("#22408A", "#EB6834"), 1, "#000000")).containsExactly("#22408A", "#000000").inOrder()
+        val palette = listOf("#111111", "#222222")
+        assertThat(ChartEditorPresenter.colorsWith(emptyList(), 0, "#22408A", palette)).containsExactly("#22408A")
+        assertThat(ChartEditorPresenter.colorsWith(emptyList(), 2, "#EB6834", palette)).containsExactly("#111111", "#222222", "#EB6834").inOrder()
+        assertThat(ChartEditorPresenter.colorsWith(listOf("#22408A", "#EB6834"), 0, null, palette)).isEmpty()
+        assertThat(ChartEditorPresenter.colorsWith(listOf("#22408A", "#EB6834"), 1, "#000000", palette)).containsExactly("#22408A", "#000000").inOrder()
     }
 }

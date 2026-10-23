@@ -180,7 +180,7 @@ fun NotesFolderView(
                             entry = entry,
                             preview = state.previews[entry.path],
                             isBusy = isBusy,
-                            onLoadPreview = { dark -> state.eventSink(NotesFolderEvent.LoadPreview(entry.path, dark)) },
+                            onLoadPreview = { dark -> state.eventSink(NotesFolderEvent.LoadPreview(entry.path, dark, entry.kind)) },
                             modifier = Modifier.clicks {
                                 if (entry.kind == NoteAttachment.Kind.CHART) onChartClick(entry.path) else onDashboardClick(entry.path)
                             },
@@ -325,7 +325,7 @@ private fun DrawnRow(
                 if (entry.hasLocalEdits) {
                     stringResource(R.string.screen_notes_unsent)
                 } else {
-                    stringResource(if (entry.kind == NoteAttachment.Kind.CHART) R.string.screen_notes_kind_chart else R.string.screen_notes_kind_dashboard)
+                    entry.path.substringAfterLast('/')
                 },
             )
         },

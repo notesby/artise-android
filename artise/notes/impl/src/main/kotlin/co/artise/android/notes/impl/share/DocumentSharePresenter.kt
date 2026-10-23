@@ -32,8 +32,8 @@ data class DocumentShareState(
     /** Made and waiting to go to the share sheet. */
     val ready: NotesExport?,
     val problem: ShareProblem?,
-    /** `null` until known. */
-    val chat: ChatForLink?,
+    /** The person is in the document's chat, so Ari can be asked for a link there; `false` until known. */
+    val canAskLink: Boolean,
     /** The request was posted in the chat: Ari answers there. */
     val linkAsked: Boolean,
     val eventSink: (DocumentShareEvent) -> Unit,
@@ -52,8 +52,8 @@ sealed interface DocumentShareEvent {
     /** The share sheet was shown with [DocumentShareState.ready]. */
     data object ExportHandled : DocumentShareEvent
 
-    /** Posts [text] (in the app's language) in the document's chat, as the person. */
-    data class AskForLink(val text: String) : DocumentShareEvent
+    /** Posts [text] (in the app's language) in the document's chat, as the person, mentioning Ari. */
+    data class AskForLink(val text: String, val mention: Mention?) : DocumentShareEvent
 
     /** Closes the problem or "link asked" dialog. */
     data object DismissDialog : DocumentShareEvent
@@ -81,10 +81,10 @@ class DocumentSharePresenter(
         var exporting by remember { mutableStateOf<ExportFormat?>(null) }
         var ready by remember { mutableStateOf<NotesExport?>(null) }
         var problem by remember { mutableStateOf<ShareProblem?>(null) }
-        var chat by remember { mutableStateOf<ChatForLink?>(null) }
+        var canAskLink by remember { mutableStateOf(false) }
         var linkAsked by remember { mutableStateOf(false) }
 
-        LaunchedEffect(Unit) { chat = messenger.chatForLink(roomId) }
+        LaunchedEffect(Unit) { canAskLink = messenger.canAsk(roomId) }
 
         fun handle(event: DocumentShareEvent) {
             when (event) {
@@ -100,7 +100,7 @@ class DocumentSharePresenter(
                 }
                 DocumentShareEvent.ExportHandled -> ready = null
                 is DocumentShareEvent.AskForLink -> scope.launch {
-                    messenger.send(roomId, event.text).fold(
+                    messenger.send(roomId, event.text, event.mention).fold(
                         onSuccess = { linkAsked = true },
                         onFailure = { problem = ShareProblem.LINK_FAILED },
                     )
@@ -116,7 +116,7 @@ class DocumentSharePresenter(
             exporting = exporting,
             ready = ready,
             problem = problem,
-            chat = chat,
+            canAskLink = canAskLink,
             linkAsked = linkAsked,
             eventSink = ::handle,
         )

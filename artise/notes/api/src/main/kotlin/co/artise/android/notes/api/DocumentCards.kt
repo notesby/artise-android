@@ -86,13 +86,20 @@ object DocumentCards {
 
 /**
  * Ari posts each new chart's picture as an `m.image` whose `co.artise.note` is the `.chart` file: that message shows
- * as the chart's card. `null` for any other message.
+ * as the chart's card. Its title is the file's name until the card finds the chart's own title in the notes.
+ * `null` for any other message.
  */
-fun chartCardOf(eventJson: String?, fileName: String?): DocumentCard? {
+fun chartCardOf(eventJson: String?): DocumentCard? {
     val path = NoteAttachment.read(eventJson)?.trim('/') ?: return null
     if (NoteAttachment.kindOf(path) != NoteAttachment.Kind.CHART) return null
-    val title = fileName?.substringBeforeLast('.')?.trim()?.takeIf { it.isNotEmpty() } ?: path.substringAfterLast('/').substringBeforeLast('.')
-    return DocumentCard(path = path, version = null, title = title, change = null, isDraft = false, serverKind = "chart")
+    return DocumentCard(
+        path = path,
+        version = null,
+        title = path.substringAfterLast('/').substringBeforeLast('.'),
+        change = null,
+        isDraft = false,
+        serverKind = "chart"
+    )
 }
 
 /** Draws a [DocumentCard]: the document's preview, its name, and whether it's new, changed or a draft. */

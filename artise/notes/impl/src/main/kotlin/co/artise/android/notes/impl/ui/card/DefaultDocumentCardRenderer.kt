@@ -74,12 +74,14 @@ class DefaultDocumentCardRenderer(
         // asked again (a 304 when it's the same). Its card's version is no key for it.
         val isDrawn = card.kind.isDrawn
         val preview by produceState<NotesPreview?>(initialValue = null, roomId, card.path, card.version.takeUnless { isDrawn }, dark) {
-            if (isDrawn) repository.cachedPreview(roomId, card.path, PREVIEW_SIZE, dark)?.let { value = it }
-            value = repository.preview(roomId, card.path, PREVIEW_SIZE, dark)
+            if (isDrawn) repository.cachedPreview(roomId, card.path, PREVIEW_SIZE, dark, card.kind)?.let { value = it }
+            value = repository.preview(roomId, card.path, PREVIEW_SIZE, dark, card.kind)
         }
-        // A chart's picture message only knows the picture's name: the chart's own title once the phone has it.
+        // A chart's or dashboard's card that only knows the file's name (a chart's picture message): the tree's title.
         val title by produceState(card.title, roomId, card.path) {
-            if (card.kind == NoteAttachment.Kind.CHART) repository.file(roomId, card.path)?.title?.takeIf { it.isNotBlank() }?.let { value = it }
+            if (isDrawn && card.title.isFileNameOf(card.path)) {
+                repository.file(roomId, card.path)?.title?.takeIf { it.isNotBlank() }?.let { value = it }
+            }
         }
         DocumentCardView(card = card.copy(title = title), preview = preview, onClick = onClick, modifier = modifier)
     }
@@ -201,6 +203,12 @@ private fun statusText(card: DocumentCard): String? = when (card.change) {
     null -> null
 }
 
+/** "ventas", "ventas.chart" or "Octubre.md" for [path]: a title that is only the file's name. */
+internal fun String.isFileNameOf(path: String): Boolean {
+    val name = path.substringAfterLast('/')
+    return this == name || this == name.substringBeforeLast('.')
+}
+
 /** Charts and dashboards: drawn by the server for a light or dark screen, and changing with the records they read. */
 internal val NoteAttachment.Kind.isDrawn: Boolean get() = this == NoteAttachment.Kind.CHART || this == NoteAttachment.Kind.DASHBOARD
 
@@ -210,7 +218,7 @@ internal fun iconOf(kind: NoteAttachment.Kind): ImageVector = when (kind) {
     NoteAttachment.Kind.IMAGE -> CompoundIcons.Image()
     NoteAttachment.Kind.TABLE -> CompoundIcons.Grid()
     NoteAttachment.Kind.CHART -> CompoundIcons.Chart()
-    NoteAttachment.Kind.DASHBOARD -> CompoundIcons.Extensions()
+    NoteAttachment.Kind.DASHBOARD -> CompoundIcons.Polls()
     NoteAttachment.Kind.PDF,
     NoteAttachment.Kind.OFFICE,
     NoteAttachment.Kind.OTHER -> CompoundIcons.Attachment()

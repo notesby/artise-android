@@ -7,6 +7,8 @@
 
 package co.artise.android.notes.impl.ui.folder
 
+import co.artise.android.notes.api.NoteAttachment
+
 sealed interface NotesFolderEvent {
     data object Refresh : NotesFolderEvent
 
@@ -34,7 +36,7 @@ sealed interface NotesFolderEvent {
     data class OpenFile(val entry: NotesFolderEntry) : NotesFolderEvent
 
     /** A photo or document's row is on screen: fetch what it looks like ([dark]: a chart or dashboard drawn for a dark screen). */
-    data class LoadPreview(val path: String, val dark: Boolean = false) : NotesFolderEvent
+    data class LoadPreview(val path: String, val dark: Boolean = false, val kind: NoteAttachment.Kind? = null) : NotesFolderEvent
 
     data class FileOpenHandled(val opened: Boolean) : NotesFolderEvent
 

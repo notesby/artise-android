@@ -24,12 +24,15 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import co.artise.android.workspace.api.ArtiseWhatsNewCard
+import co.artise.android.workspace.api.rememberArtiseWhatsNew
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.home.impl.R
@@ -226,11 +229,16 @@ private fun RoomsViewList(
     OnVisibleRangeChangeEffect(lazyListState) { visibleRange ->
         eventSink(RoomListEvent.UpdateVisibleRange(visibleRange))
     }
+    // Artise: the release's few changes, once after an update, until dismissed.
+    var showWhatsNew by rememberArtiseWhatsNew()
     LazyColumn(
         state = lazyListState,
         modifier = modifier,
         contentPadding = contentPadding,
     ) {
+        if (showWhatsNew) {
+            item(key = "artise_whats_new") { ArtiseWhatsNewCard(onDismiss = { showWhatsNew = false }) }
+        }
         when (state.securityBannerState) {
             SecurityBannerState.SetUpRecovery -> {
                 item {

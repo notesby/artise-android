@@ -10,7 +10,6 @@ package co.artise.android.notes.impl.ui.chart
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import co.artise.android.notes.api.ChartSpec
 import co.artise.android.notes.api.NotesChart
-import co.artise.android.notes.impl.share.ChatForLink
 import co.artise.android.notes.impl.share.DocumentShareState
 
 open class NotesChartStatePreviewParam : PreviewParameterProvider<NotesChartState> {
@@ -18,8 +17,8 @@ open class NotesChartStatePreviewParam : PreviewParameterProvider<NotesChartStat
         get() = sequenceOf(
             aNotesChartState(),
             aNotesChartState(isLoading = false, chart = aNotesChart()),
-            aNotesChartState(isLoading = false, problem = ChartProblem.LoadFailed),
-            aNotesChartState(isLoading = false, problem = ChartProblem.BadChart("row 2, Ventas: 'mucho' isn't a number"), canEdit = false),
+            aNotesChartState(isLoading = false, failed = true),
+            aNotesChartState(isLoading = false, chart = aNotesChart(), canEdit = false),
         )
 }
 
@@ -46,7 +45,7 @@ internal fun aDocumentShareState() = DocumentShareState(
     exporting = null,
     ready = null,
     problem = null,
-    chat = ChatForLink(canAsk = true, othersSee = true),
+    canAskLink = true,
     linkAsked = false,
     eventSink = {},
 )
@@ -54,14 +53,15 @@ internal fun aDocumentShareState() = DocumentShareState(
 internal fun aNotesChartState(
     chart: NotesChart? = null,
     isLoading: Boolean = true,
-    problem: ChartProblem? = null,
+    failed: Boolean = false,
     canEdit: Boolean = true,
 ) = NotesChartState(
     title = chart?.spec?.title ?: "ventas",
     chart = chart,
+    picture = null,
     isLoading = isLoading,
     isRefreshing = false,
-    problem = problem,
+    failed = failed,
     canEdit = canEdit,
     share = aDocumentShareState(),
     eventSink = {},

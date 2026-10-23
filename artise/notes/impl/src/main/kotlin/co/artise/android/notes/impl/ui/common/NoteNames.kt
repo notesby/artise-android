@@ -35,12 +35,12 @@ object NoteNames {
     }
 
     /**
-     * Where a new chart named [name] goes: `charts/<name>.chart`, or `<name> 2`, `<name> 3`... when that's taken.
+     * Where a new chart named [name] goes: `charts/<name>.chart`, or `<name> (2)`, `<name> (3)`... when that's taken.
      * `null` for a name that can't be a file's (empty, a "/", or starting with ".").
      */
     fun freeChartPath(name: String, existingPaths: Collection<String>): String? = freePath("charts", name, ".chart", existingPaths)
 
-    /** Where a new dashboard named [name] goes: `dashboards/<name>.md`, or `<name> 2`... when taken; `null` as for [freeChartPath]. */
+    /** Where a new dashboard named [name] goes: `dashboards/<name>.md`, or `<name> (2)`... when taken; `null` as for [freeChartPath]. */
     fun freeDashboardPath(name: String, existingPaths: Collection<String>): String? = freePath("dashboards", name, ".md", existingPaths)
 
     private fun freePath(folder: String, name: String, extension: String, existingPaths: Collection<String>): String? {
@@ -48,7 +48,7 @@ object NoteNames {
         if (base.isEmpty() || base.contains('/') || base.startsWith('.')) return null
         val taken = existingPaths.map { it.lowercase() }.toSet()
         return generateSequence(1) { it + 1 }
-            .map { n -> "$folder/" + (if (n == 1) base else "$base $n") + extension }
+            .map { n -> "$folder/" + (if (n == 1) base else "$base ($n)") + extension }
             .first { it.lowercase() !in taken }
     }
 

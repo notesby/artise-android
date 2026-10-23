@@ -177,6 +177,11 @@ class NotesFlowNode(
 
         override fun newChart(roomId: RoomId, path: String, title: String) = backstack.push(NavTarget.ChartEditor(roomId, path, title))
 
+        override fun newDashboard(roomId: RoomId, path: String) {
+            backstack.push(NavTarget.Dashboard(roomId, path))
+            backstack.push(NavTarget.Editor(roomId, path, resolveEditId = null))
+        }
+
         override fun onChartSaved(roomId: RoomId, path: String, isNew: Boolean) {
             if (isNew) backstack.replace(NavTarget.Chart(roomId, path)) else backstack.pop()
         }

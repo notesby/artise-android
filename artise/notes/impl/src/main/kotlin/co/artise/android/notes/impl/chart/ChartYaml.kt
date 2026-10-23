@@ -66,6 +66,8 @@ internal object ChartYaml {
     private fun isPlainSafe(value: String): Boolean = value.isNotEmpty() &&
         value == value.trim() &&
         value.lowercase() !in SPECIAL_WORDS &&
+        // A number, a date ("2026-05", "2026-05-01"), a time: anything that starts like one is quoted.
+        !value.first().isDigit() &&
         !LOOKS_TYPED.matches(value) &&
         value.first() !in START_INDICATORS &&
         value.none { it in INSIDE_INDICATORS || it.isISOControl() } &&

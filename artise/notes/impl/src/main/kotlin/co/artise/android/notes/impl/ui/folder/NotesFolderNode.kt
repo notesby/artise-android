@@ -57,6 +57,9 @@ class NotesFolderNode(
         /** The chart editor for a new chart named [title], to be written at [path] on its first Save. */
         fun newChart(roomId: RoomId, path: String, title: String)
 
+        /** A dashboard just made at [path]: its screen, with the editor open over it. */
+        fun newDashboard(roomId: RoomId, path: String)
+
         /** A dashboard's page as the server draws it. */
         fun openDashboard(roomId: RoomId, path: String)
 
@@ -73,6 +76,8 @@ class NotesFolderNode(
             override fun openEditor(path: String) = callback.openEditor(inputs.roomId, path)
 
             override fun openNewChart(path: String, title: String) = callback.newChart(inputs.roomId, path, title)
+
+            override fun openNewDashboard(path: String) = callback.newDashboard(inputs.roomId, path)
         },
     )
 

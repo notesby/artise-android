@@ -278,6 +278,24 @@ class NotesSyncEngineTest {
         assertThat(edit.error).isEqualTo("Human text for too_big")
     }
 
+    /** A chart the server can't draw (`422 bad_chart`) is a refused edit with the chart's sentence, never retried. */
+    @Test
+    fun `a refused chart save is set aside with its sentence`() = runTest {
+        val engine = engine()
+        engine.syncCharts()
+        engine.editNote(room, "charts/ventas.chart", "title: Ventas\ntype: radar\n")
+        server.enqueue(put, error(422, "bad_chart"))
+        server.enqueue(tree, MockResponse().setResponseCode(304))
+        engine.sync(room).getOrThrow()
+        val edit = engine.edits(room).single()
+        assertThat(edit.state).isEqualTo(EditState.REJECTED)
+        assertThat(edit.error).isEqualTo("Human text for bad_chart")
+        // Not sent again by the next sync
+        server.enqueue(tree, MockResponse().setResponseCode(304))
+        engine.sync(room).getOrThrow()
+        assertThat(server.requestsTo(put)).hasSize(1)
+    }
+
     /** Discarding a conflicted edit goes back to the server's text. */
     @Test
     fun `discarding a conflict restores the server copy`() = runTest {
@@ -1026,6 +1044,8 @@ class NotesSyncEngineTest {
         assertThat(NotesSyncEngine.exportFileName("Ventas por mes", ExportFormat.PNG, null)).isEqualTo("Ventas por mes.png")
         assertThat(NotesSyncEngine.exportFileName("../.secreto", ExportFormat.PDF, null)).isEqualTo("secreto.pdf")
         assertThat(NotesSyncEngine.exportFileName("  ", ExportFormat.PDF, "Octubre.pdf")).isEqualTo("Octubre.pdf")
+        // The server's name wins when it gives one
+        assertThat(NotesSyncEngine.exportFileName("Ventas", ExportFormat.PDF, "ventas-2026-10-22.pdf")).isEqualTo("ventas-2026-10-22.pdf")
         assertThat(NotesSyncEngine.exportFileName("", ExportFormat.PDF, null)).isEqualTo("export.pdf")
     }
 

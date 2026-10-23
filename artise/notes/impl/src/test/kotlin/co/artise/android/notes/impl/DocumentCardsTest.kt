@@ -73,13 +73,13 @@ class DocumentCardsTest {
     @Test
     fun `a chart's picture is its card`() {
         val image = """{"content":{"msgtype":"m.image","body":"Ventas por mes.png","co.artise.note":"charts/ventas.chart"}}"""
-        val card = chartCardOf(image, "Ventas por mes.png")
+        val card = chartCardOf(image)
         assertThat(card?.path).isEqualTo("charts/ventas.chart")
-        assertThat(card?.title).isEqualTo("Ventas por mes")
+        // The file's name, which the card swaps for the chart's title from the notes
+        assertThat(card?.title).isEqualTo("ventas")
         assertThat(card?.kind).isEqualTo(NoteAttachment.Kind.CHART)
         // Another picture from the notes, or an ordinary one: no card
-        assertThat(chartCardOf("""{"content":{"msgtype":"m.image","co.artise.note":"exports/ventas-2026-10-22.png"}}""", "x.png")).isNull()
-        assertThat(chartCardOf("""{"content":{"msgtype":"m.image","body":"foto.jpg"}}""", "foto.jpg")).isNull()
-        assertThat(chartCardOf(image, null)?.title).isEqualTo("ventas")
+        assertThat(chartCardOf("""{"content":{"msgtype":"m.image","co.artise.note":"exports/ventas-2026-10-22.png"}}""")).isNull()
+        assertThat(chartCardOf("""{"content":{"msgtype":"m.image","body":"foto.jpg"}}""")).isNull()
     }
 }

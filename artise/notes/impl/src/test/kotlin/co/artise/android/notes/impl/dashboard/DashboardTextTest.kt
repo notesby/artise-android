@@ -47,6 +47,7 @@ class DashboardTextTest {
         val columns = blocks[2] as DashboardBlock.Columns
         assertThat(columns.charts.map { it.path }).containsExactly("charts/cobros.chart", "charts/clientes.chart").inOrder()
         assertThat(columns.charts.map { it.line }).containsExactly(8, 9).inOrder()
+        assertThat(columns.line to columns.lastLine).isEqualTo(7 to 10)
         assertThat((blocks[3] as DashboardBlock.Text).text).isEqualTo("Notas del mes.")
     }
 
@@ -83,14 +84,26 @@ class DashboardTextTest {
         assertThat(DashboardText.insertChart("---\ntype: dashboard\n---\n", "charts/a.chart")).isEqualTo("---\ntype: dashboard\n---\n![[charts/a.chart]]\n")
     }
 
+    /** A long press takes a chart's line out; a block dragged moves as its lines, before another block or after the last. */
     @Test
-    fun `a chart's line is taken out, and moved within its columns`() {
+    fun `a chart's line is taken out, and blocks are moved`() {
         assertThat(DashboardText.removeLine(octubre, 6)).doesNotContain("![[charts/ventas.chart]]")
-        val moved = DashboardText.moveInColumns(octubre, 8, +1)
-        assertThat(moved).contains("::: columns\n![[clientes.chart|Clientes]]\n![[charts/cobros.chart]]\n:::")
-        // Not past the block's ends, and nothing outside a columns block
-        assertThat(DashboardText.moveInColumns(octubre, 8, -1)).isEqualTo(octubre)
-        assertThat(DashboardText.moveInColumns(octubre, 6, +1)).isEqualTo(octubre)
+        // The columns block (lines 7-10) before the heading (block 0)
+        val up = DashboardText.moveBlock(octubre, from = 2, to = 0, existing = paths)
+        assertThat(up.lines().drop(5).take(5)).containsExactly(
+            "::: columns",
+            "![[charts/cobros.chart]]",
+            "![[clientes.chart|Clientes]]",
+            ":::",
+            "## Ventas",
+        ).inOrder()
+        // The heading after the last block
+        val down = DashboardText.moveBlock(octubre, from = 0, to = 4, existing = paths)
+        assertThat(down.lines().last()).isEqualTo("## Ventas")
+        assertThat(DashboardText.blocks(down, paths).map { it::class.simpleName }).containsExactly("Chart", "Columns", "Text").inOrder()
+        // Onto itself: nothing
+        assertThat(DashboardText.moveBlock(octubre, from = 1, to = 2, existing = paths)).isEqualTo(octubre)
+        assertThat(DashboardText.firstLines("## Ventas\n\n> - dato\nmás")).isEqualTo("Ventas\ndato")
     }
 
     /** The theme reads from the front matter, written inline or as indented lines. */
