@@ -42,6 +42,12 @@ sealed interface WorkspaceProblem {
 
     /** The workspace doesn't take invites from the app yet (its server has no join page). */
     data object InviteUnavailable : WorkspaceProblem
+
+    /** Joining from an invite needs the email on the person's Artise ID verified first. */
+    data object EmailUnverified : WorkspaceProblem
+
+    /** The invite was used already, expired or was cancelled. */
+    data object InviteInvalid : WorkspaceProblem
 }
 
 sealed interface WorkspaceSignInEvent {

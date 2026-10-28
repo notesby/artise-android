@@ -28,6 +28,7 @@ import okhttp3.FormBody
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import timber.log.Timber
 import java.io.IOException
@@ -79,7 +80,7 @@ class ArtiseIdAuth(
     private val appScope: CoroutineScope,
     private val workspacesUrl: String = WORKSPACES_URL,
     private val securityUrl: String = SECURITY_URL,
-) : ArtiseIdCallback {
+) : ArtiseIdCallback, InviteJoiner {
     private val json = Json { ignoreUnknownKeys = true }
     private val random = SecureRandom()
 
@@ -254,6 +255,66 @@ class ArtiseIdAuth(
         }
     }
 
+    /**
+     * Joins from an invite with the person's Artise ID access token (POST <join url>/<code>/app), refreshing it when it has expired
+     * and once more when it's refused. Tokens Artise ID refuses even then are forgotten, as in [workspaces].
+     */
+    override suspend fun join(joinUrl: String, code: String): InviteJoin {
+        val url = (joinUrl.trimEnd('/') + "/" + code + "/app").toHttpUrlOrNull()?.takeIf { it.isHttps } ?: return InviteJoin.PageOnly
+        var tokens = tokenStore.load() ?: return InviteJoin.NoSession
+        val expired = tokens.expiresAtMillis?.let { clock.epochMillis() >= it } ?: false
+        if (expired) tokens = refreshed(tokens) ?: return noSession()
+        return when (val answer = requestJoin(url.toString(), tokens.accessToken)) {
+            JoinAnswer.Unauthorized -> {
+                val again = refreshed(tokens) ?: return noSession()
+                when (val retry = requestJoin(url.toString(), again.accessToken)) {
+                    JoinAnswer.Unauthorized -> noSession()
+                    is JoinAnswer.Done -> retry.join
+                }
+            }
+            is JoinAnswer.Done -> answer.join
+        }
+    }
+
+    private suspend fun noSession(): InviteJoin {
+        tokenStore.clear()
+        return InviteJoin.NoSession
+    }
+
+    private sealed interface JoinAnswer {
+        data object Unauthorized : JoinAnswer
+
+        data class Done(val join: InviteJoin) : JoinAnswer
+    }
+
+    private suspend fun requestJoin(url: String, accessToken: String): JoinAnswer = withContext(dispatchers.io) {
+        val request = Request.Builder()
+            .url(url)
+            .header("Authorization", "Bearer $accessToken")
+            .post(ByteArray(0).toRequestBody())
+            .build()
+        try {
+            okHttpClient.newCall(request).execute().use { response ->
+                // Only the server's own answers count: a plain 404 is a server without this endpoint, so the join page instead.
+                val error = if (response.isSuccessful) null else decode<JoinErrorDto>(response.body.string())?.error
+                when {
+                    response.isSuccessful -> JoinAnswer.Done(InviteJoin.Joined)
+                    response.code == HTTP_UNAUTHORIZED -> JoinAnswer.Unauthorized
+                    response.code == HTTP_TOO_MANY_REQUESTS -> JoinAnswer.Done(InviteJoin.TooManyTries)
+                    error == "email_unverified" -> JoinAnswer.Done(InviteJoin.EmailUnverified)
+                    error == "invite" -> JoinAnswer.Done(InviteJoin.InviteInvalid)
+                    else -> {
+                        Timber.w("Join from the app: HTTP ${response.code} ${error.orEmpty()}")
+                        JoinAnswer.Done(InviteJoin.PageOnly)
+                    }
+                }
+            }
+        } catch (e: IOException) {
+            Timber.w(e, "Join from the app failed")
+            JoinAnswer.Done(InviteJoin.Unreachable)
+        }
+    }
+
     private suspend fun signedOut(): ArtiseIdWorkspaces {
         tokenStore.clear()
         return ArtiseIdWorkspaces.SignedOut
@@ -401,6 +462,9 @@ class ArtiseIdAuth(
     )
 
     @Serializable
+    private data class JoinErrorDto(val error: String? = null)
+
+    @Serializable
     private data class WorkspacesDto(val workspaces: List<WorkspaceDto>)
 
     @Serializable
@@ -420,6 +484,7 @@ class ArtiseIdAuth(
         private const val DISCOVERY_PATH = "/.well-known/openid-configuration"
         private const val RANDOM_BYTES = 32
         private const val HTTP_UNAUTHORIZED = 401
+        private const val HTTP_TOO_MANY_REQUESTS = 429
         private const val MILLIS = 1000L
         private val BASE64_URL = Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT)
 

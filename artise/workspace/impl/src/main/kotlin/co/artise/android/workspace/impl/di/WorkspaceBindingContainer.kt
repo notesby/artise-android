@@ -15,6 +15,7 @@ import co.artise.android.workspace.impl.artiseid.ArtiseIdAuth
 import co.artise.android.workspace.impl.artiseid.ArtiseIdConfigClient
 import co.artise.android.workspace.impl.artiseid.ArtiseIdTokenStore
 import co.artise.android.workspace.impl.artiseid.EncryptedArtiseIdTokenStore
+import co.artise.android.workspace.impl.artiseid.InviteJoiner
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.BindingContainer
 import dev.zacsweers.metro.ContributesTo
@@ -70,4 +71,7 @@ object WorkspaceBindingContainer {
 
     @Provides
     fun providesArtiseIdCallback(artiseIdAuth: ArtiseIdAuth): ArtiseIdCallback = artiseIdAuth
+
+    @Provides
+    fun providesInviteJoiner(artiseIdAuth: ArtiseIdAuth): InviteJoiner = artiseIdAuth
 }

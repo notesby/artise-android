@@ -181,4 +181,61 @@ class ArtiseIdAuthTest {
         val url = requireNotNull(auth.authorizationUrl(configClient.config(), null)).toHttpUrl()
         assertThat(url.queryParameter("prompt")).isEqualTo("login")
     }
+
+    /**
+     * Joining from an invite posts to the workspace's join address with the access token: 201 (new account) and 200 ("already") are
+     * both joined; a refused token is refreshed and tried once more.
+     */
+    @Test
+    fun `an invite is joined with the access token`() = runTest {
+        server.on(JOIN, json("""{"user_id": "@ana:acme.artise.co", "username": "ana", "name": "Ana"}""").setResponseCode(201))
+        store.tokens = ArtiseIdTokens("at-1", "rt-1", null)
+        val (auth, _) = auth()
+        assertThat(auth.join("https://chat.acme.artise.co/join/", "Ab3_xyZ9")).isEqualTo(InviteJoin.Joined)
+        assertThat(server.requestsTo(JOIN).single().getHeader("Authorization")).isEqualTo("Bearer at-1")
+
+        server.on(JOIN, MockResponse().setResponseCode(401), json("""{"user_id": "@ana:acme.artise.co", "already": true}"""))
+        server.on(TOKEN, json("""{"access_token": "at-2", "expires_in": 3600}"""))
+        assertThat(auth.join("https://chat.acme.artise.co/join", "Ab3_xyZ9")).isEqualTo(InviteJoin.Joined)
+        assertThat(server.requestsTo(JOIN).drop(1).map { it.getHeader("Authorization") }).containsExactly("Bearer at-1", "Bearer at-2").inOrder()
+    }
+
+    /** A token refused even after a refresh is forgotten (the join page signs in again); no tokens at all never calls the server. */
+    @Test
+    fun `an invite without a usable Artise ID`() = runTest {
+        server.on(JOIN, json("""{"error": "token"}""").setResponseCode(401))
+        server.on(TOKEN, json("""{"access_token": "at-2", "expires_in": 3600}"""))
+        store.tokens = ArtiseIdTokens("at-1", "rt-1", null)
+        val (auth, _) = auth()
+        assertThat(auth.join("https://chat.acme.artise.co/join", "Ab3_xyZ9")).isEqualTo(InviteJoin.NoSession)
+        assertThat(server.requestsTo(JOIN)).hasSize(2)
+        assertThat(store.tokens).isNull()
+        assertThat(auth.join("https://chat.acme.artise.co/join", "Ab3_xyZ9")).isEqualTo(InviteJoin.NoSession)
+        assertThat(server.requestsTo(JOIN)).hasSize(2)
+    }
+
+    /** Each of the server's refusals becomes its own answer; anything else (an older server's plain 404, a 500, http) is the join page. */
+    @Test
+    fun `invite refusals`() = runTest {
+        store.tokens = ArtiseIdTokens("at-1", "rt-1", null)
+        val (auth, _) = auth()
+        val cases = listOf(
+            json("""{"error": "email_unverified"}""").setResponseCode(403) to InviteJoin.EmailUnverified,
+            json("""{"error": "invite"}""").setResponseCode(404) to InviteJoin.InviteInvalid,
+            json("""{"error": "slow"}""").setResponseCode(429) to InviteJoin.TooManyTries,
+            json("""{"error": "unavailable"}""").setResponseCode(404) to InviteJoin.PageOnly,
+            MockResponse().setResponseCode(404).setBody("404: Not Found") to InviteJoin.PageOnly,
+            json("""{"error": "failed"}""").setResponseCode(500) to InviteJoin.PageOnly,
+        )
+        cases.forEach { (response, expected) ->
+            server.on(JOIN, response)
+            assertThat(auth.join("https://chat.acme.artise.co/join", "Ab3_xyZ9")).isEqualTo(expected)
+        }
+        assertThat(store.tokens).isNotNull()
+        assertThat(auth.join("http://chat.acme.artise.co/join", "Ab3_xyZ9")).isEqualTo(InviteJoin.PageOnly)
+    }
+
+    private companion object {
+        const val JOIN = "POST chat.acme.artise.co/join/Ab3_xyZ9/app"
+    }
 }
