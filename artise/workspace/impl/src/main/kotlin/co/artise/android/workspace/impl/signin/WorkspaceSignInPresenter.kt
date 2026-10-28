@@ -21,6 +21,8 @@ import co.artise.android.workspace.api.WorkspaceConfigRepository
 import co.artise.android.workspace.api.WorkspaceLookup
 import co.artise.android.workspace.api.WorkspaceLookupResult
 import co.artise.android.workspace.api.WorkspaceSignInEntryPoint
+import co.artise.android.workspace.impl.artiseid.InviteJoin
+import co.artise.android.workspace.impl.artiseid.InviteJoiner
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
@@ -43,6 +45,7 @@ class WorkspaceSignInPresenter(
     private val configRepository: WorkspaceConfigRepository,
     private val authenticationService: MatrixAuthenticationService,
     private val holder: SignInWorkspaceHolder,
+    private val inviteJoiner: InviteJoiner,
 ) : Presenter<WorkspaceSignInState> {
     @AssistedFactory
     fun interface Factory {
@@ -75,19 +78,33 @@ class WorkspaceSignInPresenter(
             }
         }
 
-        // An invite: look the workspace up and open its join page; sign-in goes on when the person comes back.
+        // An invite: look the workspace up. With Artise ID on this phone, join with it and go straight to the workspace's sign-in, which
+        // finds the account. Without it (or where the workspace can't do that), open the join page; sign-in goes on when the person comes back.
         LaunchedEffect(Unit) {
             val invite = params.invite ?: return@LaunchedEffect
             if (awaitingJoinPage) return@LaunchedEffect
             isLoading = true
+            var joined: SignInTarget? = null
             when (val found = lookup.find(invite.slug)) {
                 is WorkspaceLookupResult.Found -> {
                     val joinUrl = found.workspace.joinUrl
-                    if (joinUrl == null) problem = WorkspaceProblem.InviteUnavailable else joinPageUrl = joinUrl.trimEnd('/') + "/" + invite.code
+                    if (joinUrl == null) {
+                        problem = WorkspaceProblem.InviteUnavailable
+                    } else {
+                        when (inviteJoiner.join(joinUrl, invite.code)) {
+                            InviteJoin.Joined -> joined = SignInTarget(invite.slug, found.workspace.serverName, found.workspace.name)
+                            InviteJoin.NoSession, InviteJoin.PageOnly -> joinPageUrl = joinUrl.trimEnd('/') + "/" + invite.code
+                            InviteJoin.EmailUnverified -> problem = WorkspaceProblem.EmailUnverified
+                            InviteJoin.InviteInvalid -> problem = WorkspaceProblem.InviteInvalid
+                            InviteJoin.TooManyTries -> problem = WorkspaceProblem.TooManyTries
+                            InviteJoin.Unreachable -> problem = WorkspaceProblem.Unreachable
+                        }
+                    }
                 }
                 else -> problem = problemOf(found, invite.slug)
             }
             isLoading = false
+            joined?.let { submit { resolveServer(typed = it.slug, serverName = it.serverName, lookupName = it.name) } }
         }
 
         return WorkspaceSignInState(
@@ -117,6 +134,8 @@ class WorkspaceSignInPresenter(
             },
         )
     }
+
+    private data class SignInTarget(val slug: String, val serverName: String, val name: String)
 
     private sealed interface Resolved {
         data class Ready(val workspace: SignInWorkspace) : Resolved

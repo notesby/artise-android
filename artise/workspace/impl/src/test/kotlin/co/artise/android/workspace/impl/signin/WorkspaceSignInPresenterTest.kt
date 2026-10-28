@@ -14,6 +14,8 @@ import co.artise.android.workspace.api.WorkspaceInvite
 import co.artise.android.workspace.api.WorkspaceLookup
 import co.artise.android.workspace.api.WorkspaceLookupResult
 import co.artise.android.workspace.api.WorkspaceSignInEntryPoint
+import co.artise.android.workspace.impl.artiseid.InviteJoin
+import co.artise.android.workspace.impl.artiseid.InviteJoiner
 import co.artise.android.workspace.test.FakeSignInWorkspaceHolder
 import co.artise.android.workspace.test.FakeWorkspaceConfigRepository
 import com.google.common.truth.Truth.assertThat
@@ -35,6 +37,7 @@ class WorkspaceSignInPresenterTest {
         config: WorkspaceConfig? = WorkspaceConfig(name = "Acme Inc.", logoUrl = "https://artise.co/brand/logo-1.png"),
         holder: FakeSignInWorkspaceHolder = FakeSignInWorkspaceHolder(),
         params: WorkspaceSignInEntryPoint.Params = WorkspaceSignInEntryPoint.Params(),
+        inviteJoiner: InviteJoiner = InviteJoiner { _, _ -> InviteJoin.NoSession },
     ) = WorkspaceSignInPresenter(
         params = params,
         lookup = object : WorkspaceLookup {
@@ -48,6 +51,7 @@ class WorkspaceSignInPresenterTest {
             },
         ),
         holder = holder,
+        inviteJoiner = inviteJoiner,
     )
 
     /** Typing "acme" finds its server, sets it for sign-in, and moves on with the workspace's name and logo. */
@@ -190,5 +194,46 @@ class WorkspaceSignInPresenterTest {
         presenter(lookupResult = { WorkspaceLookupResult.NotFound("acme") }, params = WorkspaceSignInEntryPoint.Params(invite = invite)).test {
             assertThat(consumeItemsUntilPredicate { !it.isLoading && it.problem != null }.last().problem).isEqualTo(WorkspaceProblem.NotFound("acme"))
         }
+    }
+
+    /** With Artise ID on the phone, an invite is joined with it: no join page, sign-in for that workspace goes on straight away. */
+    @Test
+    fun `an invite joined with Artise ID skips the join page`() = runTest {
+        val invite = WorkspaceInvite("acme", "Ab3_xyZ9")
+        val joins = mutableListOf<Pair<String, String>>()
+        presenter(
+            lookupResult = { WorkspaceLookupResult.Found(acme.copy(joinUrl = "https://chat.acme.artise.co/join")) },
+            params = WorkspaceSignInEntryPoint.Params(invite = invite),
+            inviteJoiner = { url, code -> InviteJoin.Joined.also { joins += url to code } },
+        ).test {
+            val ready = consumeItemsUntilPredicate { it.readyServerName != null && !it.isLoading }
+            assertThat(ready.none { it.joinPageUrl != null }).isTrue()
+            assertThat(ready.last().readyServerName).isEqualTo("acme.artise.co")
+            assertThat(joins).containsExactly("https://chat.acme.artise.co/join" to "Ab3_xyZ9")
+        }
+    }
+
+    /** Where joining with Artise ID can't be done, the join page opens; the server's refusals are said in plain words, nothing opens. */
+    @Test
+    fun `invite join answers`() = runTest {
+        val invite = WorkspaceInvite("acme", "Ab3_xyZ9")
+        val found = WorkspaceLookupResult.Found(acme.copy(joinUrl = "https://chat.acme.artise.co/join"))
+        presenter(lookupResult = { found }, params = WorkspaceSignInEntryPoint.Params(invite = invite), inviteJoiner = { _, _ -> InviteJoin.PageOnly }).test {
+            assertThat(consumeItemsUntilPredicate { it.joinPageUrl != null }.last().joinPageUrl).isEqualTo("https://chat.acme.artise.co/join/Ab3_xyZ9")
+        }
+        val cases = mapOf(
+            InviteJoin.EmailUnverified to WorkspaceProblem.EmailUnverified,
+            InviteJoin.InviteInvalid to WorkspaceProblem.InviteInvalid,
+            InviteJoin.TooManyTries to WorkspaceProblem.TooManyTries,
+            InviteJoin.Unreachable to WorkspaceProblem.Unreachable,
+        )
+        cases.forEach { (answer, problem) ->
+            presenter(lookupResult = { found }, params = WorkspaceSignInEntryPoint.Params(invite = invite), inviteJoiner = { _, _ -> answer }).test {
+                val state = consumeItemsUntilPredicate { !it.isLoading && it.problem != null }.last()
+                assertThat(state.problem).isEqualTo(problem)
+                assertThat(state.joinPageUrl).isNull()
+            }
+        }
+        assertThat(homeservers).isEmpty()
     }
 }

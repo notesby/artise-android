@@ -18,6 +18,8 @@
     <string name="screen_workspace_error_server_unreachable">Can\'t reach %1$s\'s server right now. Try again in a moment.</string>
     <string name="screen_workspace_error_no_password">%1$s doesn\'t use a username and password, so you can\'t sign in to it here.</string>
     <string name="screen_workspace_error_invite_unavailable">This invite can\'t be opened in the app yet. Open the link in your browser instead.</string>
+    <string name="screen_workspace_error_email_unverified">Verify the email on your Artise account first, then open the invite again.</string>
+    <string name="screen_workspace_error_invite_invalid">This invite has already been used or has expired. Ask for a new one.</string>
     <string name="screen_artise_id_title" translatable="false">Artise</string>
     <string name="screen_artise_id_subtitle">Sign in once and pick your workspace.</string>
     <string name="screen_artise_id_continue_apple">Continue with Apple</string>
